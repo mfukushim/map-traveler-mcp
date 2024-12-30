@@ -1,0 +1,192 @@
+[
+  {
+    "id": "ChIJx6TbjMyTQTURmPdN7915780",
+    "formattedAddress": "日本、〒810-0051 福岡県福岡市中央区大濠公園１ 公園管理事務所",
+    "addressComponents": [
+      {
+        "longText": "公園管理事務所",
+        "shortText": "公園管理事務所",
+        "types": [
+          "premise"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "１",
+        "shortText": "１",
+        "types": [
+          "sublocality_level_4",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "大濠公園",
+        "shortText": "大濠公園",
+        "types": [
+          "sublocality_level_2",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "中央区",
+        "shortText": "中央区",
+        "types": [
+          "sublocality_level_1",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "福岡市",
+        "shortText": "福岡市",
+        "types": [
+          "locality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "福岡県",
+        "shortText": "福岡県",
+        "types": [
+          "administrative_area_level_1",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "日本",
+        "shortText": "JP",
+        "types": [
+          "country",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "810-0051",
+        "shortText": "810-0051",
+        "types": [
+          "postal_code"
+        ],
+        "languageCode": "ja"
+      }
+    ],
+    "location": {
+      "latitude": 33.586206499999996,
+      "longitude": 130.3764646
+    },
+    "displayName": {
+      "text": "大濠公園",
+      "languageCode": "ja"
+    },
+    "primaryType": "park",
+    "shortFormattedAddress": "福岡市中央区大濠公園 公園管理事務所",
+    "photos": []
+  },
+  {
+    "id": "ChIJc3uKgYWRQTURWr1t_ndugOI",
+    "formattedAddress": "日本、〒810-8680 福岡県福岡市中央区天神２丁目５−３５",
+    "addressComponents": [
+      {
+        "longText": "３５",
+        "shortText": "３５",
+        "types": [
+          "premise"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "５",
+        "shortText": "５",
+        "types": [
+          "sublocality_level_4",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "２丁目",
+        "shortText": "２丁目",
+        "types": [
+          "sublocality_level_3",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "天神",
+        "shortText": "天神",
+        "types": [
+          "sublocality_level_2",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "中央区",
+        "shortText": "中央区",
+        "types": [
+          "sublocality_level_1",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "福岡市",
+        "shortText": "福岡市",
+        "types": [
+          "locality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "福岡県",
+        "shortText": "福岡県",
+        "types": [
+          "administrative_area_level_1",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "日本",
+        "shortText": "JP",
+        "types": [
+          "country",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "810-8680",
+        "shortText": "810-8680",
+        "types": [
+          "postal_code"
+        ],
+        "languageCode": "ja"
+      }
+    ],
+    "location": {
+      "latitude": 33.588842,
+      "longitude": 130.397425
+    },
+    "displayName": {
+      "text": "岩田屋 本店",
+      "languageCode": "ja"
+    },
+    "primaryType": "department_store",
+    "shortFormattedAddress": "福岡市中央区天神２丁目５−３５",
+    "photos": []
+  }
+]

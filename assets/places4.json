@@ -1,0 +1,202 @@
+[
+  {
+    "id": "ChIJS7bmAk2SQTURwlTt0njZnLc",
+    "formattedAddress": "日本、〒810-8660 福岡県福岡市中央区地行浜２丁目２−２",
+    "addressComponents": [
+      {
+        "longText": "２",
+        "shortText": "２",
+        "types": [
+          "premise"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "２",
+        "shortText": "２",
+        "types": [
+          "sublocality_level_4",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "２丁目",
+        "shortText": "２丁目",
+        "types": [
+          "sublocality_level_3",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "地行浜",
+        "shortText": "地行浜",
+        "types": [
+          "sublocality_level_2",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "中央区",
+        "shortText": "中央区",
+        "types": [
+          "sublocality_level_1",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "福岡市",
+        "shortText": "福岡市",
+        "types": [
+          "locality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "福岡県",
+        "shortText": "福岡県",
+        "types": [
+          "administrative_area_level_1",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "日本",
+        "shortText": "JP",
+        "types": [
+          "country",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "810-8660",
+        "shortText": "810-8660",
+        "types": [
+          "postal_code"
+        ],
+        "languageCode": "ja"
+      }
+    ],
+    "location": {
+      "latitude": 33.5953942,
+      "longitude": 130.36212319999998
+    },
+    "displayName": {
+      "text": "みずほPayPayドーム福岡",
+      "languageCode": "ja"
+    },
+    "primaryType": "athletic_field",
+    "shortFormattedAddress": "福岡市中央区地行浜２丁目２−２",
+    "photos": []
+  },
+  {
+    "id": "ChIJAQAEI6qTQTURLZF6YTY7dPk",
+    "formattedAddress": "日本、〒814-0001 福岡県福岡市早良区百道浜２丁目３−２６",
+    "addressComponents": [
+      {
+        "longText": "２６",
+        "shortText": "２６",
+        "types": [
+          "premise"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "３",
+        "shortText": "３",
+        "types": [
+          "sublocality_level_4",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "２丁目",
+        "shortText": "２丁目",
+        "types": [
+          "sublocality_level_3",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "百道浜",
+        "shortText": "百道浜",
+        "types": [
+          "sublocality_level_2",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "早良区",
+        "shortText": "早良区",
+        "types": [
+          "sublocality_level_1",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "福岡市",
+        "shortText": "福岡市",
+        "types": [
+          "locality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "福岡県",
+        "shortText": "福岡県",
+        "types": [
+          "administrative_area_level_1",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "日本",
+        "shortText": "JP",
+        "types": [
+          "country",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "814-0001",
+        "shortText": "814-0001",
+        "types": [
+          "postal_code"
+        ],
+        "languageCode": "ja"
+      }
+    ],
+    "location": {
+      "latitude": 33.5932846,
+      "longitude": 130.35151
+    },
+    "displayName": {
+      "text": "福岡タワー",
+      "languageCode": "ja"
+    },
+    "primaryType": "observation_deck",
+    "shortFormattedAddress": "福岡市早良区百道浜２丁目３−２６",
+    "photos": []
+  }
+]

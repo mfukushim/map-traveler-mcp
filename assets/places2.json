@@ -1,0 +1,202 @@
+[
+  {
+    "id": "ChIJd5DjRI6RQTURMDt50eAUgg4",
+    "formattedAddress": "日本、〒810-0001 福岡県福岡市中央区天神２−１２−１００４",
+    "addressComponents": [
+      {
+        "longText": "１００４",
+        "shortText": "１００４",
+        "types": [
+          "premise"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "１２",
+        "shortText": "１２",
+        "types": [
+          "sublocality_level_4",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "２",
+        "shortText": "２",
+        "types": [
+          "sublocality_level_3",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "天神",
+        "shortText": "天神",
+        "types": [
+          "sublocality_level_2",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "中央区",
+        "shortText": "中央区",
+        "types": [
+          "sublocality_level_1",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "福岡市",
+        "shortText": "福岡市",
+        "types": [
+          "locality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "福岡県",
+        "shortText": "福岡県",
+        "types": [
+          "administrative_area_level_1",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "日本",
+        "shortText": "JP",
+        "types": [
+          "country",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "810-0001",
+        "shortText": "810-0001",
+        "types": [
+          "postal_code"
+        ],
+        "languageCode": "ja"
+      }
+    ],
+    "location": {
+      "latitude": 33.5914006,
+      "longitude": 130.3988788
+    },
+    "displayName": {
+      "text": "天神駅",
+      "languageCode": "ja"
+    },
+    "primaryType": "subway_station",
+    "shortFormattedAddress": "福岡市中央区天神２−１００４",
+    "photos": []
+  },
+  {
+    "id": "ChIJVVUVAI-RQTUR4O0-0xXxi0Y",
+    "formattedAddress": "日本、〒810-0001 福岡県福岡市中央区天神２丁目１１−１",
+    "addressComponents": [
+      {
+        "longText": "１",
+        "shortText": "１",
+        "types": [
+          "premise"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "１１",
+        "shortText": "１１",
+        "types": [
+          "sublocality_level_4",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "２丁目",
+        "shortText": "２丁目",
+        "types": [
+          "sublocality_level_3",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "天神",
+        "shortText": "天神",
+        "types": [
+          "sublocality_level_2",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "中央区",
+        "shortText": "中央区",
+        "types": [
+          "sublocality_level_1",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "福岡市",
+        "shortText": "福岡市",
+        "types": [
+          "locality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "福岡県",
+        "shortText": "福岡県",
+        "types": [
+          "administrative_area_level_1",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "日本",
+        "shortText": "JP",
+        "types": [
+          "country",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "810-0001",
+        "shortText": "810-0001",
+        "types": [
+          "postal_code"
+        ],
+        "languageCode": "ja"
+      }
+    ],
+    "location": {
+      "latitude": 33.5907445,
+      "longitude": 130.39866519999998
+    },
+    "displayName": {
+      "text": "福岡PARCO",
+      "languageCode": "ja"
+    },
+    "primaryType": "shopping_mall",
+    "shortFormattedAddress": "福岡市中央区天神２丁目１１−１",
+    "photos": []
+  }
+]

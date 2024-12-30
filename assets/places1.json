@@ -1,0 +1,203 @@
+[
+  {
+    "id": "ChIJdbP55seRQTURkIu5RT0r4i4",
+    "formattedAddress": "日本、〒812-0012 福岡県福岡市博多区博多駅中央街１−１",
+    "addressComponents": [
+      {
+        "longText": "１",
+        "shortText": "１",
+        "types": [
+          "premise"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "１",
+        "shortText": "１",
+        "types": [
+          "sublocality_level_4",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "中央街",
+        "shortText": "中央街",
+        "types": [
+          "sublocality_level_3",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "博多駅",
+        "shortText": "博多駅",
+        "types": [
+          "sublocality_level_2",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "博多区",
+        "shortText": "博多区",
+        "types": [
+          "sublocality_level_1",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "福岡市",
+        "shortText": "福岡市",
+        "types": [
+          "locality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "福岡県",
+        "shortText": "福岡県",
+        "types": [
+          "administrative_area_level_1",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "日本",
+        "shortText": "JP",
+        "types": [
+          "country",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "812-0012",
+        "shortText": "812-0012",
+        "types": [
+          "postal_code"
+        ],
+        "languageCode": "ja"
+      }
+    ],
+    "location": {
+      "latitude": 33.589727499999995,
+      "longitude": 130.4207274
+    },
+    "displayName": {
+      "text": "博多駅",
+      "languageCode": "ja"
+    },
+    "primaryType": "transit_station",
+    "shortFormattedAddress": "福岡市博多区博多駅中央街１−１",
+    "photos": [
+    ]
+  },
+  {
+    "id": "ChIJYcOBiZWRQTUR0Rl0ehe67eA",
+    "formattedAddress": "日本、〒812-0018 福岡県福岡市博多区住吉１丁目２−２",
+    "addressComponents": [
+      {
+        "longText": "２",
+        "shortText": "２",
+        "types": [
+          "premise"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "２",
+        "shortText": "２",
+        "types": [
+          "sublocality_level_4",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "１丁目",
+        "shortText": "１丁目",
+        "types": [
+          "sublocality_level_3",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "住吉",
+        "shortText": "住吉",
+        "types": [
+          "sublocality_level_2",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "博多区",
+        "shortText": "博多区",
+        "types": [
+          "sublocality_level_1",
+          "sublocality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "福岡市",
+        "shortText": "福岡市",
+        "types": [
+          "locality",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "福岡県",
+        "shortText": "福岡県",
+        "types": [
+          "administrative_area_level_1",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "日本",
+        "shortText": "JP",
+        "types": [
+          "country",
+          "political"
+        ],
+        "languageCode": "ja"
+      },
+      {
+        "longText": "812-0018",
+        "shortText": "812-0018",
+        "types": [
+          "postal_code"
+        ],
+        "languageCode": "ja"
+      }
+    ],
+    "location": {
+      "latitude": 33.589794399999995,
+      "longitude": 130.41110279999998
+    },
+    "displayName": {
+      "text": "キャナルシティ博多",
+      "languageCode": "ja"
+    },
+    "primaryType": "shopping_mall",
+    "shortFormattedAddress": "福岡市博多区住吉１丁目２",
+    "photos": []
+  }
+]
