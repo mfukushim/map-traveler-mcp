@@ -14,12 +14,8 @@ import {McpLogService, McpLogServiceLive} from "../src/McpLogService.js";
 
 describe("Image", () => {
 
-  it("should pass", () => {
-    expect(true).toBe(true)
-  })
-
   it("makeHotelPict", async () => {
-    //  TODO なぜかintelliJ経由で実行するとコマンドを見つけられない。。 コマンドラインからだと使える。。。  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     //  実行エラーが取れると実行できたりする。。 intellijの問題だが、どういう種類の問題なんだろう。。。仕方ないからしばらくはコマンドライン併用、、
     const res = await Effect.gen(function* () {
       return yield* ImageService.makeHotelPict("depth of field, cinematic composition, masterpiece, best quality,looking at viewer,anime,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut","pixAi", 12)  //
@@ -35,7 +31,7 @@ describe("Image", () => {
     expect(res).toBeInstanceOf(Buffer)
   })
   it("pixAiMakeT2I", async () => {
-    //  TODO なぜかintelliJ経由で実行するとコマンドを見つけられない。。 コマンドラインからだと使える。。。  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     //  実行エラーが取れると実行できたりする。。 intellijの問題だが、どういう種類の問題なんだろう。。。仕方ないからしばらくはコマンドライン併用、、
     const res = await Effect.gen(function* () {
       return yield* ImageService.pixAiMakeImage("depth of field, cinematic composition, masterpiece, best quality,looking at viewer,anime,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut")  //
@@ -51,7 +47,7 @@ describe("Image", () => {
     expect(typeof res).toBe('string')
   })
   it("pixAiMakeI2I", async () => {
-    //  TODO なぜかintelliJ経由で実行するとコマンドを見つけられない。。 コマンドラインからだと使える。。。  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     //  実行エラーが取れると実行できたりする。。 intellijの問題だが、どういう種類の問題なんだろう。。。仕方ないからしばらくはコマンドライン併用、、
     const res = await Effect.gen(function* () {
       const buffer = fs.readFileSync('tools/1734408861_planeImage.jpg');
@@ -68,7 +64,7 @@ describe("Image", () => {
     expect(typeof res).toBe('string')
   })
   it("rembg", async () => {
-    //  TODO なぜかintelliJ経由で実行するとコマンドを見つけられない。。 コマンドラインからだと使える。。。  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     //  実行エラーが取れると実行できたりする。。 intellijの問題だが、どういう種類の問題なんだろう。。。仕方ないからしばらくはコマンドライン併用、、
 
     // const rembg = new Rembg({
@@ -92,7 +88,7 @@ describe("Image", () => {
     expect(typeof buf).toBe('string')
   })
   it("makeRunnerImageV2_i2i", async () => {
-    //  TODO なぜかintelliJ経由で実行するとコマンドを見つけられない。。 コマンドラインからだと使える。。。  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     //  実行エラーが取れると実行できたりする。。 intellijの問題だが、どういう種類の問題なんだろう。。。仕方ないからしばらくはコマンドライン併用、、
     const res = await Effect.gen(function* () {
       const buffer = fs.readFileSync('tools/1734408861_planeImage.jpg');
@@ -109,7 +105,7 @@ describe("Image", () => {
     expect(typeof res).toBe('Object')
   })
   it("makeRunnerImageV2_t2i", async () => {
-    //  TODO なぜかintelliJ経由で実行するとコマンドを見つけられない。。 コマンドラインからだと使える。。。  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     //  実行エラーが取れると実行できたりする。。 intellijの問題だが、どういう種類の問題なんだろう。。。仕方ないからしばらくはコマンドライン併用、、
     const res = await Effect.gen(function* () {
       const buffer = fs.readFileSync('tools/1734408861_planeImage.jpg');

@@ -24,7 +24,7 @@ describe("Mcp", () => {
     expect(true).toBe(true)
   })
   it("run", async () => {
-    //  TODO なぜかintelliJ経由で実行するとコマンドを見つけられない。。 コマンドラインからだと使える。。。  vitest --run --testNamePattern=run McpService.test.ts
+    //  vitest --run --testNamePattern=run McpService.test.ts
     await McpService.run().pipe(
         Effect.provide([McpServiceLive, DbServiceLive]),
         Effect.provide([StoryServiceLive, McpServiceLive, FetchHttpClient.layer, McpLogServiceLive]),
@@ -35,7 +35,7 @@ describe("Mcp", () => {
       )
   })
   it("tips", async () => {
-    //  TODO なぜかintelliJ経由で実行するとコマンドを見つけられない。。 コマンドラインからだと使える。。。  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     await Effect.gen(function* () {
       return yield* McpService.tips()  //
     }).pipe(
@@ -47,7 +47,7 @@ describe("Mcp", () => {
     )
   })
   it("setLanguage", async () => {
-    //  TODO なぜかintelliJ経由で実行するとコマンドを見つけられない。。 コマンドラインからだと使える。。。  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     await Effect.gen(function* () {
       return yield* McpService.setPersonMode('second_person')  //
     }).pipe(
@@ -59,7 +59,7 @@ describe("Mcp", () => {
     )
   })
   it("setTravelerInfo", async () => {
-    //  TODO なぜかintelliJ経由で実行するとコマンドを見つけられない。。 コマンドラインからだと使える。。。  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     await Effect.gen(function* () {
       return yield* McpService.setTravelerInfo('name is mi')
     }).pipe(

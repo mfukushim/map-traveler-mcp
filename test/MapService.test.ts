@@ -13,7 +13,7 @@ describe("Map", () => {
   })
 
   it("getMapLocation", async () => {
-    //  TODO なぜかintelliJ経由で実行するとコマンドを見つけられない。。 コマンドラインからだと使える。。。  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     await Effect.gen(function *() {
       return yield *MapService.getMapLocation("横浜")  //
     }).pipe(
@@ -27,7 +27,7 @@ describe("Map", () => {
     expect(true).toBe(true)
   })
   it("getNearly", async () => {
-    //  TODO なぜかintelliJ経由で実行するとコマンドを見つけられない。。 コマンドラインからだと使える。。。  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     await Effect.gen(function *() {
       return yield *MapService.getNearly(37.68206875, 140.4550529784091,2000)  //
     }).pipe(
@@ -41,7 +41,7 @@ describe("Map", () => {
     expect(true).toBe(true)
   })
   it("calcDomesticTravelRoute", async () => {
-    //  TODO なぜかintelliJ経由で実行するとコマンドを見つけられない。。 コマンドラインからだと使える。。。  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     await Effect.gen(function *() {
       yield *MapService.calcDomesticTravelRoute(35.698383,139.7730717,26.2125758,127.6790208,'JP','JP',"TRANSIT")  //
     }).pipe(

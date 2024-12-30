@@ -16,7 +16,7 @@ describe("Runner", () => {
     expect(true).toBe(true)
   })
   it("getCurrentView", async () => {
-    //  TODO なぜかintelliJ経由で実行するとコマンドを見つけられない。。 コマンドラインからだと使える。。。  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     await Effect.gen(function *() {
       return yield *RunnerService.getCurrentView(false,false,true)  //
     }).pipe(

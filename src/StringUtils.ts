@@ -185,5 +185,8 @@ export class StringUtils {
     }, s);
   }
 
+  static test() {
+    return "test"
+  }
 
 }

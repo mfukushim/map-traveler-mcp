@@ -14,7 +14,7 @@ import {MapService, MapServiceLive} from "./MapService.js";
 import {DbService, DbServiceLive, env, PersonMode} from "./DbService.js";
 import {StoryService, StoryServiceLive} from "./StoryService.js";
 import {FetchHttpClient} from "@effect/platform";
-import {ImageServiceLive} from "./ImageService.js";
+import {ImageService, ImageServiceLive} from "./ImageService.js";
 import {NodeFileSystem} from "@effect/platform-node";
 import {McpLogService, McpLogServiceLive} from "./McpLogService.js";
 import {AnswerError} from "./index.js";
@@ -345,35 +345,49 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       //  特定タグを強制付加する 長すぎは強制的に切る 特定ライセンス記述を強制付加する その他固定フィルタ機能を置く
       const appendLicence = 'powered Claude'  //  追加ライセンスの文字列をclient LLMに制御させることは信頼できないので、直近の生成行為に対する文字列を強制付加する
       //  TODO 固定フィルタ
-      const imageData = image && typeof image === "string" ? {
-        buf: Buffer.from(image, "base64"),
-        mediaType: "png"
-      } : undefined;
-      if (env.noSnsPost) {
-        const noMes = {
-          content: [
-            {
-              type: "text",
-              text: env.loggingMode ? "posted to log." : "Posting to SNS is stopped by env settings."
-            }
-          ] as ToolContentResponse[]
-        };
-        if (env.loggingMode) {
-          return McpLogService.log(message).pipe(Effect.andThen(() => noMes))
-        }
-        return Effect.succeed(noMes)
-      }
-      return SnsService.snsPost(message, `${appendLicence} ${feedTag} `, imageData).pipe(
-          Effect.andThen(a => ({
+      //  TODO 画像データを直で渡すのは厳しそうなので、とりあえず最近の画像を自動添付する 後々には参照コードで添付を指示する形がよいだろう
+      // logSync('image:'+image)
+      // const imageData = image && typeof image === "string" ? {
+      //   buf: Buffer.from(image, "base64"),
+      //   mime: "image/png"
+      // } : image && image instanceof Buffer ? {
+      //   buf: image,
+      //   mime: "image/png"
+      // } :undefined;
+      return Effect.gen(function *() {
+        if (env.noSnsPost) {
+          const noMes = {
             content: [
               {
                 type: "text",
-                text: "posted"
+                text: env.loggingMode ? "posted to log." : "Posting to SNS is stopped by env settings."
               }
             ] as ToolContentResponse[]
-          })),
-          Effect.provide(SnsServiceLive)
-      );
+          };
+          if (env.loggingMode) {
+            return yield *McpLogService.log(message).pipe(Effect.andThen(() => noMes))
+          }
+          return yield *Effect.succeed(noMes)
+        }
+        const img = yield*ImageService.getRecentImageAndClear()
+        yield *McpLogService.logTrace(`sns image:${img}`)
+        const imageData = img ? {
+            buf: img,
+            mime: "image/png"
+          } :undefined
+        return yield *SnsService.snsPost(message, `${appendLicence} ${feedTag} `, imageData).pipe(
+            Effect.andThen(a => ({
+              content: [
+                {
+                  type: "text",
+                  text: "posted"
+                }
+              ] as ToolContentResponse[]
+            })),
+            Effect.provide(SnsServiceLive)
+        );
+
+      })
     }
 
     /*
@@ -759,7 +773,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             case "get_sns_feeds":
               return getSnsFeeds()
             case "post_sns_writer":
-              return postSnsWriter(String(request.params.arguments?.message), request.params.arguments?.image)
+              const image = request.params.arguments?.image;
+              return postSnsWriter(String(request.params.arguments?.message), image)
             default:
               return Effect.fail(new Error("Unknown tool"));
           }
@@ -768,8 +783,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         // const x = toolSwitch()
 
         return await toolSwitch().pipe(
-            Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive,
-              FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer, McpLogServiceLive]),
             Effect.andThen(a => a as { content: ToolContentResponse[] }),
             // Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer]),
             Effect.catchIf(a => a instanceof AnswerError, e => {
@@ -780,6 +793,16 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 } as ToolContentResponse]
               })
             }),
+            Effect.catchAll(e => {
+              return McpLogService.logError(e).pipe(Effect.as({
+                content: [{
+                  type: "text",
+                  text: "Sorry,unknown system error."
+                } as ToolContentResponse]
+              }))
+            }),
+            Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive,
+              FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer, McpLogServiceLive]),
             Effect.runPromise)
         //   .catch(e => {
         //   logSync(e)

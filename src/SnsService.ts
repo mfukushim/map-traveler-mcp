@@ -48,7 +48,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
 
         function bsPost(message: string, reply?: { uri: string; cid: string; }, image?: {
           buf: Buffer;
-          mediaType: string;
+          mime: string;
         }) {
           const replyData = reply && {
             root: {
@@ -72,7 +72,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
                 return Effect.tryPromise(signal => rt.detectFacets(agent)).pipe(Effect.andThen(a1 => Effect.succeed(post)))
               }),
               Effect.andThen(post => {
-                return image ? uploadBlob(image.buf, image.mediaType).pipe(
+                return image ? uploadBlob(image.buf, image.mime).pipe(
                     Effect.andThen(blob => ({
                       $type: "app.bsky.embed.images",
                       images: [{
@@ -165,7 +165,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
 
         function snsPost(message: string,appendNeedText:string, image?: {
           buf: Buffer;
-          mediaType: string;
+          mime: string;
         }) {
           const sliceLen = appendNeedText.length +1
           return Effect.gen(function *() {

@@ -6,37 +6,12 @@ import {runPromise} from "effect/Effect";
 // import * as fs from "node:fs";
 import {DbService} from "../src/DbService.js";
 import dayjs from "dayjs";
-import { drizzle } from 'drizzle-orm/libsql';
-import {runAvatar} from "../src/db/schema.js";
 
 
 describe("Db", () => {
 
-  it("should pass",async () => {
-    const db = drizzle('file:src/db/mimi_test.sqlite');
-    
-    const data = await db.select().from(runAvatar);
-    console.log(data)
-
-    expect(true).toBe(true)
-  })
-
-  it("test", async () => {
-    //  TODO なぜかintelliJ経由で実行するとコマンドを見つけられない。。 コマンドラインからだと使える。。。  vitest --run --testNamePattern=getAvatar DbService.test.ts
-    //  実行エラーが取れると実行できたりする。。 intellijの問題だが、どういう種類の問題なんだろう。。。仕方ないからしばらくはコマンドライン併用、、
-    const res = await Effect.gen(function* () {
-      return yield* DbService.test().pipe(Effect.tap(a => Effect.log(a)))  //
-    }).pipe(
-      Effect.provide([DbService.Default]), //  layer
-      Logger.withMinimumLogLevel(LogLevel.Trace),
-      Effect.tapError(e => Effect.logError(e)),
-      Effect.tap(a => Effect.log(a)),
-      runPromise
-    )
-    expect(res).toBeInstanceOf(Buffer)
-  })
   it("getAvatar", async () => {
-    //  TODO なぜかintelliJ経由で実行するとコマンドを見つけられない。。 コマンドラインからだと使える。。。  vitest --run --testNamePattern=getAvatar DbService.test.ts
+    //  vitest --run --testNamePattern=getAvatar DbService.test.ts
     //  実行エラーが取れると実行できたりする。。 intellijの問題だが、どういう種類の問題なんだろう。。。仕方ないからしばらくはコマンドライン併用、、
     const res = await Effect.gen(function* () {
       return yield* DbService.getAvatar(1).pipe(Effect.tap(a => Effect.log(a)))  //
@@ -47,10 +22,10 @@ describe("Db", () => {
       Effect.tap(a => Effect.log(a)),
       runPromise
     )
-    expect(res).toBeInstanceOf(Buffer)
+    expect(res.id).toBe(1)
   })
   it("getTodayAnniversary", async () => {
-    //  TODO なぜかintelliJ経由で実行するとコマンドを見つけられない。。 コマンドラインからだと使える。。。  vitest --run --testNamePattern=getTodayAnniversary DbService.test.ts
+    //  vitest --run --testNamePattern=getTodayAnniversary DbService.test.ts
     //  実行エラーが取れると実行できたりする。。 intellijの問題だが、どういう種類の問題なんだろう。。。仕方ないからしばらくはコマンドライン併用、、
     const res = await Effect.gen(function* () {
       const now = dayjs()
@@ -62,10 +37,10 @@ describe("Db", () => {
       Effect.tap(a => Effect.log(a.length)),
       runPromise
     )
-    expect(res).toBeInstanceOf(Buffer)
+    expect(res).toStrictEqual([])
   })
   it("getEnv", async () => {
-    //  TODO なぜかintelliJ経由で実行するとコマンドを見つけられない。。 コマンドラインからだと使える。。。  vitest --run --testNamePattern=getTodayAnniversary DbService.test.ts
+    //  vitest --run --testNamePattern=getTodayAnniversary DbService.test.ts
     //  実行エラーが取れると実行できたりする。。 intellijの問題だが、どういう種類の問題なんだろう。。。仕方ないからしばらくはコマンドライン併用、、
     const res = await Effect.gen(function* () {
       return yield* DbService.getEnv("abc").pipe(Effect.tap(a => Effect.log(a)))  //
@@ -79,7 +54,7 @@ describe("Db", () => {
     expect(typeof res).toBe('string')
   })
   it("saveEnv", async () => {
-    //  TODO なぜかintelliJ経由で実行するとコマンドを見つけられない。。 コマンドラインからだと使える。。。  vitest --run --testNamePattern=getTodayAnniversary DbService.test.ts
+    //  vitest --run --testNamePattern=getTodayAnniversary DbService.test.ts
     //  実行エラーが取れると実行できたりする。。 intellijの問題だが、どういう種類の問題なんだろう。。。仕方ないからしばらくはコマンドライン併用、、
     const res = await Effect.gen(function* () {
       return yield* DbService.saveEnv("abc","xyz").pipe(Effect.tap(a => Effect.log(a)))  //
@@ -90,6 +65,7 @@ describe("Db", () => {
       Effect.tap(a => Effect.log(a)),
       runPromise
     )
-    expect(res).toBeInstanceOf(Buffer)
+    expect(res.key).toBe('abc')
+    expect(res.value).toBe('xyz')
   })
 })

@@ -35,30 +35,30 @@ export interface LocationDetail {
   landPathNo: number;
 }
 
-export const practiceData: { address: string; placesPath: string; sampleImagePath: string;durationSec:number; }[] = [
+export const practiceData: { address: string; placesPath: string; sampleImagePath: string; durationSec: number; }[] = [
   {
     address: "Hakata Station,〒812-0012 Fukuoka, Hakata Ward, 博多駅中央街1−1",
     placesPath: "assets/places1.json",
     sampleImagePath: "assets/place1.png",
-    durationSec: 20*60,
+    durationSec: 20 * 60,
   },
   {
     address: "Nishitetsu Fukuoka Tenjin Station,〒810-0001 福岡県福岡市中央区天神２−22",
     placesPath: "assets/places2.json",
     sampleImagePath: "assets/place2.png",
-    durationSec: 20*60,
+    durationSec: 20 * 60,
   },
   {
     address: "Ohori Park,〒810-0051 Fukuoka, Chuo Ward, Ohorikoen, 公園管理事務所",
     placesPath: "assets/places3.json",
     sampleImagePath: "assets/place3.png",
-    durationSec: 20*60,
+    durationSec: 20 * 60,
   },
   {
     address: "Fukuoka Tower,2 Chome-3-26 Momochihama, Sawara Ward, Fukuoka, 814-0001",
     placesPath: "assets/places4.json",
     sampleImagePath: "assets/place4.png",
-    durationSec: 20*60,
+    durationSec: 20 * 60,
   }
 ]
 
@@ -160,7 +160,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
     const isShips = (maneuver?: string) => ['ferry', 'airplane'].includes(maneuver || '')
     const maneuverIsShip = (step: typeof MapDef.DirectionStepSchema.Type) => isShips(step.maneuver)
 
-    const useAiImageGen = (Process.env.pixAi_key ? 'pixAi':Process.env.sd_key ? 'sd':'')
+    const useAiImageGen = (Process.env.pixAi_key ? 'pixAi' : Process.env.sd_key ? 'sd' : '')
 
     function makeEtcTripLog(avatarId: number, tripId: number, seq: number, currentLoc: {
       lng: number;
@@ -355,71 +355,75 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         }
     */
 
-    const getFacilitiesPractice = (runStatus: RunStatus,includePhoto:boolean) => {
-      return Effect.gen(function *() {
+    const getFacilitiesPractice = (runStatus: RunStatus, includePhoto: boolean) => {
+      return Effect.gen(function* () {
         const practiceInfo = practiceData.find(value => value.address === runStatus.to) || practiceData[0]
         const fs = yield* FileSystem.FileSystem
         const nearFacilities = yield* fs.readFile(practiceInfo.placesPath).pipe(
-          Effect.andThen(a =>Schema.decode(Schema.parseJson(MapDef.GmPlacesSchema))((Buffer.from(a).toString('utf-8')))),
-          Effect.andThen(a => StoryService.placesToFacilities(a)))
+            Effect.andThen(a => Schema.decode(Schema.parseJson(MapDef.GmPlacesSchema))((Buffer.from(a).toString('utf-8')))),
+            Effect.andThen(a => StoryService.placesToFacilities(a)))
         const image = includePhoto ? (yield* fs.readFile(practiceInfo.sampleImagePath).pipe(
-          Effect.andThen(a => Buffer.from(a)),
-          Effect.orElseSucceed(() => undefined))):undefined
-        return {nearFacilities,image,locText: ''}
+            Effect.andThen(a => Buffer.from(a)),
+            Effect.orElseSucceed(() => undefined))) : undefined
+        return {nearFacilities, image, locText: ''}
       })
     }
 
-    const getFacilities = (loc: LocationDetail,includePhoto: boolean,abort = false,localDebug = false) => {
-      return Effect.gen(function *() {
+    const getFacilities = (loc: LocationDetail, includePhoto: boolean, abort = false, localDebug = false) => {
+      return Effect.gen(function* () {
         const nearFacilities = yield* StoryService.getNearbyFacilities({
           lat: loc.lat,
           lng: loc.lng,
           bearing: 0
         })
         const image = includePhoto ? (yield* getStreetImage(loc, abort, localDebug).pipe(
-          Effect.andThen(a => a.buf),
-          Effect.orElseSucceed(() => undefined))) : undefined
-        return {nearFacilities,image,locText: `current location is below\nlatitude:${loc.lat}\nlongitude:${loc.lng}\n`}
+            Effect.andThen(a => a.buf),
+            Effect.orElseSucceed(() => undefined))) : undefined
+        return {
+          nearFacilities,
+          image,
+          locText: `current location is below\nlatitude:${loc.lat}\nlongitude:${loc.lng}\n`
+        }
       })
 
     }
 
-    const runningReport = (nearFacilities:FacilityInfo,locText: string, includeNearbyFacilities: boolean,useImage:boolean,image?:Buffer, abort = false) => {
+    const runningReport = (nearFacilities: FacilityInfo, locText: string, includeNearbyFacilities: boolean, useImage: boolean, image?: Buffer, abort = false) => {
       return Effect.gen(function* () {
-/*
-        let image
-        let nearFacilities
-        if (practice) {
-          const practiceInfo = practiceData.find(value => value.address === runStatus.to) || practiceData[0]
-          const fs = yield* FileSystem.FileSystem
-          nearFacilities = yield* fs.readFile(practiceInfo.placesPath).pipe(
-            Effect.andThen(a =>Schema.decode(Schema.parseJson(MapDef.GmPlacesSchema))((Buffer.from(a).toString('utf-8')))),
-            Effect.andThen(a => StoryService.placesToFacilities(a)))
-          image = yield* fs.readFile(practiceInfo.sampleImagePath).pipe(
-            Effect.andThen(a => Buffer.from(a)),
-            Effect.orElseSucceed(() => undefined))
-        } else {
-          nearFacilities = yield* StoryService.getNearbyFacilities({
-            lat: loc.lat,
-            lng: loc.lng,
-            bearing: 0
-          })
-          image = includePhoto ? (yield* getStreetImage(loc, abort, localDebug).pipe(
-            Effect.andThen(a => a.buf),
-            Effect.orElseSucceed(() => undefined))) : undefined
-        }
-*/
+        /*
+                let image
+                let nearFacilities
+                if (practice) {
+                  const practiceInfo = practiceData.find(value => value.address === runStatus.to) || practiceData[0]
+                  const fs = yield* FileSystem.FileSystem
+                  nearFacilities = yield* fs.readFile(practiceInfo.placesPath).pipe(
+                    Effect.andThen(a =>Schema.decode(Schema.parseJson(MapDef.GmPlacesSchema))((Buffer.from(a).toString('utf-8')))),
+                    Effect.andThen(a => StoryService.placesToFacilities(a)))
+                  image = yield* fs.readFile(practiceInfo.sampleImagePath).pipe(
+                    Effect.andThen(a => Buffer.from(a)),
+                    Effect.orElseSucceed(() => undefined))
+                } else {
+                  nearFacilities = yield* StoryService.getNearbyFacilities({
+                    lat: loc.lat,
+                    lng: loc.lng,
+                    bearing: 0
+                  })
+                  image = includePhoto ? (yield* getStreetImage(loc, abort, localDebug).pipe(
+                    Effect.andThen(a => a.buf),
+                    Effect.orElseSucceed(() => undefined))) : undefined
+                }
+        */
         const facilityText = nearFacilities.facilities.length !== 0 ?
-          `The following facilities are nearby:\n` + nearFacilities.facilities.map(value =>
-            value.name + (value.types.length > 0 ? ' (kinds:' + value.types.join(',') + ')' : '')).join('\n') + '\n' :
-          "There don't appear to be any buildings nearby.";
+            `The following facilities are nearby:\n` + nearFacilities.facilities.map(value =>
+                value.name + (value.types.length > 0 ? ' (kinds:' + value.types.join(',') + ')' : '')).join('\n') + '\n' :
+            "There don't appear to be any buildings nearby.";
 
         const abortText = abort ? `I have received a message to discontinue my trip. This time, I will discontinue my trip.\n` : ''
         //const locText = `current location is below\nlatitude:${loc.lat}\nlongitude:${loc.lng}\n`;
         const posText = Option.isSome(nearFacilities.townName) ? `Town name is ${nearFacilities.townName.value}\n` : 'Town name is unknown.\n'
         const content: { type: string, text?: string, data?: string, mimeType?: string }[] = [{
           type: "text",
-          text: abortText + locText + posText + (includeNearbyFacilities ? facilityText : '') + `${useImage ?(image ? '' : `\nSorry,I'm busy traveling so I couldn't take a photo.`):''}`
+          text: abortText + locText + posText + (includeNearbyFacilities ? facilityText : '') + `${useImage ? (image ? '' : `\nSorry,I'm busy traveling so I couldn't take a photo.`) : ''}`
         }];
         if (image) {
           content.push({
@@ -432,20 +436,20 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       }).pipe(Effect.provide(NodeFileSystem.layer))
     }
 
-    function getCurrentView(includePhoto: boolean, includeNearbyFacilities: boolean,practice=false, localDebug = false) {
+    function getCurrentView(includePhoto: boolean, includeNearbyFacilities: boolean, practice = false, localDebug = false) {
       return Effect.gen(function* () {
         const runStatus = yield* getRunStatusAndUpdateEnd();
         const loc = yield* calcCurrentLoc(runStatus, dayjs()); //  これは計算位置情報
         const status = practice ? runStatus.status : loc.status
 
-        const basePrompt = yield *getBasePrompt();
+        const basePrompt = yield* getBasePrompt();
         switch (status) {
           case 'vehicle': {
             //  乗り物
             const maneuver = loc.maneuver;
             const vehiclePrompt = maneuver?.includes('ferry') ? '(on ship deck:1.3),(ferry:1.2),sea,handrails' :
-              maneuver?.includes('airplane') ? '(airplane cabin:1.3),reclining seat,sitting' : ''
-            const image = includePhoto && (yield* ImageService.makeEtcTripImage(basePrompt, vehiclePrompt, loc.timeZoneId))
+                maneuver?.includes('airplane') ? '(airplane cabin:1.3),reclining seat,sitting' : ''
+            const image = includePhoto && (yield* ImageService.makeEtcTripImage(basePrompt, useAiImageGen, vehiclePrompt, loc.timeZoneId, localDebug))
             const out: { type: string; text?: string; data?: string; mimeType?: string }[] = [
               {
                 type: "text",
@@ -460,13 +464,17 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           }
           case 'running': {
             //  通常旅行
-            const {nearFacilities,image,locText} = yield *(practice ? getFacilitiesPractice(runStatus,includePhoto):getFacilities(loc,includePhoto,false,localDebug))
-            return yield* runningReport(nearFacilities,locText, includeNearbyFacilities,includePhoto,image, false).pipe(Effect.andThen(a => a.out))
+            const {
+              nearFacilities,
+              image,
+              locText
+            } = yield* (practice ? getFacilitiesPractice(runStatus, includePhoto) : getFacilities(loc, includePhoto, false, localDebug))
+            return yield* runningReport(nearFacilities, locText, includeNearbyFacilities, includePhoto, image, false).pipe(Effect.andThen(a => a.out))
           }
           case 'stop': {
             //  ホテル画像
             const hour = dayjs().tz(loc.timeZoneId).hour()
-            const image1 = includePhoto && (yield* ImageService.makeHotelPict(basePrompt,useAiImageGen, hour, undefined, localDebug))
+            const image1 = includePhoto && (yield* ImageService.makeHotelPict(basePrompt, useAiImageGen, hour, undefined, localDebug))
             const out: { type: string; text?: string; data?: string; mimeType?: string }[] = [
               {type: "text", text: `I am in a hotel in ${runStatus.to}.`}
             ]
@@ -525,10 +533,10 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
      */
     function loadCurrentRunnerRoute(avatarId: number) {
       return DbService.getAvatar(avatarId).pipe(
-        Effect.andThen(a => a.currentRoute ? Effect.succeed(a.currentRoute) :
-          Effect.fail(new AnswerError('The route to the destination has not yet been determined.'))),
-        Effect.andThen(a => Schema.decodeUnknownSync(Schema.parseJson(MapDef.RouteArraySchema))(a)),
-        Effect.tapError(cause => McpLogService.logError(cause)),
+          Effect.andThen(a => a.currentRoute ? Effect.succeed(a.currentRoute) :
+              Effect.fail(new AnswerError('The route to the destination has not yet been determined.'))),
+          Effect.andThen(a => Schema.decodeUnknownSync(Schema.parseJson(MapDef.RouteArraySchema))(a)),
+          Effect.tapError(cause => McpLogService.logError(cause)),
       )
     }
 
@@ -582,32 +590,32 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
      * @param steps
      * @param currentRunSec
      */
-      // const calcRouteToTimePointList = (steps: typeof MapDef.DirectionStepSchema.Type[], currentRunSec = Number.MAX_SAFE_INTEGER) => {
-      //   steps.reduce((p, c) => {
-      //     let duration = c.duration.value
-      //     // if (!['ferry', 'airplane'].some(value => c.maneuver?.includes(value))) {
-      //     //    // フェリーや飛行機などの特殊な乗り物の場合は想定時間そのまま、通常のコースなら時間を4倍する
-      //     //    // FIXME とりあえず1倍に戻して 時間取得側を4倍にする
-      //     //   duration *= this.durationScale2
-      //     // }
-      //     // フェリーや飛行機などの特殊な乗り物の場合は想定時間そのまま、通常のコースなら時間を4倍する
-      //     if (!['ferry', 'airplane'].some(value => c.maneuver?.includes(value))) {
-      //       duration *= durationScale2
-      //     }
-      //
-      //     //  TODO ここは何か中間計算に使った可能性があるがこの仕組みは排除する
-      //     if (p > currentRunSec) {
-      //       return p
-      //     }
-      //     c.start = p
-      //     c.end = p + duration
-      //     return p
-      //   }, 0);  //  実行中および未実行のステップ列
-      //   return steps
-      // }
+        // const calcRouteToTimePointList = (steps: typeof MapDef.DirectionStepSchema.Type[], currentRunSec = Number.MAX_SAFE_INTEGER) => {
+        //   steps.reduce((p, c) => {
+        //     let duration = c.duration.value
+        //     // if (!['ferry', 'airplane'].some(value => c.maneuver?.includes(value))) {
+        //     //    // フェリーや飛行機などの特殊な乗り物の場合は想定時間そのまま、通常のコースなら時間を4倍する
+        //     //    // FIXME とりあえず1倍に戻して 時間取得側を4倍にする
+        //     //   duration *= this.durationScale2
+        //     // }
+        //     // フェリーや飛行機などの特殊な乗り物の場合は想定時間そのまま、通常のコースなら時間を4倍する
+        //     if (!['ferry', 'airplane'].some(value => c.maneuver?.includes(value))) {
+        //       duration *= durationScale2
+        //     }
+        //
+        //     //  TODO ここは何か中間計算に使った可能性があるがこの仕組みは排除する
+        //     if (p > currentRunSec) {
+        //       return p
+        //     }
+        //     c.start = p
+        //     c.end = p + duration
+        //     return p
+        //   }, 0);  //  実行中および未実行のステップ列
+        //   return steps
+        // }
     const calcCurrentStep = (steps: typeof MapDef.DirectionStepSchema.Type[], currentRunSec = Number.MAX_SAFE_INTEGER) => {
-        return Option.fromNullable(steps.find(value => value.start <= currentRunSec && value.end > currentRunSec))
-      }
+          return Option.fromNullable(steps.find(value => value.start <= currentRunSec && value.end > currentRunSec))
+        }
 
     /**
      * 現在の旅位置(停泊情報付き)
@@ -621,17 +629,16 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
      * @param useNoReportedMidpoint
      */
     function calcCurrentLoc(runStatus: RunStatus, now: dayjs.Dayjs)
-      : Effect.Effect<LocationDetail, Error | HttpClientError, DbService | MapService | McpLogService> {
+        : Effect.Effect<LocationDetail, Error | HttpClientError, DbService | MapService | McpLogService> {
       return Effect.gen(function* () {
         // const startTime = dayjs.unix(runStatus.epoch);
         const runAllSec = now.diff(runStatus.startTime, "seconds");  //  実時間でのstep0を0とした旅行実行秒数
         // const runAllSec = now.diff(startTime, "seconds", false);  //  実時間でのstep0を0とした旅行実行秒数
         const currentStepOption = yield* loadCurrentRunnerRoute(runStatus.avatarId).pipe(
-          Effect.andThen(a => {
-          const allSteps = routesToDirectionStep(a)
-          return Effect.succeed(calcCurrentStep(allSteps, runAllSec))  //  次到達ステップ(現在のステップ位置でもある)
-        }),Effect.orElseSucceed(() => Option.none()));
-
+            Effect.andThen(a => {
+              const allSteps = routesToDirectionStep(a)
+              return Effect.succeed(calcCurrentStep(allSteps, runAllSec))  //  次到達ステップ(現在のステップ位置でもある)
+            }), Effect.orElseSucceed(() => Option.none()));
 
 
         if (Option.isNone(currentStepOption)) {
@@ -665,10 +672,10 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           lat: lat,
           lng: lng,
           bearing: geolib.getRhumbLineBearing({
-              lat: currentStep.start_location.lat,
-              lng: currentStep.start_location.lng
-            },
-            {lat: currentStep.end_location.lat, lng: currentStep.end_location.lng}),  //  step始点終点を使った向き想定
+                lat: currentStep.start_location.lat,
+                lng: currentStep.start_location.lng
+              },
+              {lat: currentStep.end_location.lat, lng: currentStep.end_location.lng}),  //  step始点終点を使った向き想定
           maneuver: currentStep.maneuver,
           timeZoneId: yield* MapService.getTimezoneByLatLng(lat, lng),
           //  remainSecInPathはフェリーとかの特殊移動での残時間計算しか使っていない。そしてここの倍数は4倍になっているはずだが、//  フェリーや飛行機などの特殊な乗り物の場合は想定時間そのまま、通常のコースなら時間を4倍する で4倍しているから問題が起きていないのかも?
@@ -686,8 +693,8 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
 
     function getDestinationAddress() {
       return DbService.getEnv('destination').pipe(
-        Effect.tap(a => !a && Effect.fail(new Error())),
-        Effect.orElseFail(() => new AnswerError("The destination has not yet been decided")))
+          Effect.tap(a => !a && Effect.fail(new Error())),
+          Effect.orElseFail(() => new AnswerError("The destination has not yet been decided")))
       // return Effect.gen(function* () {
       //   const dest = yield* DbService.getEnv('destination');
       //   if (Option.isNone(dest) || !dest.value.value) {
@@ -727,11 +734,11 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           `The traveler's destination was set as follows: ${address}`,
           `The journey takes approximately ${dayjs.duration(durationSec, "seconds").format()}.`
         ]
-        const listElement = destList[destList.length-1];
+        const listElement = destList[destList.length - 1];
         return {
           message: mesList.join('\n'),
           tilEndSec: durationSec,
-          destination: listElement.leg.end_location || {lat:location.value.lat,lng:location.value.lng}
+          destination: listElement.leg.end_location || {lat: location.value.lat, lng: location.value.lng}
         };
       })
     }
@@ -826,7 +833,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         }
         //  旅開始ホテル画像、旅開始挨拶
         const hour = now.tz(runStatus.startTz!).hour()
-        const image1 = yield* ImageService.makeHotelPict(yield *getBasePrompt(),useAiImageGen, hour);
+        const image1 = yield* ImageService.makeHotelPict(yield* getBasePrompt(), useAiImageGen, hour);
         yield* DbService.saveEnv("destination", "")
         yield* DbService.saveEnv("destTimezoneId", "")
         yield* DbService.saveRunStatus(runStatus)
@@ -846,8 +853,8 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         }
         let res
         if (practice) {
-          const {nearFacilities,image,locText} = yield *getFacilitiesPractice(runStatus,true)
-          res = yield* runningReport(nearFacilities,locText, false,true,image, true)
+          const {nearFacilities, image, locText} = yield* getFacilitiesPractice(runStatus, true)
+          res = yield* runningReport(nearFacilities, locText, false, true, image, true)
 
         } else {
           const currentInfo = yield* calcCurrentLoc(runStatus, dayjs()); //  これは計算位置情報
@@ -858,10 +865,10 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           })
 
           resetRunStatus(runStatus, Option.getOrElse(nears.address, () => runStatus.to), //  TODO
-            currentInfo.lat, currentInfo.lng, Option.getOrElse(nears.country, () => runStatus.endCountry), currentInfo.timeZoneId)
+              currentInfo.lat, currentInfo.lng, Option.getOrElse(nears.country, () => runStatus.endCountry), currentInfo.timeZoneId)
 
-          const {nearFacilities,image,locText} = yield *getFacilities(currentInfo,true,false)
-          res = yield* runningReport(nearFacilities,locText, false,true,image, true)
+          const {nearFacilities, image, locText} = yield* getFacilities(currentInfo, true, false)
+          res = yield* runningReport(nearFacilities, locText, false, true, image, true)
         }
 
         // const res = yield* runningReport(currentInfo, runStatus, true, false, true, practice, false)
@@ -873,15 +880,14 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
 
     function getStreetImage(loc: any, abort = false, localDebug = false) {
       return MapService.findStreetViewMeta(loc.lat, loc.lng, loc.bearing, 640, 640).pipe(
-        Effect.andThen(okLoc => MapService.getStreetViewImage(okLoc.lat, okLoc.lng, loc.bearing, 640, 640)),
-        Effect.andThen(baseImage => getBasePrompt().pipe(Effect.andThen(a => ImageService.makeRunnerImageV3(baseImage, a, useAiImageGen, abort, localDebug)))),
-        Effect.andThen(a => Effect.succeed(a)),
-        // Effect.catchAll(cause => Effect.logTrace(cause).pipe(Effect.andThen(Effect.succeed(Option.none()))))
-        // Effect.andThen(a => Effect.succeed(Option.some(a))),
-        //   Effect.catchAll(cause => Effect.logTrace(cause).pipe(Effect.andThen(Effect.succeed(Option.none()))))
+          Effect.andThen(okLoc => MapService.getStreetViewImage(okLoc.lat, okLoc.lng, loc.bearing, 640, 640)),
+          Effect.andThen(baseImage => getBasePrompt().pipe(Effect.andThen(a => ImageService.makeRunnerImageV3(baseImage, a, useAiImageGen, abort, localDebug)))),
+          Effect.andThen(a => Effect.succeed(a)),
+          // Effect.catchAll(cause => Effect.logTrace(cause).pipe(Effect.andThen(Effect.succeed(Option.none()))))
+          // Effect.andThen(a => Effect.succeed(Option.some(a))),
+          //   Effect.catchAll(cause => Effect.logTrace(cause).pipe(Effect.andThen(Effect.succeed(Option.none()))))
       )
     }
-
 
 
     return {
