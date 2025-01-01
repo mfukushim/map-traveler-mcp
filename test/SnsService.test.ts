@@ -29,7 +29,7 @@ describe("Sns", () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
       const buffer = fs.readFileSync('tools/test/makeHotelPict.jpg');
-      return yield* SnsService.bsPost("画像ポストテスト", undefined, {buf: buffer, mediaType: 'image/png'})
+      return yield* SnsService.bsPost("画像ポストテスト", undefined, {buf: buffer, mime: 'image/png'})
     }).pipe(
         Effect.provide([SnsServiceLive, McpLogServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
@@ -46,7 +46,7 @@ describe("Sns", () => {
       return yield* SnsService.bsPost("画像ポストテスト", {
         uri: 'at://did:plc:yl63l7eegfz5ddsyjrp66dsc/app.bsky.feed.post/3leg5encxz523',
         cid: 'bafyreifpbccbqu5qghfrz3ahb2vew4qybu2gbir6zcwlhoiikle4untsae'
-      }, {buf: buffer, mediaType: 'image/png'})
+      }, {buf: buffer, mime: 'image/png'})
     }).pipe(
         Effect.provide([SnsServiceLive, McpLogServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),

@@ -142,16 +142,24 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
               Effect.andThen(a => a.data))
         }
 
-        function getFeed(feed: string, length ?: number,excludeMe=false) {
+        function getFeed(feed: string, length ?: number,cursor?:string) {
+          const params = cursor ? {
+            feed: feed,
+            cursor: cursor,
+            limit: length || 10,
+          }: {
+            feed: feed,
+            limit: length || 10,
+          };
           return reLogin().pipe(
-              Effect.andThen(Effect.tryPromise(signal => agent.app.bsky.feed.getFeed({
-                feed: feed,
-                // cursor: cursor,
-                limit: length || 10,
-              }))),
+              Effect.andThen(Effect.tryPromise(signal => agent.app.bsky.feed.getFeed(params))),
               Effect.tap(a => !a.success && Effect.fail(new Error('getActorLikes error'))),
               Effect.retry(Schedule.recurs(2).pipe(Schedule.intersect(Schedule.spaced("10 seconds")))),
-              Effect.andThen(a => a.data))
+              Effect.andThen(a => a.data),
+              Effect.tap(a => {
+                DbService.updateSnsCursor(1,'bs',a.cursor || '')
+              })
+          )
         }
 
 

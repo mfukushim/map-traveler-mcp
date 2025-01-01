@@ -1,16 +1,15 @@
-import {Effect, Option} from "effect";
+import {Effect} from "effect";
 import {drizzle} from 'drizzle-orm/libsql';
 import {migrate} from 'drizzle-orm/libsql/migrator';
 import {
   anniversary,
-  avatar_model, env_kv,
+  avatar_model, avatar_sns, env_kv,
   run_history,
   run_status,
-  runAbroadRoute,
   runAvatar,
-  runTerminal, sns_posts, TripStatus
+  sns_posts, SnsType
 } from "./db/schema.js";
-import {and, desc, eq, inArray, ne, or} from "drizzle-orm";
+import {and, desc, eq, inArray, or} from "drizzle-orm";
 import dayjs from "dayjs";
 import 'dotenv/config'
 import * as Process from "node:process";
@@ -21,17 +20,9 @@ import * as fs from "node:fs";
 import {logSync, McpLogService, McpLogServiceLive} from "./McpLogService.js";
 import {findSystemPython} from "transparent-background/lib/utils.js";
 import {practiceData} from "./RunnerService.js";
-// import * as fs from "node:fs";
-// import * as dayjs from "dayjs";
+import {defaultBaseCharPrompt} from "./ImageService.js";
 
-// const DbLive = SqliteClient.layer({
-//   filename: 'tools/MiMi/mimi_test.sqlite',
-// })
-// const DrizzleLive = SqliteDrizzle.layer.pipe(
-//   Layer.provide(DbLive)
-// )
 
-// export const DbServiceLive = Layer.mergeAll(DbLive, DrizzleLive)
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const __pwd = __dirname.endsWith('src') ? path.join(__dirname, '..') : path.join(__dirname, '../..')
@@ -45,7 +36,8 @@ function expandPath(envPath:string) {
     .replace(/%([a-zA-Z_][a-zA-Z0-9_]*)%/g, (match, name) => process.env[name] || match);
 }
 
-export let dbPath = Process.env.sqlite_path && fs.existsSync(expandPath(Process.env.sqlite_path)) ? 'file:' +expandPath(Process.env.sqlite_path) : ':memory:'
+export let dbPath = Process.env.sqlite_path && fs.existsSync(expandPath(Process.env.sqlite_path)) ?
+    'file:' +expandPath(Process.env.sqlite_path).replaceAll('\\','/') : ':memory:'
 
 const db = drizzle(dbPath);
 logSync(`behind db:${dbPath}`)
@@ -84,28 +76,10 @@ export const env: {
 export class DbService extends Effect.Service<DbService>()("traveler/DbService", {
   accessors: true,
   effect: Effect.gen(function* () {
-    // fs.writeFileSync('D:\\proj\\mimi2\\packages\\ai-traveler-mcp\\log1.txt', dbPath)
-    // console.log('dbPath:', dbPath)
-    // const f = () => {
-    //   try {
-    //     return drizzle(dbPath);
-    //   }catch (e) {
-    //     console.log('drizzle error:',e)
-    //     fs.writeFileSync('D:\\proj\\mimi2\\packages\\ai-traveler-mcp\\log2.txt', JSON.stringify(e))
-    //   }
-    //   return drizzle('')
-    // }
-    // const db = f()
-
-    // yield *McpService.sendLoggingMessage(`dn:${__dirname}`).pipe(Effect.provide([McpServiceLive]))
-    // yield *McpService.sendLoggingMessage(`dbPath:${dbPath}`).pipe(Effect.provide([McpServiceLive]))
-    //    const db = drizzle('file:src/db/mimi_test.sqlite');
-    // const db = drizzle.mock();
 
     const stub = <T>(qy: Promise<T>) => Effect.tryPromise({
       try: () => qy,
       catch: error => {
-        //console.log('stub error:',error,__pwd)
         return new Error(`${error}`);
       }
     })
@@ -113,39 +87,73 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
     function init() {
       return Effect.gen(function* () {
         yield* stub(migrate(db, {migrationsFolder: path.join(__pwd, 'drizzle')}))  //  TODO migrationさせるにはmigrationフォルダを入れておかないといけないな。。。
-
+        //  暫定のdb初期値
+        const created = dayjs().toDate();
+        yield* stub(db.select().from(avatar_model)).pipe(Effect.tap(a => {
+              if (a.length === 0) {
+                return stub(db.insert(avatar_model).values({
+                  id: 1,
+                  comment: '',
+                  baseCharPrompt: defaultBaseCharPrompt,
+                  created: created,
+                  modelName: '',
+                }).returning()).pipe(
+                    Effect.andThen(a1 => a),
+                    Effect.onError(cause => McpLogService.logError(`error init avatar:${cause}`)))
+              }
+            }),
+            Effect.andThen(a => McpLogService.logTrace(`init avatar:${JSON.stringify(a)}`))
+        )
         yield* stub(db.select().from(runAvatar)).pipe(Effect.tap(a => {
-            if (a.length === 0) {
-              return stub(db.insert(runAvatar).values({
-                name: 'traveler',
-                modelId: 1,
-                created: dayjs().toDate(),
-                enable: true,
-                nextStayTime: dayjs('9999-12-31').toDate(),
-                lang: 'JP',
-                currentRoute: ''
-              } as typeof runAvatar.$inferInsert).returning()).pipe(
-                Effect.andThen(a1 => a),
-                Effect.onError(cause => McpLogService.logError(`init:${cause}`)))
-            }
-          }),
-          Effect.andThen(a => McpLogService.logTrace(`init0:${JSON.stringify(a)}`))
+              if (a.length === 0) {
+                return stub(db.insert(runAvatar).values({
+                  name: 'traveler',
+                  modelId: 1,
+                  created: created,
+                  enable: true,
+                  nextStayTime: dayjs('9999-12-31').toDate(),
+                  lang: 'JP',
+                  currentRoute: ''
+                } as typeof runAvatar.$inferInsert).returning()).pipe(
+                    Effect.andThen(a1 => a),
+                    Effect.onError(cause => McpLogService.logError(`error init avatar:${cause}`)))
+              }
+            }),
+            Effect.andThen(a => McpLogService.logTrace(`init avatar:${JSON.stringify(a)}`))
+        )
+        yield* stub(db.select().from(avatar_sns)).pipe(Effect.tap(a => {
+              if (a.length === 0 && Process.env.bs_id && Process.env.bs_pass && Process.env.bs_handle) {
+                return stub(db.insert(avatar_sns).values({
+                  assignAvatarId: 1,
+                  snsType: "bs",
+                  usageType: "",
+                  snsHandleName: Process.env.bs_handle,
+                  snsId: Process.env.bs_id,
+                  checkedPostId: '',
+                  created: created,
+                  lang: '',
+                  configId: 1,
+                  enable: true,
+                } ).returning()).pipe(  //  as typeof avatar_sns.$inferInsert
+                    Effect.andThen(a1 => a),
+                    Effect.onError(cause => McpLogService.logError(`init bs sns:${cause}`)))
+              }
+            }),
+            Effect.andThen(a => McpLogService.logTrace(`init0:${JSON.stringify(a)}`))
         )
       })
     }
 
+/*
     function getAbroadRouteByCountryPair(country1: string, country2: string) {
       return stub(db.select().from(runAbroadRoute)
         .leftJoin(runTerminal, eq(runAbroadRoute.terminalStart, runTerminal.id))
         .leftJoin(runTerminal, eq(runAbroadRoute.terminalEnd, runTerminal.id)))//.pipe(Effect.provide(DbServiceLive))
     }
+*/
 
     function updateRoute(avatarId: number, routeJson: string) {
       return stub(db.update(runAvatar).set({currentRoute: routeJson}).where(eq(runAvatar.id, avatarId)))
-    }
-
-    function test() {
-      return stub(db.select().from(run_status)).pipe(Effect.andThen(takeOneOption)) //.where(eq(env_kv.key, key)).where(eq(env_kv.key, key))
     }
 
     function getEnv(key: string) {
@@ -182,16 +190,18 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       return stub(db.select().from(runAvatar).where(eq(runAvatar.id, avatarId))).pipe(Effect.andThen(takeOne))
     }
 
+/*
     function getAvatarInfo(avatarId: number) {
-      return stub(db.select().from(runAvatar).leftJoin(avatar_model, eq(runAvatar.modelId, avatar_model.id)).where(eq(runAvatar.id, avatarId))).pipe(Effect.andThen(takeOne))
+      return stub(db.select().from(avatar_model).where(eq(avatar_model.id, avatarId))).pipe(Effect.andThen(takeOne))
     }
+*/
 
     const takeOne = <T>(list: T[]) => {
       return list.length === 1 ? Effect.succeed(list[0]) : Effect.fail(new Error(`no element`))
     }
-    const takeOneOption = <T>(list: T[]) => {
-      return Effect.succeed(list.length === 1 ? Option.some(list[0]) : Option.none())
-    }
+    // const takeOneOption = <T>(list: T[]) => {
+    //   return Effect.succeed(list.length === 1 ? Option.some(list[0]) : Option.none())
+    // }
 
 
     function saveRunStatus(runStatus: RunStatusI) {
@@ -226,9 +236,11 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       )
     }
 
+/*
     function getRunStatusByStatus(avatarId: number, status: TripStatus) {
       return stub(db.select().from(run_status).where(and(eq(run_status.status, status), eq(run_status.avatarId, avatarId))))
     }
+*/
 
     function getRecentRunStatus(avatarId: number) {
       return stub(db.select().from(run_status).orderBy(desc(run_status.id))).pipe(Effect.andThen(takeOne))
@@ -242,15 +254,18 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         }, {} as { [key: string]: string })))
     }
 
+/*
     function getHistory(tripId: number) {
       return stub(db.select().from(run_history).where(eq(run_history.tripId, tripId)))
     }
+*/
 
     /**
      * 最新のヒストリ
      * 通常はテキストなしを意味する
      * @param avatarId
      */
+/*
     function getLastHistory(avatarId: number) {
       //  TODO historyに属性を付けてないので、開始ヒストリや計画ヒストリを除外するのにelapse=0を使ってみる あまりよくないけど。。。
       return stub(db.select().from(run_history).leftJoin(run_status, eq(run_history.tripId, run_status.tripId))
@@ -262,14 +277,14 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
           return Effect.succeed(a);
         }),
         Effect.andThen(takeOne))
-      // return await this.mysqlDataSource.manager.findOne(RunHistory,
-      //   {where: {runStatus: {avatarId}, elapsed: Not(0)}, order: {seq: "DESC"}, relations: {runStatus: true}})
     }
+*/
 
     /**
      * 走行ヒストリーの保存
      * @param visit
      */
+/*
     function saveMiHistory(visit: RunHistoryI) {
       return stub(db.insert(run_history).values(visit).onConflictDoUpdate({
         target: run_history.seq,
@@ -281,6 +296,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         return Effect.fail(`saveMiHistory fail:${run_history.seq}`)
       }));
     }
+*/
 
     function saveSnsPost(snsPostId:string,sendUserId:string,postType=0,snsType = 'bs') {
       return stub(db.insert(sns_posts).values({
@@ -292,6 +308,23 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         del: false
       }).returning()).pipe(
           Effect.andThen(a => a.length === 1 ? Effect.succeed(a[0].id):Effect.fail(new Error('saveSnsPost'))))
+    }
+
+    function updateSnsCursor(avatarId:number,snsType:SnsType,cursor:string) {
+      return stub(db.update(avatar_sns).set({checkedPostId:cursor})
+          .where(and(eq(avatar_sns.assignAvatarId,avatarId),eq(avatar_sns.snsType,snsType))).returning()).pipe(
+              Effect.andThen(a =>
+                  a.length === 1 ? Effect.succeed(a[0].id):Effect.fail(new Error('updateSnsCursor')))
+      )
+    }
+
+    function updateBasePrompt(avatarId:number,prompt:string) {
+      return stub(db.update(avatar_model).set({
+        baseCharPrompt: prompt
+      }).where(eq(avatar_model.id, avatarId)).returning()).pipe(
+          Effect.andThen(a =>
+              a.length === 1 ? Effect.succeed(a[0].baseCharPrompt):Effect.fail(new Error('updateBasePrompt')))
+      )
     }
 
     function practiceRunStatus(run=false) {
@@ -390,26 +423,19 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
     }
 
     return {
-      test,
       init,
       initSystemMode,
-      getAbroadRouteByCountryPair,
       updateRoute,
       getAvatar,
-      getAvatarInfo,
       getAvatarModel,
       saveRunStatus,
       getTodayAnniversary,
-      getRunStatusByStatus,
       getRecentRunStatus,
-      // getRecentMiRunnerState,
-      getHistory,
-      getLastHistory,
-      saveMiHistory,
       practiceRunStatus,
       saveSnsPost,
+      updateSnsCursor,
+      updateBasePrompt,
       getEnv,
-      getEnvs,
       saveEnv,
     }
   }),

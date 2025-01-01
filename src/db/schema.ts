@@ -141,6 +141,8 @@ export const run_history = sqliteTable("run_history", {
     }
   });
 
+export type SnsType = "bs"| "tw"| "md"| "sk";
+
 export const avatar_sns = sqliteTable("avatar_sns", {
   id: integer('id', {mode: "number"}).primaryKey({autoIncrement: true}),
   assignAvatarId: integer("assignAvatarId").notNull(),

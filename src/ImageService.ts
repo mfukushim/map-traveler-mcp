@@ -1,7 +1,6 @@
 import {Effect, Option, Schedule} from "effect";
 import sharp = require("sharp");
 import {FetchHttpClient, HttpClient, HttpClientRequest, FileSystem} from "@effect/platform";
-// import * as config from "config";
 import dayjs from "dayjs";
 import FormData from 'form-data';
 import {transparentBackground} from "transparent-background";
@@ -11,25 +10,23 @@ import {PixAIClient} from '@pixai-art/client'
 import {type MediaBaseFragment, TaskBaseFragment} from "@pixai-art/client/types/generated/graphql.js";
 import * as Process from "node:process";
 import 'dotenv/config'
-import {logSync, McpLogService, McpLogServiceLive} from "./McpLogService.js";
+import {McpLogService, McpLogServiceLive} from "./McpLogService.js";
 import {env} from "./DbService.js";
 import WebSocket from 'ws'
-// require('dotenv').config()
 
-const defaultBaseCharPrompt = ''
+export const defaultBaseCharPrompt = 'depth of field, cinematic composition, masterpiece, best quality,looking at viewer,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut'
 
 let recentImage: Buffer | undefined //  直近の1生成画像を保持する snsのpostに自動引用する
-logSync('recentImage:'+recentImage)
 
 export class ImageService extends Effect.Service<ImageService>()("traveler/ImageService", {
   accessors: true,
   effect: Effect.gen(function* () {
     const key: string = Process.env.sd_key || ''// config.get('StabilityAI.key')  // Process.env.GoogleMapApi_key
+    const defaultPixAiModelId = '1648918127446573124';
 
     const pixAiClient = new PixAIClient({
       apiKey: Process.env.pixAi_key || '',
       webSocketImpl: WebSocket
-      // webSocketImpl: require('ws'),
     })
 
     /**
@@ -250,13 +247,13 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               Effect.andThen(a => {
                 const body = a ? {
                   prompts: prompt,
-                  modelId: '1648918127446573124', //1648918127446573124
+                  modelId: Process.env.pixAi_modelId || defaultPixAiModelId, //1648918127446573124
                   width: 512,
                   height: 512,
                   mediaId: a
                 } : {
                   prompts: prompt,
-                  modelId: '1648918127446573124', //1648918127446573124
+                  modelId: Process.env.pixAi_modelId || defaultPixAiModelId, //1648918127446573124
                   width: 512,
                   height: 512,
                 }
