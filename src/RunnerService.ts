@@ -74,7 +74,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
     // const startInfo: Ref.Ref<Option.Option<RunStatus>> = yield* Ref.make(Option.none())
 
     const getBasePrompt = (avatarId:number) => DbService.getAvatarModel(avatarId).pipe(
-        Effect.andThen(a => a.baseCharPrompt),
+        Effect.andThen(a => a.baseCharPrompt+',anime'),
         Effect.orElseSucceed(() => 'depth of field, cinematic composition, masterpiece, best quality,looking at viewer,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut'))
 
     const isShips = (maneuver?: string) => ['ferry', 'airplane'].includes(maneuver || '')

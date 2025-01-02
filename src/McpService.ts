@@ -377,7 +377,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           return yield *Effect.succeed(noMes)
         }
         const img = yield*ImageService.getRecentImageAndClear()
-        yield *McpLogService.logTrace(`sns image:${img}`)
+        yield *McpLogService.logTrace(`sns image:${img !== undefined}`)
         const imageData = img ? {
             buf: img,
             mime: "image/png"

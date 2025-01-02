@@ -8,12 +8,11 @@
   "files": [
     "dist"
   ],
-  "packageManager": "pnpm@9.10.0",
   "license": "MIT",
   "description": "Virtual traveler library for MCP",
   "repository": {
     "type": "git",
-    "url": "<PLACEHOLDER>"
+    "url": "https://github.com/mfukushim/map-traveler-mcp"
   },
   "publishConfig": {
     "access": "public",
@@ -21,6 +20,7 @@
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",
+    "build:npm": "npm build-esm",
     "build": "pnpm build-esm && pnpm build-annotate && pnpm build-cjs && build-utils pack-v2",
     "build-esm": "tsc -b tsconfig.build.json",
     "build-cjs": "babel build/esm --plugins @babel/transform-export-namespace-from --plugins @babel/transform-modules-commonjs --out-dir build/cjs --source-maps",
@@ -37,7 +37,6 @@
     "@effect/platform": "latest",
     "@effect/platform-node": "latest",
     "@effect/sql": "^0.22.3",
-    "@effect/sql-drizzle": "^0.21.2",
     "@effect/sql-sqlite-node": "^0.23.2",
     "@libsql/client": "^0.14.0",
     "@modelcontextprotocol/sdk": "^1.0.4",

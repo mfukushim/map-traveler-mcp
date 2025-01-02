@@ -28,9 +28,6 @@ importers:
       '@effect/sql':
         specifier: ^0.22.3
         version: 0.22.7(@effect/experimental@0.33.7(@effect/platform-node@0.68.0(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0))(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0)(ws@8.18.0))(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0)
-      '@effect/sql-drizzle':
-        specifier: ^0.21.2
-        version: 0.21.7(@effect/sql@0.22.7(@effect/experimental@0.33.7(@effect/platform-node@0.68.0(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0))(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0)(ws@8.18.0))(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0))(drizzle-orm@0.38.3(@libsql/client@0.14.0)(better-sqlite3@11.7.0))(effect@3.12.0)
       '@effect/sql-sqlite-node':
         specifier: ^0.23.2
         version: 0.23.7(@effect/experimental@0.33.7(@effect/platform-node@0.68.0(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0))(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0)(ws@8.18.0))(@effect/platform@0.72.0(effect@3.12.0))(@effect/sql@0.22.7(@effect/experimental@0.33.7(@effect/platform-node@0.68.0(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0))(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0)(ws@8.18.0))(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0))(effect@3.12.0)
@@ -280,13 +277,6 @@ packages:
     resolution: {integrity: sha512-uHsW2hlo6AiIW3zpLAVAoNvJngS/JwCZBAM4RSRllm8JTgjjCraef78FJBDNnSXz+2a10Xzzx4qxVsP3s8EV5Q==}
     peerDependencies:
       effect: ^3.12.0
-
-  '@effect/sql-drizzle@0.21.7':
-    resolution: {integrity: sha512-MLiQ79TjGe+nQ82EO1EpkIHD6/57gORX5jVwVLnEzhp+bL0bRq7wKOiafBOqdM3/nC45xHnXn5Y8U3N0gF3wmQ==}
-    peerDependencies:
-      '@effect/sql': ^0.22.7
-      drizzle-orm: ^0.31
-      effect: ^3.11.5
 
   '@effect/sql-sqlite-node@0.23.7':
     resolution: {integrity: sha512-B2CGnOGMpd6rxXTk/L6H3kXiy3qhUMFj5CTslRgB/7DzIiQJb+aYlhPkgXMc4P3MFUgPZKe1vbn6lAXZWYLhew==}
@@ -2775,12 +2765,6 @@ snapshots:
       effect: 3.12.0
       find-my-way-ts: 0.1.5
       multipasta: 0.2.5
-
-  '@effect/sql-drizzle@0.21.7(@effect/sql@0.22.7(@effect/experimental@0.33.7(@effect/platform-node@0.68.0(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0))(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0)(ws@8.18.0))(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0))(drizzle-orm@0.38.3(@libsql/client@0.14.0)(better-sqlite3@11.7.0))(effect@3.12.0)':
-    dependencies:
-      '@effect/sql': 0.22.7(@effect/experimental@0.33.7(@effect/platform-node@0.68.0(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0))(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0)(ws@8.18.0))(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0)
-      drizzle-orm: 0.38.3(@libsql/client@0.14.0)(better-sqlite3@11.7.0)
-      effect: 3.12.0
 
   '@effect/sql-sqlite-node@0.23.7(@effect/experimental@0.33.7(@effect/platform-node@0.68.0(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0))(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0)(ws@8.18.0))(@effect/platform@0.72.0(effect@3.12.0))(@effect/sql@0.22.7(@effect/experimental@0.33.7(@effect/platform-node@0.68.0(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0))(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0)(ws@8.18.0))(@effect/platform@0.72.0(effect@3.12.0))(effect@3.12.0))(effect@3.12.0)':
     dependencies:
