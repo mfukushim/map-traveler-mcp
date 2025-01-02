@@ -1,6 +1,6 @@
 import {Effect, Option, Schema} from "effect";
 import {MapService, MapDef} from "./MapService.js";
-import {DbService, DbServiceLive, RunStatus} from "./DbService.js";
+import {__pwd, DbService, DbServiceLive, RunStatus} from "./DbService.js";
 import * as geolib from "geolib";
 import dayjs = require("dayjs");
 import utc = require("dayjs/plugin/utc");
@@ -15,6 +15,7 @@ import {McpLogService} from "./McpLogService.js";
 import {FileSystem} from "@effect/platform";
 import {NodeFileSystem} from "@effect/platform-node";
 import {AnswerError} from "./index.js";
+import * as path from "path";
 
 
 dayjs.extend(utc)
@@ -39,7 +40,7 @@ export const defaultAvatarId = 1 //  TODO 現在は一人用
 export const practiceData: { address: string; placesPath: string; sampleImagePath: string; durationSec: number; }[] = [
   {
     address: "Hakata Station,〒812-0012 Fukuoka, Hakata Ward, 博多駅中央街1−1",
-    placesPath: "assets/places1.json",
+    placesPath  : "assets/places1.json",
     sampleImagePath: "assets/place1.png",
     durationSec: 20 * 60,
   },
@@ -84,10 +85,10 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       return Effect.gen(function* () {
         const practiceInfo = practiceData.find(value => value.address === runStatus.to) || practiceData[0]
         const fs = yield* FileSystem.FileSystem
-        const nearFacilities = yield* fs.readFile(practiceInfo.placesPath).pipe(
+        const nearFacilities = yield* fs.readFile(path.join(__pwd,practiceInfo.placesPath)).pipe(
             Effect.andThen(a => Schema.decode(Schema.parseJson(MapDef.GmPlacesSchema))((Buffer.from(a).toString('utf-8')))),
             Effect.andThen(a => StoryService.placesToFacilities(a)))
-        const image = includePhoto ? (yield* fs.readFile(practiceInfo.sampleImagePath).pipe(
+        const image = includePhoto ? (yield* fs.readFile(path.join(__pwd,practiceInfo.sampleImagePath)).pipe(
             Effect.andThen(a => Buffer.from(a)),
             Effect.orElseSucceed(() => undefined))) : undefined
         return {nearFacilities, image, locText: ''}
@@ -195,7 +196,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         if (e instanceof AnswerError) {
           return Effect.fail(e)
         }
-        return McpLogService.logError(e).pipe(Effect.andThen(a =>
+        return McpLogService.logError(`getCurrentView catch:${e}`).pipe(Effect.andThen(a =>
             Effect.fail(new AnswerError("Sorry,I don't know where you are right now. Please wait a moment and ask again."))));
       }))
     }
@@ -221,7 +222,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           Effect.andThen(a => a.currentRoute ? Effect.succeed(a.currentRoute) :
               Effect.fail(new AnswerError('The route to the destination has not yet been determined.'))),
           Effect.andThen(a => Schema.decodeUnknownSync(Schema.parseJson(MapDef.RouteArraySchema))(a)),
-          Effect.tapError(cause => McpLogService.logError(cause)),
+          Effect.tapError(cause => McpLogService.logError(`loadCurrentRunnerRoute ${cause}`)),
       )
     }
 

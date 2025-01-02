@@ -280,7 +280,7 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
           Effect.flatMap(a => HttpClientResponse.schemaBodyJson(MapDef.DirectionsSchema)(a)),
           Effect.scoped,
           Effect.tap(a => a.status === 'OK' && McpLogService.logTrace('calcDomesticTravelRoute: OK')),
-          Effect.tapError(e => McpLogService.logError(e)),
+          Effect.tapError(e => McpLogService.logError(`calcDomesticTravelRoute error:${JSON.stringify(e)}`)),
           Effect.andThen(a => {
             //  最初の選択の単一routesの単一legだけでよい
             return {
@@ -317,14 +317,14 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
           Effect.flatMap(a => a.json),
           Effect.scoped,
           Effect.tap(a => McpLogService.logTrace(a)),
-          Effect.tapError(e => McpLogService.logError(e)),
+          Effect.tapError(e => McpLogService.logError(`getTimezoneByLatLng error:${JSON.stringify(e)}`)),
           Effect.andThen(a => a as {status:string, timeZoneId?:string}),  // TODO
           Effect.andThen(a => a.status !== 'OK' || !a.timeZoneId? Effect.fail(new Error('getTimezoneByLatLng error')):Effect.succeed(a)),
           Effect.andThen(a => a.timeZoneId!)
         )
       }).pipe(Effect.provide([FetchHttpClient.layer,McpLogServiceLive]))
     }
-    
+
     const getCountry = (place:typeof MapDef.GmPlaceSchema.Type) => {
       const countryData = place.addressComponents.pipe(
         Option.andThen(a => Option.fromNullable(a.find(value => value.types.includes('country')))))
@@ -405,7 +405,7 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
           // Effect.flatMap(a => a.json),
           // Effect.tap(a => Effect.logTrace(a)),
           // Effect.andThen(a => Schema.decodeUnknown(MapDef.GmTextSearchSchema)(a)),
-          Effect.onError(cause => McpLogService.logError(cause)),
+          Effect.onError(cause => McpLogService.logError(`getNearly error:${JSON.stringify(cause)}`)),
           Effect.scoped,
         )
       }).pipe(Effect.provide(FetchHttpClient.layer))
@@ -423,12 +423,6 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
     function findStreetViewMeta(lat: number, lng: number, bearing: number, width: number, height: number) {
       return Effect.gen(function* () {
         const client = yield* HttpClient.HttpClient
-        // const retryNum = 5  //  取得できる座標を近くで5回リトライする
-        // const list = Array.from(new Array(retryNum).keys()).map(value => ({
-        //   lat: lat + 0.05 * (Math.random() - 0.5),
-        //   lng: lng + 0.04 * (Math.random() - 0.5)
-        // }))
-
         let result:{lat:number,lng:number}|undefined
         yield* Effect.iterate(5,{
           while:a => a > 0,
@@ -450,7 +444,7 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
                   Effect.flatMap(a => a.json),
                   Effect.scoped,
                   Effect.tap(a => McpLogService.logTrace(a)),
-                  Effect.tapError(e => McpLogService.logError(e)),
+                  Effect.tapError(e => McpLogService.logError(`findStreetViewMeta error:${JSON.stringify(e)}`)),
                   Effect.andThen(a => {
                     if((a as { status: string }).status === 'OK') {
                       result = {lat:checkLat,lng:checklng}
@@ -539,7 +533,7 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
           // Effect.orElseSucceed(() => Option.none<Buffer>()))  //  失敗ではなく得られなかった状態にする
     }
     //  endregion
-    
+
     /**
      * endしたステータスを取得して日付単位で件数取得する
      * endしたステータスの全duration+scale時間の統計を取る
@@ -575,7 +569,7 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
       })
     }
 */
-    
+
     return {
       practice,
       // test,

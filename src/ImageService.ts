@@ -11,8 +11,9 @@ import {type MediaBaseFragment, TaskBaseFragment} from "@pixai-art/client/types/
 import * as Process from "node:process";
 import 'dotenv/config'
 import {McpLogService, McpLogServiceLive} from "./McpLogService.js";
-import {env} from "./DbService.js";
+import {__pwd, env} from "./DbService.js";
 import WebSocket from 'ws'
+import * as path from "path";
 
 export const defaultBaseCharPrompt = 'depth of field, cinematic composition, masterpiece, best quality,looking at viewer,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut'
 
@@ -315,7 +316,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         if (!env.anyImageAiExist) {
           //  画像生成AIがなければ固定ホテル画像を使う
           const fs = yield* FileSystem.FileSystem
-          return yield* fs.readFile('assets/hotelPict.png').pipe(Effect.andThen(a => Buffer.from(a)))
+          return yield* fs.readFile(path.join(__pwd,'assets/hotelPict.png')).pipe(Effect.andThen(a => Buffer.from(a)))
         }
         let prompt = (baseCharPrompt || defaultBaseCharPrompt) + ',';
         if (hour < 6 || hour >= 19) {

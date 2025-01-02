@@ -102,7 +102,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
                   catch: error => new Error(`${error}`)
                 })
               }),
-              Effect.tapError(e => McpLogService.logError(e)),
+              Effect.tapError(e => McpLogService.logError(`bsPost ${e}`)),
               Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds"))))
           )
         }

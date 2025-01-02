@@ -25,7 +25,7 @@ import {defaultBaseCharPrompt} from "./ImageService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const __pwd = __dirname.endsWith('src') ? path.join(__dirname, '..') : path.join(__dirname, '../..')
+export const __pwd = __dirname.endsWith('src') ? path.join(__dirname, '..') : path.join(__dirname, '../..')
 
 export type RunStatus = typeof run_status.$inferSelect
 export type RunStatusI = typeof run_status.$inferInsert

@@ -764,7 +764,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               })
             }),
             Effect.catchAll(e => {
-              return McpLogService.logError(e).pipe(Effect.as({
+              return McpLogService.logError(`catch all:${JSON.stringify(e)}`).pipe(Effect.as({
                 content: [{
                   type: "text",
                   text: "Sorry,unknown system error."
@@ -803,23 +803,11 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           Effect.provide([DbServiceLive]))
     }
 
-    /*
-        function listRoots() {
-          return Effect.tryPromise({
-            try: signal => server.listRoots(),
-            catch: error => {
-              McpLogService.logError(`listRoots error:${error}`)
-              return new Error(`listRoots error:${error}`)
-            }
-          })
-        }
-    */
-
     function sendToolListChanged() {
       return Effect.tryPromise({
         try: signal => server.sendToolListChanged(),
         catch: error => {
-          //  MCPではsdtoutは切られている
+          //  MCPではstdoutは切られている
           McpLogService.logError(`sendToolListChanged error:${error}`)
           return new Error(`sendToolListChanged error:${error}`)
         }
@@ -828,7 +816,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
 
     function sendLlmTask(message: string) {
       return Effect.tryPromise({
-        try: signal => server.createMessage({
+        try: () => server.createMessage({
           messages: [{
             role: "user",
             content: {
