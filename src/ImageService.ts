@@ -313,7 +313,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
      */
     function makeHotelPict(baseCharPrompt: string, selectGen: string, hour: number, append ?: string, localDebug = false) {
       return Effect.gen(function* () {
-        if (!env.anyImageAiExist) {
+        if (!env.anyImageAiExist || env.isPractice) {
           //  画像生成AIがなければ固定ホテル画像を使う
           const fs = yield* FileSystem.FileSystem
           return yield* fs.readFile(path.join(__pwd,'assets/hotelPict.png')).pipe(Effect.andThen(a => Buffer.from(a)))

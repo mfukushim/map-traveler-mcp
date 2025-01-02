@@ -1,4 +1,4 @@
-import path from "path"
+import * as path from "path"
 import { defineConfig } from "vitest/config"
 
 export default defineConfig({
@@ -6,7 +6,8 @@ export default defineConfig({
   test: {
     setupFiles: [path.join(__dirname, "setupTests.ts")],
     include: ["./test/**/*.test.ts"],
-    globals: true
+    globals: true,
+    testTimeout:5*60*1000,
   },
   resolve: {
     alias: {

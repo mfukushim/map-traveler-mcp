@@ -1,6 +1,6 @@
 import {Effect, Option, Schema} from "effect";
 import {MapService, MapDef} from "./MapService.js";
-import {__pwd, DbService, DbServiceLive, RunStatus} from "./DbService.js";
+import {__pwd, DbService, DbServiceLive, env, RunStatus} from "./DbService.js";
 import * as geolib from "geolib";
 import dayjs = require("dayjs");
 import utc = require("dayjs/plugin/utc");
@@ -102,7 +102,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           lng: loc.lng,
           bearing: 0
         })
-        const image = includePhoto ? (yield* getStreetImage(loc, abort, localDebug).pipe(
+        const image = includePhoto && env.anyImageAiExist ? (yield* getStreetImage(loc, abort, localDebug).pipe(
             Effect.andThen(a => a.buf),
             Effect.orElseSucceed(() => undefined))) : undefined
         return {
@@ -152,7 +152,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
             const maneuver = loc.maneuver;
             const vehiclePrompt = maneuver?.includes('ferry') ? '(on ship deck:1.3),(ferry:1.2),sea,handrails' :
                 maneuver?.includes('airplane') ? '(airplane cabin:1.3),reclining seat,sitting' : ''
-            const image = includePhoto && (yield* ImageService.makeEtcTripImage(basePrompt, useAiImageGen, vehiclePrompt, loc.timeZoneId, localDebug))
+            const image = includePhoto && env.anyImageAiExist && (yield* ImageService.makeEtcTripImage(basePrompt, useAiImageGen, vehiclePrompt, loc.timeZoneId, localDebug))
             const out: { type: string; text?: string; data?: string; mimeType?: string }[] = [
               {
                 type: "text",

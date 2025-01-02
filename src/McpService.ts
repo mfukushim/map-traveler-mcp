@@ -160,7 +160,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
     }
 
     const getCurrentLocationInfo = (includePhoto: boolean, includeNearbyFacilities: boolean, localDebug = false) => {
-      return RunnerService.getCurrentView(includePhoto && env.anyImageAiExist, includeNearbyFacilities, env.isPractice, localDebug).pipe(
+      return RunnerService.getCurrentView(includePhoto, includeNearbyFacilities, env.isPractice, localDebug).pipe(
           Effect.provide([McpLogServiceLive, MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer]),
       )
     }

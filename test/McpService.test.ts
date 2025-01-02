@@ -20,9 +20,6 @@ describe("Mcp", () => {
     )
   });
 
-  it("should pass", () => {
-    expect(true).toBe(true)
-  })
   it("run", async () => {
     //  vitest --run --testNamePattern=run McpService.test.ts
     await McpService.run().pipe(
