@@ -108,5 +108,18 @@ describe("Sns", () => {
     )
     console.log(res)
   })
+  it("getNotification", async () => {
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    const res = await Effect.gen(function* () {
+      return yield* SnsService.getNotification()
+    }).pipe(
+        Effect.provide([SnsServiceLive, McpLogServiceLive]),
+        Logger.withMinimumLogLevel(LogLevel.Trace),
+        Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
+        Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
+        runPromise
+    )
+    console.log(res)
+  })
 
 })

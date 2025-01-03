@@ -302,6 +302,22 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
 
     const getSnsMentions = () => {
       //  TODO 自身へのメンションしか受け付けない。特定タグに限る? 現在から一定期間しか読み取れない。最大件数がある。その他固定フィルタ機能を置く
+      //  Like: likeを付けた人のhandle,likeがついた記事の内容、likeを付けた人の最新の記事、likeを付けた人のプロフィール
+      //    これのランダム選択はllmでするかロジック側で選定して記事を作らせるか
+      //  reply: replyを付けた人のhandle,replyがついた記事の内容、replyの記事内容、replyを付けた人のプロフィール
+      return Effect.gen(function *() {
+        const notifications = yield* SnsService.getNotification()
+        for (const notification of notifications) {
+          if (notification.mentionType === 'reply') {
+            const prof = yield *SnsService.getProfile(notification.handle)
+          }
+        }
+      })
+      return SnsService.getNotification().pipe(
+          Effect.andThen(a => {
+
+
+          }))
       return Effect.succeed({
         content: [] as ToolContentResponse[]
       })

@@ -13,6 +13,20 @@ const agent = new AtpAgent({service: 'https://bsky.social'})
 
 let isLogin = false
 
+export interface AtPubNotification {
+  clientId: number;
+  mentionType: string;
+  createdAt: string;
+  name: string;
+  handle: string;
+  uri: string;
+  cid: string;
+  rootUri: string;
+  parentUri: string;
+  detectEpoch: number;
+  mentionDayDiff: number;
+}
+
 export class SnsService extends Effect.Service<SnsService>()("traveler/SnsService", {
   accessors: true,
   effect: Effect.gen(function* () {
@@ -107,20 +121,20 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
           )
         }
 
-        function getOwnProfile() {
-          const bsHandle = Process.env.bs_handle
-          if (!bsHandle) {
-            return Effect.fail(new Error('no bs handle'))
-          }
-          return reLogin().pipe(
-              Effect.andThen(Effect.tryPromise(signal => agent.getProfile(
-                  {
-                    actor: Process.env.bs_handle!
-                  }
-              )))
-              , Effect.tap(a => !a.success && Effect.fail(new Error('getOwnProfile error'))),
-              Effect.andThen(a => a.data));
-        }
+    function getOwnProfile() {
+      const bsHandle = Process.env.bs_handle
+      if (!bsHandle) {
+        return Effect.fail(new Error('no bs handle'))
+      }
+      return getProfile(Process.env.bs_handle!);
+    }
+
+    function getProfile(handle:string) {
+      return reLogin().pipe(
+          Effect.andThen(Effect.tryPromise(signal => agent.getProfile({actor: handle}))),
+          Effect.tap(a => !a.success && Effect.fail(new Error('getProfile error'))),
+          Effect.andThen(a => a.data));
+    }
 
         function getActorLikes(handle: string) {
           return reLogin().pipe(
@@ -142,12 +156,12 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
               Effect.andThen(a => a.data))
         }
 
-        function getFeed(feed: string, length ?: number,cursor?:string) {
+        function getFeed(feed: string, length ?: number, cursor?: string) {
           const params = cursor ? {
             feed: feed,
             cursor: cursor,
             limit: length || 10,
-          }: {
+          } : {
             feed: feed,
             limit: length || 10,
           };
@@ -157,7 +171,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
               Effect.retry(Schedule.recurs(2).pipe(Schedule.intersect(Schedule.spaced("10 seconds")))),
               Effect.andThen(a => a.data),
               Effect.tap(a => {
-                DbService.updateSnsCursor(1,'bs',a.cursor || '')
+                DbService.updateSnsCursor(1, 'bs', a.cursor || '')
               })
           )
         }
@@ -171,30 +185,84 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
               Effect.andThen(a => a.data))
         }
 
-        function snsPost(message: string,appendNeedText:string, image?: {
+        function snsPost(message: string, appendNeedText: string, image?: {
           buf: Buffer;
           mime: string;
         }) {
-          const sliceLen = appendNeedText.length +1
-          return Effect.gen(function *() {
-            const postIds:{snsType:SnsType;id:number}[] = []
+          const sliceLen = appendNeedText.length + 1
+          return Effect.gen(function* () {
+            const postIds: { snsType: SnsType; id: number }[] = []
             if (Process.env.bs_id && Process.env.bs_pass && Process.env.bs_handle) {
-              const bsPostId = yield *bsPost(
-                  [message.slice(0,300-sliceLen),appendNeedText].join('\n'),undefined,image); //  bsは300文字らしい
-              postIds.push({snsType:'bs',id:yield *DbService.saveSnsPost(JSON.stringify(bsPostId),Process.env.bs_handle)})
+              const bsPostId = yield* bsPost(
+                  [message.slice(0, 300 - sliceLen), appendNeedText].join('\n'), undefined, image); //  bsは300文字らしい
+              postIds.push({
+                snsType: 'bs',
+                id: yield* DbService.saveSnsPost(JSON.stringify(bsPostId), Process.env.bs_handle)
+              })
             }
             //  他sns
             return postIds
           })
         }
 
+        function getNotification(seenAtEpoch?: number) { //  : Promise<AtPubNotification[]>
+          return reLogin().pipe(
+              Effect.andThen(Effect.tryPromise(signal => agent.listNotifications())),
+              Effect.tap(a => !a.success && Effect.fail(new Error('getNotification fail'))),
+              Effect.andThen(a => a.data.notifications),
+              Effect.tap(a => McpLogService.logTrace(`notification num:${a.length}`)),
+              Effect.andThen(a => {
+                //  TODO 現時点はfollowは返すべき記事がいないので追加しない
+                return a.filter(v=>(!seenAtEpoch || dayjs(v.indexedAt).unix() > seenAtEpoch) && v.reason !== "follow").
+                    map(value=> {
+                  if (value.reason === "reply") {
+                    return {
+                      // clientId: clientId,
+                      uri: value.uri, //  reply記事そのもの
+                      cid: value.cid,
+                      rootUri: (value.record as any).reply.root.uri,  //  replyの起点記事
+                      parentUri: (value.record as any).reply.parent.uri,  //  replyを付けた記事,
+                      mentionType: value.reason as string,
+                      name: value.author.displayName || value.author.handle,
+                      handle: value.author.handle,
+                      createdAt: (value.record as any).createdAt as string,
+                      detectEpoch: dayjs(value.indexedAt).unix(),
+                      // mentionDayDiff: diff
+                    }
+                  } else {
+                    //  like
+                    // const basePost = await this.getPost(clientId, uri);
+                    // if (basePost) {
+                    //   const baseCreated = dayjs(basePost.posts[0].indexedAt)
+                    //   diff = dayjs(value.indexedAt).diff(baseCreated, "day")
+                    // }
+                    return {
+                      // clientId: clientId,
+                      uri: (value.record as any).subject.uri, //  likeそのものではなくその付けた元,
+                      cid: (value.record as any).subject.cid,
+                      mentionType: value.reason as string,
+                      name: value.author.displayName || value.author.handle,
+                      handle: value.author.handle,
+                      createdAt: (value.record as any).createdAt as string,
+                      detectEpoch: dayjs(value.indexedAt).unix(),
+                      // mentionDayDiff: diff
+                    }
+                  }
+                })
+              })
+          )
+
+        }
+
         return {
           uploadBlob,
           bsPost,
           snsPost,
+          getProfile,
           getOwnProfile,
           getActorLikes,
           getAuthorFeed,
+          getNotification,
           getFeed,
           getPost
         }
