@@ -399,17 +399,17 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
             Effect.orElseSucceed(() => {
               env.travelerExist = true // memoryモードで動くときはシンプルにコマンド存在にする
             }))
-        const setting = yield* getEnvs(['isPractice', 'personMode', 'promptChanged'])
+        const setting = yield* getEnvs(['personMode', 'promptChanged'])
 
         //  Google Map APIがなければ強制的に練習モード ある場合は設定に従う
         if (!Process.env.GoogleMapApi_key) {
           env.isPractice = true
         } else {
           //  APIがあって設定不定なら通常モード
-          env.isPractice = setting.isPractice === undefined ? false : setting.isPractice !== ''
+          env.isPractice = false // setting.isPractice === undefined ? false : setting.isPractice !== ''
           env.gmKeyExist = true
         }
-        yield* saveEnv('isPractice', env.isPractice ? '1' : '')
+        // yield* saveEnv('isPractice', env.isPractice ? '1' : '')
         if (Process.env.sd_key || Process.env.pixAi_key) {
           env.anyImageAiExist = true
         }
