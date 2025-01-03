@@ -188,5 +188,22 @@ export class StringUtils {
   static test() {
     return "test"
   }
+  /**
+   * テキスト文字中のCJK漢字系文字の含有数評価
+   * @param text
+   */
+  static countCjk(text: string) {
+    let countEng = 0
+    let countCJK = 0
+    for (const tx of text) {
+      const t = tx.codePointAt(0)
+      if (t && t > 255) {
+        countCJK++
+      } else {
+        countEng++
+      }
+    }
+    return {countEng, countCJK};
+  }
 
 }

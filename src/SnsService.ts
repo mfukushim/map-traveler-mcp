@@ -14,17 +14,17 @@ const agent = new AtpAgent({service: 'https://bsky.social'})
 let isLogin = false
 
 export interface AtPubNotification {
-  clientId: number;
+  // clientId: number;
   mentionType: string;
   createdAt: string;
   name: string;
   handle: string;
   uri: string;
   cid: string;
-  rootUri: string;
-  parentUri: string;
+  rootUri?: string;
+  parentUri?: string;
   detectEpoch: number;
-  mentionDayDiff: number;
+  // mentionDayDiff: number;
 }
 
 export class SnsService extends Effect.Service<SnsService>()("traveler/SnsService", {
@@ -220,8 +220,8 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
                       // clientId: clientId,
                       uri: value.uri, //  reply記事そのもの
                       cid: value.cid,
-                      rootUri: (value.record as any).reply.root.uri,  //  replyの起点記事
-                      parentUri: (value.record as any).reply.parent.uri,  //  replyを付けた記事,
+                      rootUri: (value.record as any).reply.root.uri as string,  //  replyの起点記事
+                      parentUri: (value.record as any).reply.parent.uri as string,  //  replyを付けた記事,
                       mentionType: value.reason as string,
                       name: value.author.displayName || value.author.handle,
                       handle: value.author.handle,

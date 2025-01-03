@@ -18,7 +18,7 @@ import {ImageService, ImageServiceLive} from "./ImageService.js";
 import {NodeFileSystem} from "@effect/platform-node";
 import {McpLogService, McpLogServiceLive} from "./McpLogService.js";
 import {AnswerError} from "./index.js";
-import {SnsService, SnsServiceLive} from "./SnsService.js";
+import {AtPubNotification, SnsService, SnsServiceLive} from "./SnsService.js";
 import * as Process from "node:process";
 import {FeedViewPost} from "@atproto/api/dist/client/types/app/bsky/feed/defs.js";
 
@@ -28,7 +28,7 @@ interface ToolContentResponse {
   text?: string;
   data?: string;
   mimeType?: string;
-  resource?:any;
+  resource?: any;
 }
 
 const feedTag = "#marble_square"
@@ -36,9 +36,9 @@ const feedUri = "at://did:plc:ygcsenazbvhyjmxeltz4fgw4/app.bsky.feed.generator/m
 
 const LabelGoogleMap = 'Google Map'
 const LabelClaude = 'Claude'
-let recentUseLabels:string[] = []
-const labelImage = (aiGen:string) => {
-  return aiGen === 'pixAi' ? 'PixAi': aiGen === 'sd' ? 'Stability.ai' : ''
+let recentUseLabels: string[] = []
+const labelImage = (aiGen: string) => {
+  return aiGen === 'pixAi' ? 'PixAi' : aiGen === 'sd' ? 'Stability.ai' : ''
 }
 
 export class McpService extends Effect.Service<McpService>()("traveler/McpService", {
@@ -260,7 +260,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
     const startJourney = () => {
       return RunnerService.startJourney(env.isPractice).pipe(
           Effect.andThen(a => {
-            recentUseLabels= [LabelClaude]
+            recentUseLabels = [LabelClaude]
             if (useAiImageGen) {
               recentUseLabels.push(labelImage(useAiImageGen))
             }
@@ -276,7 +276,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       )
     }
     const stopJourney = () => {
-      recentUseLabels= [LabelClaude,LabelGoogleMap]
+      recentUseLabels = [LabelClaude, LabelGoogleMap]
       if (useAiImageGen) {
         recentUseLabels.push(labelImage(useAiImageGen))
       }
@@ -300,28 +300,103 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       )
     }
 
+    const makeVisitorMessage = (notification: AtPubNotification) => {
+      // `|イイネを付けた人の名前|イイネが付いた記事の内容|イイネを付けた人の直近の記事|イイネを付けた人のプロフィール|\n`+
+      return Effect.gen(function* () {
+        const visitorProf = yield* SnsService.getProfile(notification.handle)
+        const visitorPosts = yield* SnsService.getAuthorFeed(notification.handle, 3);
+        // const mentionPosts = yield *SnsService.getPost(notification.uri);
+        // const mentionPost = mentionPosts && mentionPosts.posts.length > 0 ? Option.some(mentionPosts.posts[0]) : Option.none()
+        // const myPostText = mentionPost.pipe(Option.andThen(a => (a.record as any).text as string))
+        //  イイネのときの自分が書いていいねがつけられたpost、replyの場合のreplyを付けた相手のpost
+        const mentionPostText = yield* SnsService.getPost(notification.uri).pipe(
+            Effect.andThen(a =>
+                Effect.succeed(Option.fromNullable(a.posts.length > 0 ? (a.posts[0].record as any).text as string : undefined))))
+        //  replyのときに、replyが付けられた自分が書いたpost, イイネのときはないはず
+        const repliedPostText = notification.mentionType === 'reply' && notification.parentUri ?
+            (yield* SnsService.getPost(notification.parentUri).pipe(
+                Effect.andThen(a =>
+                    Effect.succeed(Option.fromNullable(a.posts.length > 0 ? (a.posts[0].record as any).text as string : undefined))))) : Option.none();
+
+        const visitorName = notification.name || notification.handle || '誰か'
+        yield* McpLogService.logTrace(`avatarName:${visitorName}`)
+        const visitorPost = visitorPosts && visitorPosts.feed.length > 0 ? Option.some(visitorPosts.feed[0].post) : Option.none()
+        const visitorPostText = visitorPost.pipe(Option.andThen(a => (a.record as any).text as string))
+        // const visitorLangs: string[] = visitorPosts && visitorPosts.feed.length > 0 ? ((visitorPosts.feed[0].post.record as any)?.langs || []) : []
+        // let visitorLang = visitorLangs.includes('ja') ? 'ja' : visitorLangs.length === 0 ? 'ja' : visitorLangs[0]
+        // if (visitorLang === 'en') {
+        //   //  英語判断の場合、未設定による日本人も存在する。なのでen時は書き込みの含有文字列で最終判定する
+        //   visitorLang = visitorPostText.pipe(Option.andThen(a => {
+        //     const countCjk = StringUtils.countCjk(a);
+        //     if (countCjk.countCJK / (countCjk.countEng + countCjk.countCJK) > 0.7) {
+        //       //  70%以上cjkなら日本語想定
+        //       return 'ja'
+        //     }
+        //     return visitorLang
+        //   }))
+        // }
+        // yield *McpLogService.logTrace(`visitorLangs:${visitorLangs}`)
+        yield* McpLogService.logTrace(`mentionPostText:${mentionPostText}`)
+        yield* McpLogService.logTrace(`repliedPostText:${repliedPostText}`)
+        yield* McpLogService.logTrace(`visitorPostText:${visitorPostText}`)
+        return {
+          visitorName,
+          recentVisitorPost: visitorPostText,
+          visitorProf: visitorProf.description,
+          mentionPost: mentionPostText,
+          repliedPost: repliedPostText,
+          target: notification.uri
+        }
+      })
+    }
+
     const getSnsMentions = () => {
       //  TODO 自身へのメンションしか受け付けない。特定タグに限る? 現在から一定期間しか読み取れない。最大件数がある。その他固定フィルタ機能を置く
       //  Like: likeを付けた人のhandle,likeがついた記事の内容、likeを付けた人の最新の記事、likeを付けた人のプロフィール
       //    これのランダム選択はllmでするかロジック側で選定して記事を作らせるか
       //  reply: replyを付けた人のhandle,replyがついた記事の内容、replyの記事内容、replyを付けた人のプロフィール
-      return Effect.gen(function *() {
+      return Effect.gen(function* () {
         const notifications = yield* SnsService.getNotification()
-        for (const notification of notifications) {
-          if (notification.mentionType === 'reply') {
-            const prof = yield *SnsService.getProfile(notification.handle)
+        const {reply, like} = notifications.reduce((p, c) => {
+          if (c.mentionType === 'reply') {
+            p.reply.push(c)
+          } else if (c.mentionType === 'like') {
+            p.like.push(c)
           }
+          return p
+        }, {reply: [], like: []} as { reply: AtPubNotification[], like: AtPubNotification[] })
+        const likeMes = yield* Effect.forEach(like, a => makeVisitorMessage(a))
+        const replyMes = yield* Effect.forEach(reply, a => makeVisitorMessage(a))
+
+        //  replyがあればreplyを優先にしてlikeは処理しないことにするか。多くをまとめて処理できることを確認してからより多くの返答を行う
+        const likeText = `私達のSNS記事に以下のイイネが付きました。\n` +
+            `|id|イイネを付けた人の名前|イイネが付いた記事の内容|イイネを付けた人の直近の記事|イイネを付けた人のプロフィール|\n` +
+            likeMes.map((a) => `|${a.target}|${a.visitorName}|${a.mentionPost}|${a.recentVisitorPost}|${a.visitorProf}|`).join('\n') +
+            'このリストの中から１行を選んでください。選ぶ基準は不適切な表現が含まれていない、広告ではない1行を選びます。\n' +
+            '選んだ1行について、snsでイイネを付けてくれた人に感謝を短く伝えます。イイネを付けた人の直近の記事を考慮しながら、イイネが付いた記事の内容を報告してください。\n' +
+            '報告は次の内容を含んだjson形式のテキストで報告してください。形式: {id:(選んだ記事のid),text:(イイネへの感謝の文章)}'
+
+        const replyText = `私達のSNS記事に以下のリプライが付きました。\n` +
+            `|No.|リプライを付けた人の名前|リプライが付いた記事の内容|リプライの記事の内容|リプライを付けた人のプロフィール|\n` +
+            replyMes.map((a) => `|${a.target}|${a.visitorName}|${a.repliedPost}|${a.mentionPost}|${a.visitorProf}|`).join('\n') +
+            'このリストの中から１行を選んでください。選ぶ基準は不適切な表現が含まれていない、広告ではない1行を選びます。適切な行がなければ出力する必要はありません。\n' +
+            '選んだ1行について、snsでリプライを付けてくれた人に返事を短く伝えます。リプライが付いた記事の内容とリプライの記事の内容を考慮しながら、現在の旅人の状況を報告してください。\n' +
+            '最後に今、旅している場所に特産品がある場合は特産品をプレゼントする旨を伝えてください。\n' +
+            '報告は次の内容を含んだjson形式のテキストで報告してください。形式: {id:(選んだ記事のid),text:(返答の文章)}'
+
+        return {
+          content: [{
+            type: 'text',
+            text: replyText
+          }, {
+            type: 'text',
+            text: likeText
+          }
+          ] as ToolContentResponse[]
         }
-      })
-      return SnsService.getNotification().pipe(
-          Effect.andThen(a => {
-
-
-          }))
-      return Effect.succeed({
-        content: [] as ToolContentResponse[]
-      })
+      }).pipe(Effect.provide(SnsServiceLive))
     }
+
     const readSnsReader = () => {
       //  TODO 特定タグを含むものしか読み取れない。現在から一定期間しか読み取れない。最大件数がある。その他固定フィルタ機能を置く
       return Effect.succeed({
@@ -346,11 +421,11 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               return ({
                 authorHandle: v.post.author.displayName, //  LLMには可読名を返す。id管理は面倒なので正しくなくても可読名で記事の対応を取る
                 body: (v.post.record as any).text || '',
-                imageUri: im ? im[0].thumb as string: undefined
+                imageUri: im ? im[0].thumb as string : undefined
               });
             })
             const out = select.map(v => `author: ${v.authorHandle}\nbody: ${v.body}`).join('\n-----\n')
-            const images = select.flatMap(v => v.imageUri ? [{uri:v.imageUri,handle:v.authorHandle}]:[])
+            const images = select.flatMap(v => v.imageUri ? [{uri: v.imageUri, handle: v.authorHandle}] : [])
             const imageOut = images.map(v => {
               return {
                 type: "resource",
@@ -361,7 +436,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 }
               }
             })
-            const c: ToolContentResponse[] =[{
+            const c: ToolContentResponse[] = [{
               type: 'text',
               text: `I got the following article:\n${out}\n-----\n`
             }]
@@ -375,9 +450,9 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
 
     const postSnsWriter = (message: string, image?: any) => {
       //  特定タグを強制付加する 長すぎは強制的に切る 特定ライセンス記述を強制付加する その他固定フィルタ機能を置く
-      const appendLicence = 'powered '+recentUseLabels.join(',')  //  追加ライセンスの文字列をclient LLMに制御させることは信頼できないので、直近の生成行為に対する文字列を強制付加する
+      const appendLicence = 'powered ' + recentUseLabels.join(',')  //  追加ライセンスの文字列をclient LLMに制御させることは信頼できないので、直近の生成行為に対する文字列を強制付加する
       //  TODO 固定フィルタ
-      return Effect.gen(function *() {
+      return Effect.gen(function* () {
         if (env.noSnsPost) {
           const noMes = {
             content: [
@@ -388,17 +463,17 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             ] as ToolContentResponse[]
           };
           if (env.loggingMode) {
-            return yield *McpLogService.log(message).pipe(Effect.andThen(() => noMes))
+            return yield* McpLogService.log(message).pipe(Effect.andThen(() => noMes))
           }
-          return yield *Effect.succeed(noMes)
+          return yield* Effect.succeed(noMes)
         }
-        const img = yield*ImageService.getRecentImageAndClear()
-        yield *McpLogService.logTrace(`sns image:${img !== undefined}`)
+        const img = yield* ImageService.getRecentImageAndClear()
+        yield* McpLogService.logTrace(`sns image:${img !== undefined}`)
         const imageData = img ? {
-            buf: img,
-            mime: "image/png"
-          } :undefined
-        return yield *SnsService.snsPost(message, `${appendLicence} ${feedTag} `, imageData).pipe(
+          buf: img,
+          mime: "image/png"
+        } : undefined
+        return yield* SnsService.snsPost(message, `${appendLicence} ${feedTag} `, imageData).pipe(
             Effect.andThen(a => ({
               content: [
                 {
@@ -516,8 +591,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           inputSchema: {
             type: "object",
             properties: {
-              settings: {
-              },
+              settings: {},
             }
           }
         },
