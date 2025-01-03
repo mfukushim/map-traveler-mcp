@@ -2,7 +2,7 @@ import {Effect, Option} from "effect";
 import dayjs from "dayjs";
 import timezone = require("dayjs/plugin/timezone")
 import {MapDef, MapService} from "./MapService.js";
-import {DbService} from "./DbService.js";
+import {DbService, env} from "./DbService.js";
 import {McpLogService} from "./McpLogService.js";
 // import { StringUtils } from "./StringUtils";
 // import {StringUtils} from "./StringUtils.js";
@@ -155,8 +155,72 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
      * ランダム: 旅の過程は現在地の設定、行き先の設定、旅の開始
      * ランダム: 一定時間後に現在の報告を聞くとさらに先の画像が出ます
      */
-    function info() {
-      return Effect.succeed("Hello")
+    const tips = () => {
+      //  informationの文
+      //  1. practiceモードであればそれを示す 解除にはGoogle map api keyが必要であることを示す
+      //  2. dbパスを設定するとアプリを終了しても現在地と行き先が記録されることを示す
+      //  2. 画像AIのkeyがなければ 画像API keyがあればアバターの姿を任意に作れることを示す
+      //  3. pythonがインストールされていなければ pythonをインストールするとアバターの姿を合成できる
+      //
+      //  以下はランダムで表示
+      //  - 画像AIのkeyがあってかつpromptを変更したことがなければ変更可能を案内する
+      //  - snsアカウントがあればpostが出来ることを案内する
+      //  - bsアカウントがあれば相互対話が出来ることを案内する
+      //  - 二人称モードに切り替えると二人称会話で操作できる(ただし可能な限り)
+      //  - リソースに詳細があるのでリソースを取り込むと話やすい。プロジェクトを起こしてある程度会話を調整できる
+      const textList: string[] = []
+      const imagePathList: string[] = []
+      if (env.isPractice) {
+        textList.push('Currently in practice mode. You can only go to fixed locations.' +
+            ' To switch to normal mode, you need to obtain and set a Google Map API key.' +
+            ' key for detail: https://developers.google.com/maps/documentation/streetview/get-api-key ' +
+            ' Need Credentials: [Street View Static API],[Places API (New)],[Time Zone API]' +
+            ' Please specify the API key in the configuration file(claude_desktop_config.json).' +
+            ' And restart app. Claude Desktop App. Claude App may shrink into the taskbar, so please quit it completely.\n'+
+`claude_desktop_config.json\n
+\`\`\`
+"env":{"GoogleMapApi_key":"xxxxxxx"}
+\`\`\`
+`
+        )
+      } else {
+        if (!env.dbFileExist) {
+          textList.push('Since the database is not currently set, the configuration information will be lost when you exit.' +
+              ' Please specify the path of the saved database file in the configuration file(claude_desktop_config.json).' +
+              `claude_desktop_config.json\n
+\`\`\`
+"env":{"sqlite_path":"%USERPROFILE%/Desktop/traveler.sqlite"}
+\`\`\`
+`
+              )
+        } else {
+          if (!env.anyImageAiExist) {
+            textList.push('If you want to synthesize an avatar image, you will need a key for the image generation AI.' +
+                ' Currently, PixAi and Stability AI\'s SDXL 1.0 API are supported.' +
+                ' Please refer to the website of each company to obtain an API key.' +
+                ' https://platform.stability.ai/docs/getting-started https://platform.stability.ai/account/keys ' +
+                ' https://pixai.art/ https://platform.pixai.art/docs/getting-started/00---quickstart/ ' +
+                ' Please specify the API key in the configuration file(claude_desktop_config.json).' +
+                ' "env":["pixAi_key=(api key)"] or "env":["sd_key=(api key)"] ')
+          }
+          if (!env.pythonExist) {
+            textList.push('In order to synthesize avatar images, your PC must be running Python.' +
+                ' Please install Python on your PC using information from the Internet.')
+          }
+          //  基本動作状態
+          //  TODO bsアカウントがあれば
+
+        }
+
+      }
+
+      return Effect.succeed(
+          {
+            textList,
+            imagePathList
+            // content: [{type: "text", text: textList.join('\n-------\n')} as ToolContentResponse]
+          }
+      )
     }
 
     //  TODO ここはいる?
@@ -196,7 +260,7 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
 
 
     return {
-      info,
+      tips,
       placesToFacilities,
       getNearbyFacilities,
       getSettingResource

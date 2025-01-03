@@ -16,7 +16,6 @@ import * as Process from "node:process";
 import {fileURLToPath} from 'url';
 import {dirname} from 'path';
 import * as path from "node:path";
-import * as fs from "node:fs";
 import {logSync, McpLogService, McpLogServiceLive} from "./McpLogService.js";
 import {findSystemPython} from "transparent-background/lib/utils.js";
 import {practiceData} from "./RunnerService.js";
@@ -31,16 +30,30 @@ export type RunStatus = typeof run_status.$inferSelect
 export type RunStatusI = typeof run_status.$inferInsert
 export type RunHistoryI = typeof run_history.$inferInsert
 
-function expandPath(envPath:string) {
+function expandPath(envPath: string) {
   return envPath.replace(/\$([a-zA-Z_][a-zA-Z0-9_]*)/g, (match, name) => process.env[name] || match)
-    .replace(/%([a-zA-Z_][a-zA-Z0-9_]*)%/g, (match, name) => process.env[name] || match);
+      .replace(/%([a-zA-Z_][a-zA-Z0-9_]*)%/g, (match, name) => process.env[name] || match);
 }
 
-export let dbPath = Process.env.sqlite_path && fs.existsSync(expandPath(Process.env.sqlite_path)) ?
-    'file:' +expandPath(Process.env.sqlite_path).replaceAll('\\','/') : ':memory:'
+function isValidFilePath(filePath:string) {
+  try {
+    const normalizedPath = path.normalize(filePath);
+    const invalidChars = /[<>:"|?*\x00-\x1F]/g;
+    if (invalidChars.test(normalizedPath)) {
+      return false;
+    }
+    return normalizedPath.length <= 260;
+  } catch (error) {
+    return false;
+  }
+}
+
+export let dbPath = Process.env.sqlite_path && isValidFilePath(expandPath(Process.env.sqlite_path)) ?
+    'file:' + path.normalize(expandPath(Process.env.sqlite_path)).replaceAll('\\', '/') : ':memory:'
 
 const db = drizzle(dbPath);
 logSync(`behind db:${dbPath}`)
+logSync(`behind db1:${Process.env.sqlite_path && path.normalize(expandPath(Process.env.sqlite_path)).replaceAll('\\', '/')}`)
 
 export type DbMode = 'memory' | 'file';
 export type PersonMode = 'third' | 'second';
@@ -56,8 +69,8 @@ export const env: {
   anySnsExist: boolean;
   personMode: PersonMode;
   promptChanged: boolean;
-  noSnsPost:boolean;
-  loggingMode:boolean;
+  noSnsPost: boolean;
+  loggingMode: boolean;
 } = {
   travelerExist: true, //  まだ動的ツール切り替えはClaude desktopに入っていない。。
   dbMode: 'memory',
@@ -130,12 +143,12 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
                   snsHandleName: Process.env.bs_handle,
                   snsId: Process.env.bs_id,
                   checkedPostId: '',
-                  mentionPostId:'',
+                  mentionPostId: '',
                   created: created,
                   // lang: '',
                   // configId: 1,
                   enable: true,
-                } ).returning()).pipe(  //  as typeof avatar_sns.$inferInsert
+                }).returning()).pipe(  //  as typeof avatar_sns.$inferInsert
                     Effect.andThen(a1 => a),
                     Effect.onError(cause => McpLogService.logError(`init bs sns:${cause}`)))
               }
@@ -145,13 +158,13 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       })
     }
 
-/*
-    function getAbroadRouteByCountryPair(country1: string, country2: string) {
-      return stub(db.select().from(runAbroadRoute)
-        .leftJoin(runTerminal, eq(runAbroadRoute.terminalStart, runTerminal.id))
-        .leftJoin(runTerminal, eq(runAbroadRoute.terminalEnd, runTerminal.id)))//.pipe(Effect.provide(DbServiceLive))
-    }
-*/
+    /*
+        function getAbroadRouteByCountryPair(country1: string, country2: string) {
+          return stub(db.select().from(runAbroadRoute)
+            .leftJoin(runTerminal, eq(runAbroadRoute.terminalStart, runTerminal.id))
+            .leftJoin(runTerminal, eq(runAbroadRoute.terminalEnd, runTerminal.id)))//.pipe(Effect.provide(DbServiceLive))
+        }
+    */
 
     function updateRoute(avatarId: number, routeJson: string) {
       return stub(db.update(runAvatar).set({currentRoute: routeJson}).where(eq(runAvatar.id, avatarId)))
@@ -159,8 +172,8 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
 
     function getEnv(key: string) {
       return stub(db.select().from(env_kv).where(eq(env_kv.key, key))).pipe(
-        Effect.andThen(takeOne),
-        Effect.andThen(a => a.value))
+          Effect.andThen(takeOne),
+          Effect.andThen(a => a.value))
     }
 
     function saveEnv(key: string, value: string) {
@@ -191,11 +204,11 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       return stub(db.select().from(runAvatar).where(eq(runAvatar.id, avatarId))).pipe(Effect.andThen(takeOne))
     }
 
-/*
-    function getAvatarInfo(avatarId: number) {
-      return stub(db.select().from(avatar_model).where(eq(avatar_model.id, avatarId))).pipe(Effect.andThen(takeOne))
-    }
-*/
+    /*
+        function getAvatarInfo(avatarId: number) {
+          return stub(db.select().from(avatar_model).where(eq(avatar_model.id, avatarId))).pipe(Effect.andThen(takeOne))
+        }
+    */
 
     const takeOne = <T>(list: T[]) => {
       return list.length === 1 ? Effect.succeed(list[0]) : Effect.fail(new Error(`no element`))
@@ -228,20 +241,20 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
 
     function getTodayAnniversary(now: dayjs.Dayjs) {
       return stub(db.select().from(anniversary).where(
-          and(eq(anniversary.del, false),
-            eq(anniversary.month, now.month() + 1),
-            eq(anniversary.day, now.date()),
-            or(eq(anniversary.year, now.year()),
-              eq(anniversary.year, 0)))
-        )
+              and(eq(anniversary.del, false),
+                  eq(anniversary.month, now.month() + 1),
+                  eq(anniversary.day, now.date()),
+                  or(eq(anniversary.year, now.year()),
+                      eq(anniversary.year, 0)))
+          )
       )
     }
 
-/*
-    function getRunStatusByStatus(avatarId: number, status: TripStatus) {
-      return stub(db.select().from(run_status).where(and(eq(run_status.status, status), eq(run_status.avatarId, avatarId))))
-    }
-*/
+    /*
+        function getRunStatusByStatus(avatarId: number, status: TripStatus) {
+          return stub(db.select().from(run_status).where(and(eq(run_status.status, status), eq(run_status.avatarId, avatarId))))
+        }
+    */
 
     function getRecentRunStatus(avatarId: number) {
       return stub(db.select().from(run_status).orderBy(desc(run_status.id))).pipe(Effect.andThen(takeOne))
@@ -249,57 +262,58 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
 
     function getEnvs(keys: string[]) {
       return stub(db.select().from(env_kv).where(inArray(env_kv.key, keys))).pipe(
-        Effect.andThen(a => a.reduce((p, c) => {
-          p[c.key] = c.value
-          return p;
-        }, {} as { [key: string]: string })))
+          Effect.andThen(a => a.reduce((p, c) => {
+            p[c.key] = c.value
+            return p;
+          }, {} as { [key: string]: string })))
     }
 
-/*
-    function getHistory(tripId: number) {
-      return stub(db.select().from(run_history).where(eq(run_history.tripId, tripId)))
-    }
-*/
+    /*
+        function getHistory(tripId: number) {
+          return stub(db.select().from(run_history).where(eq(run_history.tripId, tripId)))
+        }
+    */
 
     /**
      * 最新のヒストリ
      * 通常はテキストなしを意味する
      * @param avatarId
      */
-/*
-    function getLastHistory(avatarId: number) {
-      //  TODO historyに属性を付けてないので、開始ヒストリや計画ヒストリを除外するのにelapse=0を使ってみる あまりよくないけど。。。
-      return stub(db.select().from(run_history).leftJoin(run_status, eq(run_history.tripId, run_status.tripId))
-        .where(and(eq(run_status.avatarId, avatarId), ne(run_history.elapsed, 0))).orderBy(desc(run_history.seq))).pipe(
-        Effect.andThen(a => {
-          if (a.length <= 0) {
-            return Effect.fail(`history relation error:${avatarId}`)
-          }
-          return Effect.succeed(a);
-        }),
-        Effect.andThen(takeOne))
-    }
-*/
+    /*
+        function getLastHistory(avatarId: number) {
+          //  TODO historyに属性を付けてないので、開始ヒストリや計画ヒストリを除外するのにelapse=0を使ってみる あまりよくないけど。。。
+          return stub(db.select().from(run_history).leftJoin(run_status, eq(run_history.tripId, run_status.tripId))
+            .where(and(eq(run_status.avatarId, avatarId), ne(run_history.elapsed, 0))).orderBy(desc(run_history.seq))).pipe(
+            Effect.andThen(a => {
+              if (a.length <= 0) {
+                return Effect.fail(`history relation error:${avatarId}`)
+              }
+              return Effect.succeed(a);
+            }),
+            Effect.andThen(takeOne))
+        }
+    */
 
     /**
      * 走行ヒストリーの保存
      * @param visit
      */
-/*
-    function saveMiHistory(visit: RunHistoryI) {
-      return stub(db.insert(run_history).values(visit).onConflictDoUpdate({
-        target: run_history.seq,
-        set: visit
-      }).returning()).pipe(Effect.andThen(a => {
-        if (a && Array.isArray(a) && a.length === 1) {
-          return Effect.succeed(a[0])
-        }
-        return Effect.fail(`saveMiHistory fail:${run_history.seq}`)
-      }));
-    }
-*/
 
-    function saveSnsPost(snsPostId:string,sendUserId:string,postType=0,snsType = 'bs') {
+    /*
+        function saveMiHistory(visit: RunHistoryI) {
+          return stub(db.insert(run_history).values(visit).onConflictDoUpdate({
+            target: run_history.seq,
+            set: visit
+          }).returning()).pipe(Effect.andThen(a => {
+            if (a && Array.isArray(a) && a.length === 1) {
+              return Effect.succeed(a[0])
+            }
+            return Effect.fail(`saveMiHistory fail:${run_history.seq}`)
+          }));
+        }
+    */
+
+    function saveSnsPost(snsPostId: string, sendUserId: string, postType = 0, snsType = 'bs') {
       return stub(db.insert(sns_posts).values({
         snsPostId,
         snsType,
@@ -308,27 +322,27 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         createTime: dayjs().toDate(),
         del: false
       }).returning()).pipe(
-          Effect.andThen(a => a.length === 1 ? Effect.succeed(a[0].id):Effect.fail(new Error('saveSnsPost'))))
+          Effect.andThen(a => a.length === 1 ? Effect.succeed(a[0].id) : Effect.fail(new Error('saveSnsPost'))))
     }
 
-    function updateSnsCursor(avatarId:number,snsType:SnsType,cursor:string) {
-      return stub(db.update(avatar_sns).set({checkedPostId:cursor})
-          .where(and(eq(avatar_sns.assignAvatarId,avatarId),eq(avatar_sns.snsType,snsType))).returning()).pipe(
-              Effect.andThen(a =>
-                  a.length === 1 ? Effect.succeed(a[0].id):Effect.fail(new Error('updateSnsCursor')))
+    function updateSnsCursor(avatarId: number, snsType: SnsType, cursor: string) {
+      return stub(db.update(avatar_sns).set({checkedPostId: cursor})
+          .where(and(eq(avatar_sns.assignAvatarId, avatarId), eq(avatar_sns.snsType, snsType))).returning()).pipe(
+          Effect.andThen(a =>
+              a.length === 1 ? Effect.succeed(a[0].id) : Effect.fail(new Error('updateSnsCursor')))
       )
     }
 
-    function updateBasePrompt(avatarId:number,prompt:string) {
+    function updateBasePrompt(avatarId: number, prompt: string) {
       return stub(db.update(avatar_model).set({
         baseCharPrompt: prompt
       }).where(eq(avatar_model.id, avatarId)).returning()).pipe(
           Effect.andThen(a =>
-              a.length === 1 ? Effect.succeed(a[0].baseCharPrompt):Effect.fail(new Error('updateBasePrompt')))
+              a.length === 1 ? Effect.succeed(a[0].baseCharPrompt) : Effect.fail(new Error('updateBasePrompt')))
       )
     }
 
-    function practiceRunStatus(run=false) {
+    function practiceRunStatus(run = false) {
       return Effect.gen(function* () {
         const recent = yield* getRecentRunStatus(1).pipe(Effect.orElseSucceed(() => undefined))
 
@@ -337,22 +351,22 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         const now = dayjs()
         const status = {
           id: 1,
-          status: run ? "running": "stop",
+          status: run ? "running" : "stop",
           startTime: now.toDate(),
           destination: "",
           from: recent?.to || 'Hakata,Fukuoka,Japan',
           to: practice.address,
-          startLat:0,
-          startLng:0,
-          endLat:0,
-          endLng:0,
-          durationSec:0,
-          distanceM:0,
+          startLat: 0,
+          startLng: 0,
+          endLat: 0,
+          endLng: 0,
+          durationSec: 0,
+          distanceM: 0,
           startTz: "Asia/Tokyo",
-          tilEndEpoch: run ? practice.durationSec+now.unix():0,
+          tilEndEpoch: run ? practice.durationSec + now.unix() : 0,
           endTz: "Asia/Tokyo"
         } as RunStatus;
-        yield *saveRunStatus(status)
+        yield* saveRunStatus(status)
         return status
       })
 
@@ -379,12 +393,12 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
           env.dbFileExist = true
         }
         yield* getEnv('travelerExist').pipe(
-          Effect.andThen(a => {
-            env.travelerExist = a !== ''
-          }),
-          Effect.orElseSucceed(() => {
-            env.travelerExist = true // memoryモードで動くときはシンプルにコマンド存在にする
-          }))
+            Effect.andThen(a => {
+              env.travelerExist = a !== ''
+            }),
+            Effect.orElseSucceed(() => {
+              env.travelerExist = true // memoryモードで動くときはシンプルにコマンド存在にする
+            }))
         const setting = yield* getEnvs(['isPractice', 'personMode', 'promptChanged'])
 
         //  Google Map APIがなければ強制的に練習モード ある場合は設定に従う
@@ -404,7 +418,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
           env.anySnsExist = true
         }
         if (Process.env.no_sns_post) {
-          env.noSnsPost =true
+          env.noSnsPost = true
         }
         if (Process.env.ServerLog) {
           env.loggingMode = true
@@ -417,9 +431,9 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         yield* saveEnv('promptChanged', env.promptChanged ? '1' : '')
 
         if (env.isPractice) {
-          yield *practiceRunStatus()
+          yield* practiceRunStatus()
         }
-        yield *McpLogService.logTrace(`initSystemMode end:${JSON.stringify(env)}`)
+        yield* McpLogService.logTrace(`initSystemMode end:${JSON.stringify(env)}`)
       })
     }
 
