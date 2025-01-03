@@ -328,9 +328,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           return Effect.gen(function* () {
             const visitorProf = yield* SnsService.getProfile(notification.handle)
             const visitorPosts = yield* SnsService.getAuthorFeed(notification.handle, 3);
-            // const mentionPosts = yield *SnsService.getPost(notification.uri);
-            // const mentionPost = mentionPosts && mentionPosts.posts.length > 0 ? Option.some(mentionPosts.posts[0]) : Option.none()
-            // const myPostText = mentionPost.pipe(Option.andThen(a => (a.record as any).text as string))
             //  イイネのときの自分が書いていいねがつけられたpost、replyの場合のreplyを付けた相手のpost
             const mentionPostText = yield* SnsService.getPost(notification.uri).pipe(
                 Effect.andThen(a =>
@@ -345,20 +342,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             yield* McpLogService.logTrace(`avatarName:${visitorName}`)
             const visitorPost = visitorPosts && visitorPosts.feed.length > 0 ? Option.some(visitorPosts.feed[0].post) : Option.none()
             const visitorPostText = visitorPost.pipe(Option.andThen(a => (a.record as any).text as string))
-            // const visitorLangs: string[] = visitorPosts && visitorPosts.feed.length > 0 ? ((visitorPosts.feed[0].post.record as any)?.langs || []) : []
-            // let visitorLang = visitorLangs.includes('ja') ? 'ja' : visitorLangs.length === 0 ? 'ja' : visitorLangs[0]
-            // if (visitorLang === 'en') {
-            //   //  英語判断の場合、未設定による日本人も存在する。なのでen時は書き込みの含有文字列で最終判定する
-            //   visitorLang = visitorPostText.pipe(Option.andThen(a => {
-            //     const countCjk = StringUtils.countCjk(a);
-            //     if (countCjk.countCJK / (countCjk.countEng + countCjk.countCJK) > 0.7) {
-            //       //  70%以上cjkなら日本語想定
-            //       return 'ja'
-            //     }
-            //     return visitorLang
-            //   }))
-            // }
-            // yield *McpLogService.logTrace(`visitorLangs:${visitorLangs}`)
             yield* McpLogService.logTrace(`mentionPostText:${mentionPostText}`)
             yield* McpLogService.logTrace(`repliedPostText:${repliedPostText}`)
             yield* McpLogService.logTrace(`visitorPostText:${visitorPostText}`)
@@ -368,7 +351,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               visitorProf: visitorProf.description,
               mentionPost: mentionPostText,
               repliedPost: repliedPostText,
-              target: notification.uri
+              target: notification.uri+'-'+notification.cid //  bsの場合はuri+cid
             }
           })
         }
@@ -392,31 +375,41 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             const replyMes = yield* Effect.forEach(reply, a => makeVisitorMessage(a))
 
             //  replyがあればreplyを優先にしてlikeは処理しないことにするか。多くをまとめて処理できることを確認してからより多くの返答を行う
-            const likeText = `私達のSNS記事に以下のイイネが付きました。\n` +
-                `|id|イイネを付けた人の名前|イイネが付いた記事の内容|イイネを付けた人の直近の記事|イイネを付けた人のプロフィール|\n` +
-                likeMes.map((a) => `|${a.target}|${a.visitorName}|${a.mentionPost}|${a.recentVisitorPost}|${a.visitorProf}|`).join('\n') +
-                'このリストの中から１行を選んでください。選ぶ基準は不適切な表現が含まれていない、広告ではない1行を選びます。\n' +
-                '選んだ1行について、snsでイイネを付けてくれた人に感謝を短く伝えます。イイネを付けた人の直近の記事を考慮しながら、イイネが付いた記事の内容を報告してください。\n' +
-                '報告は次の内容を含んだjson形式のテキストで報告してください。形式: {id:(選んだ記事のid),text:(イイネへの感謝の文章)}'
+            const likeText = `Our SNS post received the following likes.\n` +
+                `|id|Name of the person who liked the post|Content of the article with the like|recent article by the person who liked this|Profile of the person who liked|\n` +
+                likeMes.map((a) =>
+                    `|"${a.target}"|${a.visitorName}|${Option.getOrElse(a.mentionPost,()=>'')}|${Option.getOrElse(a.recentVisitorPost,()=>'')}|${a.visitorProf}|`).join('\n') +
+                '\n'
+            // const likeText = `私達のSNS記事に以下のイイネが付きました。\n` +
+            //     `|id|イイネを付けた人の名前|イイネが付いた記事の内容|イイネを付けた人の直近の記事|イイネを付けた人のプロフィール|\n` +
+            //     likeMes.map((a) =>
+            //         `|"${a.target}"|${a.visitorName}|${Option.getOrElse(a.mentionPost,()=>'')}|${Option.getOrElse(a.recentVisitorPost,()=>'')}|${a.visitorProf}|`).join('\n') +
+            //     '\nこのリストの中から１行を選んでください。選ぶ基準は不適切な表現が含まれていない、広告ではない1行を選びます。\n' +
+            //     '選んだ1行について、snsでイイネを付けてくれた人に感謝を短く伝えます。イイネを付けた人の直近の記事を考慮しながら、イイネが付いた記事の内容を報告してください。\n' +
+            //     '報告は次の内容を含んだjson形式のテキストで報告してください。形式: {id:(選んだ記事のid),text:(イイネへの感謝の文章)}'
 
-            const replyText = `私達のSNS記事に以下のリプライが付きました。\n` +
-                `|No.|リプライを付けた人の名前|リプライが付いた記事の内容|リプライの記事の内容|リプライを付けた人のプロフィール|\n` +
-                replyMes.map((a) => `|${a.target}|${a.visitorName}|${a.repliedPost}|${a.mentionPost}|${a.visitorProf}|`).join('\n') +
-                'このリストの中から１行を選んでください。選ぶ基準は不適切な表現が含まれていない、広告ではない1行を選びます。適切な行がなければ出力する必要はありません。\n' +
-                '選んだ1行について、snsでリプライを付けてくれた人に返事を短く伝えます。リプライが付いた記事の内容とリプライの記事の内容を考慮しながら、現在の旅人の状況を報告してください。\n' +
-                '最後に今、旅している場所に特産品がある場合は特産品をプレゼントする旨を伝えてください。\n' +
-                '報告は次の内容を含んだjson形式のテキストで報告してください。形式: {id:(選んだ記事のid),text:(返答の文章)}'
+            const replyText = `We received the following reply to our SNS post:\n` +
+                `|id|The name of the person who replied|Content of the article with the reply|Content of the reply article|Profile of the person who replied|\n` +
+                replyMes.map((a) =>
+                    `|"${a.target}"|${a.visitorName}|${Option.getOrElse(a.repliedPost,() => '')}|${Option.getOrElse(a.mentionPost,()=> '')}|${a.visitorProf || ''}|`).join('\n') +
+                '\n'
 
-            return {
-              content: [{
+            const content:ToolContentResponse[] = []
+            if (replyMes.length > 0) {
+              content.push({
                 type: 'text',
                 text: replyText
-              }, {
+              })
+            }
+            if (likeMes.length > 0) {
+              content.push({
                 type: 'text',
                 text: likeText
-              }
-              ] as ToolContentResponse[]
+              })
             }
+            return {
+              content: content
+            };
           }).pipe(Effect.provide(SnsServiceLive))
         }
 
@@ -469,6 +462,43 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 })
               }),
               Effect.provide(SnsServiceLive))
+        }
+
+        const replySnsWriter =(message: string, id: string) => {
+          const appendLicence = 'powered ' + LabelClaude  //  追加ライセンスの文字列をclient LLMに制御させることは信頼できないので、直近の生成行為に対する文字列を強制付加する
+          //  TODO 固定フィルタ
+          return Effect.gen(function* () {
+            if (env.noSnsPost) {
+              const noMes = {
+                content: [
+                  {
+                    type: "text",
+                    text: env.loggingMode ? "posted to log." : "Posting to SNS is stopped by env settings."
+                  }
+                ] as ToolContentResponse[]
+              };
+              if (env.loggingMode) {
+                return yield* McpLogService.log(message).pipe(Effect.andThen(() => noMes))
+              }
+              return yield* Effect.succeed(noMes)
+            }
+            const exec = /^"?(at.+?)"?$/.exec(id);
+            const id2 = exec && exec[1]
+            if (!id2) {
+              return yield* Effect.fail(new AnswerError('id is invalid'))
+            }
+            return yield* SnsService.snsReply(message, `${appendLicence} ${feedTag} `, id2).pipe(
+                Effect.andThen(a => ({
+                  content: [
+                    {
+                      type: "text",
+                      text: "posted"
+                    }
+                  ] as ToolContentResponse[]
+                })),
+                Effect.provide(SnsServiceLive)
+            );
+          })
         }
 
         const postSnsWriter = (message: string, image?: any) => {
@@ -722,6 +752,24 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 required: ["message"]
               }
             },
+            {
+              name: "reply_sns_writer",
+              description: "Write a reply to the article with the specified ID.",
+              inputSchema: {
+                type: "object",
+                properties: {
+                  message: {
+                    type: "string",
+                    description: "A description of the reply article. important: Do not use offensive language."
+                  },
+                  id: {
+                    type: "string",
+                    description: "The ID of the original post to which you want to add a reply."
+                  }
+                },
+                required: ["message","id"]
+              }
+            },
           ]
 
           server.setRequestHandler(ListToolsRequestSchema, async () => {
@@ -858,6 +906,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 case "post_sns_writer":
                   const image = request.params.arguments?.image;
                   return postSnsWriter(String(request.params.arguments?.message), image)
+                case "reply_sns_writer":
+                  return replySnsWriter(String(request.params.arguments?.message), String(request.params.arguments?.id))
                 default:
                   return Effect.fail(new Error("Unknown tool"));
               }
@@ -925,6 +975,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         }
 
         return {
+          tips,
           run,
           sendLoggingMessage,
           setPersonMode,
@@ -936,6 +987,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           startJourney,
           stopJourney,
           getSnsFeeds,
+          getSnsMentions,
+          replySnsWriter,
         }
       }
   )

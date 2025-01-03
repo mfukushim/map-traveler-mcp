@@ -6,6 +6,7 @@ import {SnsService, SnsServiceLive} from "../src/SnsService.js";
 import {McpLogService, McpLogServiceLive} from "../src/McpLogService.js";
 import {runPromise} from "effect/Effect";
 import * as fs from "node:fs";
+import {DbServiceLive} from "../src/DbService.js";
 
 
 describe("Sns", () => {
@@ -120,6 +121,21 @@ describe("Sns", () => {
         runPromise
     )
     console.log(res)
+    expect(res).toBeInstanceOf(Array)
+  })
+  it("snsReply", async () => {
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    const res = await Effect.gen(function* () {
+      return yield* SnsService.snsReply("リプライテスト"," test","at://did:plc:ygcsenazbvhyjmxeltz4fgw4/app.bsky.feed.post/3letmqctays2a,bafyreigqfjn2spwkuqziieuh5xijimyyld7dpbnpajxc7ax5bkokyyxjna")
+    }).pipe(
+        Effect.provide([SnsServiceLive, McpLogServiceLive,DbServiceLive]),
+        Logger.withMinimumLogLevel(LogLevel.Trace),
+        Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
+        Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
+        runPromise
+    )
+    console.log(res)
+    expect(res).toBeInstanceOf(Array)
   })
 
 })

@@ -93,7 +93,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
     const stub = <T>(qy: Promise<T>) => Effect.tryPromise({
       try: () => qy,
       catch: error => {
-        return new Error(`${error}`);
+        return new Error(`${error},${JSON.stringify(qy[Symbol.toStringTag])}`);
       }
     })
 

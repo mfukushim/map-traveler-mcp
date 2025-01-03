@@ -10,6 +10,8 @@ import {McpLogService, McpLogServiceLive} from "../src/McpLogService.js";
 import {DbService, DbServiceLive} from "../src/DbService.js";
 import {StoryServiceLive} from "../src/StoryService.js";
 import {AnswerError} from "../src/index.js";
+import {SnsServiceLive} from "../src/SnsService.js";
+import {NodeFileSystem} from "@effect/platform-node";
 
 
 describe("Mcp", () => {
@@ -33,17 +35,18 @@ describe("Mcp", () => {
   })
   it("tips", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
-    await Effect.gen(function* () {
+    const res = await Effect.gen(function* () {
       return yield* McpService.tips()  //
     }).pipe(
-      Effect.provide([StoryServiceLive, McpServiceLive, FetchHttpClient.layer, McpLogServiceLive]),
+      Effect.provide([StoryServiceLive, McpServiceLive, FetchHttpClient.layer, McpLogServiceLive,NodeFileSystem.layer]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       // Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
       runPromise
     )
+    expect(res.content).toBeInstanceOf(Array)
   })
-  it("setLanguage", async () => {
+  it("setPersonMode", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     await Effect.gen(function* () {
       return yield* McpService.setPersonMode('second_person')  //
@@ -200,6 +203,32 @@ describe("Mcp", () => {
       return yield* McpService.getSnsFeeds()
     }).pipe(
         Effect.provide([McpServiceLive]),
+        Logger.withMinimumLogLevel(LogLevel.Trace),
+        Effect.tapError(e => Effect.logError(e.toString())),
+        Effect.tap(a => Effect.log(a)),
+        runPromise
+    )
+    console.log(res)
+  })
+  it("getSnsMentions", async () => {
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    const res = await Effect.gen(function* () {
+      return yield* McpService.getSnsMentions()
+    }).pipe(
+        Effect.provide([McpServiceLive,SnsServiceLive,McpLogServiceLive]),
+        Logger.withMinimumLogLevel(LogLevel.Trace),
+        Effect.tapError(e => Effect.logError(e.toString())),
+        Effect.tap(a => Effect.log(a)),
+        runPromise
+    )
+    console.log(res)
+  })
+  it("replySnsWriter", async () => {
+    //  vitest --run --testNamePattern=replySnsWriter McpService.test.ts
+    const res = await Effect.gen(function* () {
+      return yield* McpService.replySnsWriter("リプライテスト6","\"at://did:plc:ygcsenazbvhyjmxeltz4fgw4/app.bsky.feed.post/3letmqctays2a,bafyreigqfjn2spwkuqziieuh5xijimyyld7dpbnpajxc7ax5bkokyyxjna\"")
+    }).pipe(
+        Effect.provide([McpServiceLive,SnsServiceLive,McpLogServiceLive,DbServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => Effect.logError(e.toString())),
         Effect.tap(a => Effect.log(a)),
