@@ -35,10 +35,10 @@ function expandPath(envPath: string) {
       .replace(/%([a-zA-Z_][a-zA-Z0-9_]*)%/g, (match, name) => process.env[name] || match);
 }
 
-function isValidFilePath(filePath:string) {
+export function isValidFilePath(filePath:string) {
   try {
     const normalizedPath = path.normalize(filePath);
-    const invalidChars = /[<>:"|?*\x00-\x1F]/g;
+    const invalidChars = /[<>"|?*\x00-\x1F]/g;
     if (invalidChars.test(normalizedPath)) {
       return false;
     }

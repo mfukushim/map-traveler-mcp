@@ -4,7 +4,7 @@ import {Effect, Logger, LogLevel} from "effect";
 import {runPromise} from "effect/Effect";
 // import {FetchHttpClient} from "@effect/platform";
 // import * as fs from "node:fs";
-import {DbService} from "../src/DbService.js";
+import {DbService, isValidFilePath} from "../src/DbService.js";
 import dayjs from "dayjs";
 
 
@@ -59,13 +59,18 @@ describe("Db", () => {
     const res = await Effect.gen(function* () {
       return yield* DbService.saveEnv("abc","xyz").pipe(Effect.tap(a => Effect.log(a)))  //
     }).pipe(
-      Effect.provide([DbService.Default]), //  layer
-      Logger.withMinimumLogLevel(LogLevel.Trace),
-      Effect.tapError(Effect.logError),
-      Effect.tap(a => Effect.log(a)),
-      runPromise
+        Effect.provide([DbService.Default]), //  layer
+        Logger.withMinimumLogLevel(LogLevel.Trace),
+        Effect.tapError(Effect.logError),
+        Effect.tap(a => Effect.log(a)),
+        runPromise
     )
     expect(res.key).toBe('abc')
     expect(res.value).toBe('xyz')
+  })
+  it("pathTest", async () => {
+    //  vitest --run --testNamePattern=getTodayAnniversary DbService.test.ts
+    //  実行エラーが取れると実行できたりする。。 intellijの問題だが、どういう種類の問題なんだろう。。。仕方ないからしばらくはコマンドライン併用、、
+    console.log(isValidFilePath('C:/Users/tetra_000/Desktop/traveler.sqlite'))
   })
 })
