@@ -908,6 +908,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           run,
           sendLoggingMessage,
           setPersonMode,
+          getTravelerInfo,
           setTravelerInfo,
           getCurrentLocationInfo,
           setCurrentLocation,

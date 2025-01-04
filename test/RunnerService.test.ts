@@ -9,67 +9,36 @@ import {MapServiceLive} from "../src/MapService.js";
 import {ImageServiceLive} from "../src/ImageService.js";
 import {StoryServiceLive} from "../src/StoryService.js";
 import {NodeFileSystem} from "@effect/platform-node"
+import {McpLogServiceLive} from "../src/McpLogService.js";
 
 
 describe("Runner", () => {
-  it("should pass", () => {
-    expect(true).toBe(true)
-  })
+
   it("getCurrentView", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
-    await Effect.gen(function *() {
+    const res = await Effect.gen(function *() {
       return yield *RunnerService.getCurrentView(false,false,true)  //
     }).pipe(
-      Effect.provide([RunnerServiceLive,DbServiceLive,MapServiceLive,ImageServiceLive,StoryServiceLive,NodeFileSystem.layer, FetchHttpClient.layer]), //  layer
+      Effect.provide([RunnerServiceLive,DbServiceLive,MapServiceLive,ImageServiceLive,StoryServiceLive,
+        NodeFileSystem.layer, FetchHttpClient.layer,McpLogServiceLive]), //  layer
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(Effect.logError),
       Effect.tap(a => Effect.log(a)),
       runPromise
     )
-
+    expect(res.content).toBeInstanceOf(Array)
   })
   it("setCurrentLocation", async () => {
-    await Effect.gen(function *() {
-      return yield *RunnerService.getCurrentView(false,false,true)  //
+    const res = await Effect.gen(function *() {
+      return yield *RunnerService.getCurrentView(false,false,true)
     }).pipe(
-      Effect.provide([RunnerServiceLive,DbServiceLive,MapServiceLive,ImageServiceLive,StoryServiceLive,NodeFileSystem.layer, FetchHttpClient.layer]), //  layer
+      Effect.provide([RunnerServiceLive,DbServiceLive,MapServiceLive,ImageServiceLive,StoryServiceLive,
+        NodeFileSystem.layer, FetchHttpClient.layer,McpLogServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(Effect.logError),
       Effect.tap(a => Effect.log(a)),
       runPromise
     )
+    expect(res.content).toBeInstanceOf(Array)
   })
-/*
-  it("getDestinationAddress", async () => {
-    try {
-      const res = await getDestinationAddress();
-      console.log(res)
-    } catch (e) {
-      expect(e).toBeInstanceOf(Error)
-      if(e instanceof Error) console.log(e.message)
-    }
-
-  })
-  it("setDestinationAddress", async () => {
-    try {
-      const res = await setDestinationAddress("横浜市馬車道");
-      console.log(res)
-    } catch (e) {
-      expect(e).toBeInstanceOf(Error)
-      if(e instanceof Error) console.log(e.message)
-    }
-
-  })
-  it("startJourney", async () => {
-    try {
-      const res = await startJourney();
-      console.log(JSON.stringify(res,undefined,1).slice(0,200))
-    } catch (e) {
-      expect(e).toBeInstanceOf(Error)
-      if(e instanceof Error) console.log(e.message)
-    }
-
-  })
-*/
-
 })

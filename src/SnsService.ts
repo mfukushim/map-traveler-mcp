@@ -174,14 +174,13 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
           const sliceLen = appendNeedText.length + 1
           return Effect.gen(function* () {
             const postIds: { snsType: SnsType; id: number }[] = []
-            if (Process.env.bs_id && Process.env.bs_pass && Process.env.bs_handle) {
-              const bsPostId = yield* bsPost(
-                  [message.slice(0, 300 - sliceLen), appendNeedText].join('\n'), undefined, image); //  bsは300文字らしい
-              postIds.push({
-                snsType: 'bs',
-                id: yield* DbService.saveSnsPost(JSON.stringify(bsPostId), Process.env.bs_handle)
-              })
-            }
+            yield* reLogin()
+            const bsPostId = yield* bsPost(
+                [message.slice(0, 300 - sliceLen), appendNeedText].join('\n'), undefined, image); //  bsは300文字らしい
+            postIds.push({
+              snsType: 'bs',
+              id: yield* DbService.saveSnsPost(JSON.stringify(bsPostId), Process.env.bs_handle!)
+            })
             //  TODO 他sns
             return postIds
           })
@@ -191,15 +190,14 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
           const sliceLen = appendNeedText.length + 1
           return Effect.gen(function* () {
             const postIds: { snsType: SnsType; id: number }[] = []
-            if (Process.env.bs_id && Process.env.bs_pass && Process.env.bs_handle) {
-              const split = replyId.split('-');
-              const bsPostId = yield* bsPost(
-                  [message.slice(0, 300 - sliceLen), appendNeedText].join('\n'), {uri:split[0],cid:split[1]}); //  bsは300文字らしい
-              postIds.push({
-                snsType: 'bs',
-                id: yield* DbService.saveSnsPost(JSON.stringify(bsPostId), Process.env.bs_handle)
-              })
-            }
+            yield* reLogin()
+            const split = replyId.split('-');
+            const bsPostId = yield* bsPost(
+                [message.slice(0, 300 - sliceLen), appendNeedText].join('\n'), {uri: split[0], cid: split[1]}); //  bsは300文字らしい
+            postIds.push({
+              snsType: 'bs',
+              id: yield* DbService.saveSnsPost(JSON.stringify(bsPostId), Process.env.bs_handle!)
+            })
             //  当面はbsのみ
             return postIds
           })

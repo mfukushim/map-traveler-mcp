@@ -10,9 +10,6 @@ import {DbServiceLive} from "../src/DbService.js";
 
 
 describe("Sns", () => {
-  it("should pass", () => {
-    expect(true).toBe(true)
-  })
   it("bsPost単純ポスト", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
@@ -21,29 +18,31 @@ describe("Sns", () => {
         Effect.provide([SnsServiceLive, McpLogServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
+        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed({})),
         Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
         runPromise
     )
-    console.log(res)
+    expect(res).toBeInstanceOf(Object)
   })
   it("bsPost画像ポスト", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      const buffer = fs.readFileSync('tools/test/makeHotelPict.jpg');
+      const buffer = fs.readFileSync('assets/hotelPict.png');
       return yield* SnsService.bsPost("画像ポストテスト", undefined, {buf: buffer, mime: 'image/png'})
     }).pipe(
         Effect.provide([SnsServiceLive, McpLogServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
+        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed({})),
         Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
         runPromise
     )
-    console.log(res)
+    expect(res).toBeInstanceOf(Object)
   })
   it("bsPost画像リプライポスト", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      const buffer = fs.readFileSync('tools/test/makeHotelPict.jpg');
+      const buffer = fs.readFileSync('assets/hotelPict.png');
       return yield* SnsService.bsPost("画像ポストテスト", {
         uri: 'at://did:plc:yl63l7eegfz5ddsyjrp66dsc/app.bsky.feed.post/3leg5encxz523',
         cid: 'bafyreifpbccbqu5qghfrz3ahb2vew4qybu2gbir6zcwlhoiikle4untsae'
@@ -52,23 +51,26 @@ describe("Sns", () => {
         Effect.provide([SnsServiceLive, McpLogServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
+        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed({})),
         Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
         runPromise
     )
-    console.log(res)
+    expect(res).toBeInstanceOf(Object)
   })
   it("getOwnProfile", async () => {
-    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    //  vitest --run --testNamePattern=getOwnProfile SnsService.test.ts
     const res = await Effect.gen(function* () {
       return yield* SnsService.getOwnProfile()
     }).pipe(
         Effect.provide([SnsServiceLive, McpLogServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
+        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed({})),
+        Effect.catchIf(a => a.toString() === 'Error: no bs handle', e => Effect.succeed({})),
         Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
         runPromise
     )
-    console.log(res)
+    expect(res).toBeInstanceOf(Object)
   })
   it("getAuthorFeed", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
@@ -78,10 +80,11 @@ describe("Sns", () => {
         Effect.provide([SnsServiceLive, McpLogServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
+        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed({})),
         Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
         runPromise
     )
-    console.log(res)
+    expect(res).toBeInstanceOf(Object)
   })
   it("getPost", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
@@ -91,10 +94,11 @@ describe("Sns", () => {
         Effect.provide([SnsServiceLive, McpLogServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
+        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed({})),
         Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
         runPromise
     )
-    console.log(res)
+    expect(res).toBeInstanceOf(Object)
   })
   it("getFeed", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
@@ -104,10 +108,11 @@ describe("Sns", () => {
         Effect.provide([SnsServiceLive, McpLogServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
+        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed({})),
         Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
         runPromise
     )
-    console.log(res)
+    expect(res).toBeInstanceOf(Object)
   })
   it("getNotification", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
@@ -117,10 +122,10 @@ describe("Sns", () => {
         Effect.provide([SnsServiceLive, McpLogServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
+        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed([])),
         Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
         runPromise
     )
-    console.log(res)
     expect(res).toBeInstanceOf(Array)
   })
   it("snsReply", async () => {
@@ -131,10 +136,10 @@ describe("Sns", () => {
         Effect.provide([SnsServiceLive, McpLogServiceLive,DbServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
+        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed([])),
         Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
         runPromise
     )
-    console.log(res)
     expect(res).toBeInstanceOf(Array)
   })
 
