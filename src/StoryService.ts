@@ -1,20 +1,17 @@
-import {Effect, Option} from "effect";
+import {Effect, Option, Schedule} from "effect";
 import dayjs from "dayjs";
 import timezone = require("dayjs/plugin/timezone")
 import {MapDef, MapService} from "./MapService.js";
 import {DbService, env} from "./DbService.js";
 import {McpLogService} from "./McpLogService.js";
-// import { StringUtils } from "./StringUtils";
-// import {StringUtils} from "./StringUtils.js";
 
 dayjs.extend(timezone)
-
 
 export interface FacilityInfo {
   townName: Option.Option<string>,
   address: Option.Option<string>,
   country: Option.Option<string>,
-  facilities: { id: string|undefined; types: string[]; name: string; }[],
+  facilities: { id: string | undefined; types: string[]; name: string; }[],
   photoReferences: {
     name: string;
     types: readonly string[], //  result.typesまでないケースがある? とりあえず名前をそのまま突っ込むしかないか。。。
@@ -44,8 +41,8 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
           const addressComponents = d.addressComponents.value
           const country = addressComponents.find(f => f.types[0] === 'country')
           const townName =
-            addressComponents.find(f => f.types[0] === 'sublocality_level_2') ||
-            addressComponents.find(f => f.types[0] === 'locality')
+              addressComponents.find(f => f.types[0] === 'sublocality_level_2') ||
+              addressComponents.find(f => f.types[0] === 'locality')
           return [
             {
               address: Option.fromNullable(d.formattedAddress),
@@ -98,14 +95,10 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
       })
     }
 
-
     function placesToFacilities(a: typeof MapDef.GmPlacesSchema.Type) {
       const buildings = getNearlyParse(a)
-      let selBuilding
+      const selBuilding = buildings[Math.floor(Math.random() * buildings.length)]
 
-      if (!selBuilding) {
-        selBuilding = buildings[Math.floor(Math.random() * buildings.length)];
-      }
       const political = getNearlyPoliticalParse(a, selBuilding.id)
       const photoReferences = getPhotoReferences(a, selBuilding.id)
       const maxLocationNum = 4  //  コスト改善のため、最大4地点までにする 多数の場合、ランダムピックでもよいが、そこまでの精度は必要ない
@@ -130,17 +123,16 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
       lng: number;
       bearing: number;
       lat: number
-    })
-    {
+    }) {
       return Effect.gen(function* () {
         //  最初半径1000以内を探索する。該当件数が2以下なら2000で再検索する
         //  →最初は直近200以内で探索しランドスケープの選択精度を上げる、その後1000,2000へ
         let retry = 2
         return yield* Effect.async<number, Error>((resume) => resume(Effect.succeed(retry--))).pipe(
-          Effect.andThen(a => MapService.getNearly(currentLoc.lat, currentLoc.lng, a === 2 ? 200 : retry === 1 ? 1000 : 2000)),
-          Effect.andThen(a => placesToFacilities(a.places)),
-          Effect.tap(a => McpLogService.logTrace(`getNearbyFacilities:${a}`)),
-          Effect.retry({times: 2})
+            Effect.andThen(a => MapService.getNearly(currentLoc.lat, currentLoc.lng, a === 2 ? 200 : retry === 1 ? 1000 : 2000)),
+            Effect.andThen(a => placesToFacilities(a.places)),
+            Effect.tap(a => McpLogService.logTrace(`getNearbyFacilities:${a}`)),
+            Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
         )
       })
     }
@@ -176,8 +168,8 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
             ' key for detail: https://developers.google.com/maps/documentation/streetview/get-api-key ' +
             ' Need Credentials: [Street View Static API],[Places API (New)],[Time Zone API]' +
             ' Please specify the API key in the configuration file(claude_desktop_config.json).' +
-            ' And restart app. Claude Desktop App. Claude App may shrink into the taskbar, so please quit it completely.\n'+
-`claude_desktop_config.json\n
+            ' And restart app. Claude Desktop App. Claude App may shrink into the taskbar, so please quit it completely.\n' +
+            `claude_desktop_config.json\n
 \`\`\`
 "env":{"GoogleMapApi_key":"xxxxxxx"}
 \`\`\`
@@ -192,7 +184,7 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
 "env":{"sqlite_path":"%USERPROFILE%/Desktop/traveler.sqlite"}
 \`\`\`
 `
-              )
+          )
         } else {
           if (!env.anyImageAiExist) {
             textList.push('If you want to synthesize an avatar image, you will need a key for the image generation AI.' +
@@ -218,12 +210,10 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
           {
             textList,
             imagePathList
-            // content: [{type: "text", text: textList.join('\n-------\n')} as ToolContentResponse]
           }
       )
     }
 
-    //  TODO ここはいる?
     function getSettingResource(pathname: string) {
       return Effect.gen(function* () {
         if (pathname.includes("/role.txt")) {
@@ -253,37 +243,32 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
               '不快な記述や広告と思われる記事は選択から除外してください。\n' +
               '取得した画像とその記事から仲間の旅の様子を想定して、その解釈をユーザに説明してください。\n' +
               '\n'
-          // return 'AIはユーザに対してtravelerの役割をします。\ntravelerはMCP APIを使って、1. 今いる場所の情報、2. 今いる場所の風景画像を取得することができます。travelerはMCP APIを使って、1. 旅の開始地を設定する 2. 旅の目的地を設定する 3. 旅を開始する 4. 旅を停止する ことを実行することができます。\n' +
-          //   'ユーザはtravelerに対して 1. 現在の場所の情報を問い合わせる 2. 今いる場所の風景の画像を問い合わせる 3. その場所に関する旅の様子の相談を雑談する ことができます。\n' +
-          //   'ユーザが現在の場所の情報を問い合わせたとき、次の内容で返答してください。\n' +
-          //   '1. get_current_pictureを使って'
         } else if (pathname.includes("/setting.txt")) {
+          //  TODO ここはなおす
           //  言語
           const langText = yield* DbService.getEnv('language').pipe(
-            Effect.andThen(a => `Please speak to me in ${a}`),
-            Effect.orElseSucceed(() => 'The language of the conversation should be the language the user speaks.'))
+              Effect.andThen(a => `Please speak to me in ${a}`),
+              Effect.orElseSucceed(() => 'The language of the conversation should be the language the user speaks.'))
           //  目的地
           const destText = yield* Effect.gen(function* () {
-            const runStatus = yield* DbService.getRecentRunStatus(1)
+            const runStatus = yield* DbService.getRecentRunStatus()
             if (runStatus.status !== 'stop' && runStatus.destination) {
               return `Current destination is ${runStatus.destination}`
             }
             return yield* DbService.getEnv('destination').pipe(
-              Effect.andThen(a => `Current destination is ${a}`),
-              Effect.orElseSucceed(() => 'The destination is not decided.'))
+                Effect.andThen(a => `Current destination is ${a}`),
+                Effect.orElseSucceed(() => 'The destination is not decided.'))
           })
           //  他にあるはず
 
           return [langText, destText].join('\n')
         } else if (pathname.includes("/credit.txt")) {
-          return 'https://akibakokoubou.jp/ contain Google Map Apis,'
+          return 'https://akibakokoubou.jp/ '
         } else {
-          throw new Error(`resource not found`);
+          yield* Effect.fail(new Error(`resource not found`));
         }
       })
-
     }
-
 
     return {
       tips,
@@ -293,7 +278,6 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
     }
   })
 }) {
-
 }
 
 export const StoryServiceLive = StoryService.Default

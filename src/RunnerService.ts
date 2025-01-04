@@ -68,11 +68,8 @@ export const practiceData: { address: string; placesPath: string; sampleImagePat
 export class RunnerService extends Effect.Service<RunnerService>()("traveler/RunnerService", {
   accessors: true,
   effect: Effect.gen(function* () {
-    // const localDebug = true  //  TODO この切替をどうするか?
     //  走行時間スケール 2で時速40kmくらい 4くらいにするか 20km/hくらい
     const durationScale2 = 4
-
-    // const startInfo: Ref.Ref<Option.Option<RunStatus>> = yield* Ref.make(Option.none())
 
     const getBasePrompt = (avatarId:number) => DbService.getAvatarModel(avatarId).pipe(
         Effect.andThen(a => a.baseCharPrompt+',anime'),
@@ -122,7 +119,6 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
             "There don't appear to be any buildings nearby.";
 
         const abortText = abort ? `I have received a message to discontinue my trip. This time, I will discontinue my trip.\n` : ''
-        //const locText = `current location is below\nlatitude:${loc.lat}\nlongitude:${loc.lng}\n`;
         const posText = Option.isSome(nearFacilities.townName) ? `Town name is ${nearFacilities.townName.value}\n` : 'Town name is unknown.\n'
         const content: { type: string, text?: string, data?: string, mimeType?: string }[] = [{
           type: "text",
@@ -196,7 +192,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         if (e instanceof AnswerError) {
           return Effect.fail(e)
         }
-        return McpLogService.logError(`getCurrentView catch:${e}`).pipe(Effect.andThen(a =>
+        return McpLogService.logError(`getCurrentView catch:${e}`).pipe(Effect.andThen(() =>
             Effect.fail(new AnswerError("Sorry,I don't know where you are right now. Please wait a moment and ask again."))));
       }))
     }
@@ -209,7 +205,6 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
      * @private
      */
     function saveCurrentRunnerRoute(avatarId: number, data: any) {
-      // await this.sysSettingService.set('RunnerCurRoute', ''); //  これ使ってない。。。
       return DbService.updateRoute(avatarId, JSON.stringify(data))
     }
 
@@ -293,15 +288,12 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
     function calcCurrentLoc(runStatus: RunStatus, now: dayjs.Dayjs)
         : Effect.Effect<LocationDetail, Error | HttpClientError, DbService | MapService | McpLogService> {
       return Effect.gen(function* () {
-        // const startTime = dayjs.unix(runStatus.epoch);
         const runAllSec = now.diff(runStatus.startTime, "seconds");  //  実時間でのstep0を0とした旅行実行秒数
-        // const runAllSec = now.diff(startTime, "seconds", false);  //  実時間でのstep0を0とした旅行実行秒数
         const currentStepOption = yield* loadCurrentRunnerRoute(runStatus.avatarId).pipe(
             Effect.andThen(a => {
               const allSteps = routesToDirectionStep(a)
               return Effect.succeed(calcCurrentStep(allSteps, runAllSec))  //  次到達ステップ(現在のステップ位置でもある)
             }), Effect.orElseSucceed(() => Option.none()));
-
 
         if (Option.isNone(currentStepOption)) {
           //  すでに到着済み または不定
@@ -357,7 +349,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           return yield* Effect.fail(new AnswerError("I don't know where you're talking about. destination location not found"))
         }
         const runStatus = yield* getRunStatusAndUpdateEnd();
-        //  TODO 目的地が設定されたときにコース計算と行程時間を報告する必要がある そしてコースをrunStatusに設定する必要がある。saveEnvでもいいかも。
+        //  目的地が設定されたときにコース計算と行程時間を報告する必要がある そしてコースをrunStatusに設定する必要がある。saveEnvでもいいかも。
         const destList = yield* MapService.calcMultiPathRoute({
           lat: runStatus.endLat, lng: runStatus.endLng, country: runStatus.endCountry || location.value.country
         }, [{
@@ -407,10 +399,10 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
 
     const getRunStatusAndUpdateEnd = () => {
       return Effect.gen(function* () {
-        const recent = yield* DbService.getRecentRunStatus(defaultAvatarId).pipe(Effect.orElseFail(() =>
+        const recent = yield* DbService.getRecentRunStatus().pipe(Effect.orElseFail(() =>
             new AnswerError(`current location not set. Please set the current location address`)))
         if (dayjs().isAfter(dayjs.unix(recent.tilEndEpoch))) {
-          //  旅は終了している TODO 終点画像を撮るタイミングがないな。。ここで入れるか? 今の取得で作れるのは作れるが。。
+          //  旅は終了している 終点画像を撮るタイミングがないな。。ここで入れるか? 今の取得で作れるのは作れるが。。
           resetRunStatus(recent, recent.to, recent.endLat, recent.endLng, recent.endCountry, recent.endTz)
           yield* DbService.saveRunStatus(recent)
         }
@@ -481,7 +473,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
             bearing: currentInfo.bearing
           })
 
-          resetRunStatus(runStatus, Option.getOrElse(nears.address, () => runStatus.to), //  TODO
+          resetRunStatus(runStatus, Option.getOrElse(nears.address, () => runStatus.to),
               currentInfo.lat, currentInfo.lng, Option.getOrElse(nears.country, () => runStatus.endCountry), currentInfo.timeZoneId)
 
           const {nearFacilities, image, locText} = yield* getFacilities(currentInfo, true, false)

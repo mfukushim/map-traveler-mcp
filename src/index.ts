@@ -17,12 +17,12 @@ export class AnswerError extends Error {
 }
 
 async function main() {
-  await Effect.runPromise(Effect.gen(function *() {
-    yield *McpService.run().pipe(Effect.provide([McpServiceLive,DbServiceLive,McpLogServiceLive]))
+  await Effect.runPromise(Effect.gen(function* () {
+    yield* McpService.run().pipe(Effect.provide([McpServiceLive, DbServiceLive, McpLogServiceLive]))
   }))
 }
 
 main().catch((error) => {
   //  MCPではconsole出力はエラーになるっぽい
-    // console.error("Server error:", error);
+  // console.error("Server error:", error);
 });

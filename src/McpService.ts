@@ -32,6 +32,7 @@ interface ToolContentResponse {
   resource?: any;
 }
 
+//  bluesky SNS用固定feed
 const feedTag = "#marble_square"
 const feedUri = "at://did:plc:ygcsenazbvhyjmxeltz4fgw4/app.bsky.feed.generator/marble_square25"
 
@@ -73,7 +74,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 if (res.imagePathList.length > 0) {
                   const fs = yield* FileSystem.FileSystem
                   yield* Effect.forEach(res.imagePathList, a => {
-                    return fs.readFile(path.join(__pwd, 'assets/hotelPict.png')).pipe(Effect.andThen(b => {
+                    return fs.readFile(path.join(__pwd, a)).pipe(Effect.andThen(b => {
                       out.content.push({
                         type: "image",
                         data: Buffer.from(b).toString('base64'),
@@ -86,60 +87,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               }
           )
         }
-        // const tips = () => {
-        //   //  informationの文
-        //   //  1. practiceモードであればそれを示す 解除にはGoogle map api keyが必要であることを示す
-        //   //  2. dbパスを設定するとアプリを終了しても現在地と行き先が記録されることを示す
-        //   //  2. 画像AIのkeyがなければ 画像API keyがあればアバターの姿を任意に作れることを示す
-        //   //  3. pythonがインストールされていなければ pythonをインストールするとアバターの姿を合成できる
-        //   //
-        //   //  以下はランダムで表示
-        //   //  - 画像AIのkeyがあってかつpromptを変更したことがなければ変更可能を案内する
-        //   //  - snsアカウントがあればpostが出来ることを案内する
-        //   //  - bsアカウントがあれば相互対話が出来ることを案内する
-        //   //  - 二人称モードに切り替えると二人称会話で操作できる(ただし可能な限り)
-        //   //  - リソースに詳細があるのでリソースを取り込むと話やすい。プロジェクトを起こしてある程度会話を調整できる
-        //   const textList: string[] = []
-        //   if (env.isPractice) {
-        //     textList.push('Currently in practice mode. You can only go to fixed locations.' +
-        //         ' To switch to normal mode, you need to obtain and set a Google Map API key.' +
-        //         ' key for detail: https://developers.google.com/maps/documentation/streetview/get-api-key ' +
-        //         ' Need Credentials: [Street View Static API],[Places API (New)],[Time Zone API]' +
-        //         ' Please specify the API key in the configuration file(claude_desktop_config.json).' +
-        //         '"env":["GoogleMapApi_key=(api key)"] example: "env":["GoogleMapApi_key=xxxxxxx"]' +
-        //         ' And restart app. Claude Desktop App. Claude App may shrink into the taskbar, so please quit it completely.')
-        //   } else {
-        //     if (!env.dbFileExist) {
-        //       textList.push('Since the database is not currently set, the configuration information will be lost when you exit.' +
-        //           ' Please specify the path of the saved database file in the configuration file(claude_desktop_config.json).' +
-        //           '"env":["sqlite_path=(filePath)"] example: "env":["sqlite_path=%HOMEPATH%/traveler.sqlite"]')
-        //     } else {
-        //       if (!env.anyImageAiExist) {
-        //         textList.push('If you want to synthesize an avatar image, you will need a key for the image generation AI.' +
-        //             ' Currently, PixAi and Stability AI\'s SDXL 1.0 API are supported.' +
-        //             ' Please refer to the website of each company to obtain an API key.' +
-        //             ' https://platform.stability.ai/docs/getting-started https://platform.stability.ai/account/keys ' +
-        //             ' https://pixai.art/ https://platform.pixai.art/docs/getting-started/00---quickstart/ ' +
-        //             ' Please specify the API key in the configuration file(claude_desktop_config.json).' +
-        //             ' "env":["pixAi_key=(api key)"] or "env":["sd_key=(api key)"] ')
-        //       }
-        //       if (!env.pythonExist) {
-        //         textList.push('In order to synthesize avatar images, your PC must be running Python.' +
-        //             ' Please install Python on your PC using information from the Internet.')
-        //       }
-        //       //  基本動作状態
-        //       //  TODO bsアカウントがあれば
-        //
-        //     }
-        //
-        //   }
-        //
-        //   return Effect.succeed(
-        //       {
-        //         content: [{type: "text", text: textList.join('\n-------\n')} as ToolContentResponse]
-        //       }
-        //   )
-        // }
         const setPersonMode = (person: string) => {
           const mode: PersonMode = person === 'second_person' ? 'second' : 'third'
           env.personMode = mode
@@ -215,7 +162,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             yield* Effect.logTrace(address.value)
             yield* DbService.saveRunStatus({
               id: 1,  // 1レコードにする
-              // start: '',
               status: 'stop',
               from: '',
               to: address.value.address,
@@ -228,9 +174,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               distanceM: 0,
               avatarId: 1,
               tripId: 0,
-              // epoch: 0,
               tilEndEpoch: 0, //  旅開始していない
-              // duration: '',
               startTime: new Date(0),  //  旅開始していない
               startCountry: address.value.country,
               endCountry: address.value.country,
@@ -249,7 +193,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               const res = yield* RunnerService.setDestinationAddress(dest)
               setMessage.push(res.message)
             }
-            // return address.value
             return {
               content: [{
                 type: "text",
@@ -311,8 +254,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         const setTravelerExist = (callKick: boolean) => {
           env.travelerExist = callKick
           return McpLogService.log(`enter setTravelerExist:${callKick}`).pipe(
-              Effect.andThen(a => sendToolListChanged()),
-              Effect.andThen(a => {
+              Effect.tap(() => sendToolListChanged()),
+              Effect.andThen(() => {
                 return ({
                   content: [{
                     type: "text",
@@ -351,7 +294,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               visitorProf: visitorProf.description,
               mentionPost: mentionPostText,
               repliedPost: repliedPostText,
-              target: notification.uri+'-'+notification.cid //  bsの場合はuri+cid
+              target: notification.uri + '-' + notification.cid //  bsの場合はuri+cid
             }
           })
         }
@@ -378,23 +321,16 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             const likeText = `Our SNS post received the following likes.\n` +
                 `|id|Name of the person who liked the post|Content of the article with the like|recent article by the person who liked this|Profile of the person who liked|\n` +
                 likeMes.map((a) =>
-                    `|"${a.target}"|${a.visitorName}|${Option.getOrElse(a.mentionPost,()=>'')}|${Option.getOrElse(a.recentVisitorPost,()=>'')}|${a.visitorProf}|`).join('\n') +
+                    `|"${a.target}"|${a.visitorName}|${Option.getOrElse(a.mentionPost, () => '')}|${Option.getOrElse(a.recentVisitorPost, () => '')}|${a.visitorProf}|`).join('\n') +
                 '\n'
-            // const likeText = `私達のSNS記事に以下のイイネが付きました。\n` +
-            //     `|id|イイネを付けた人の名前|イイネが付いた記事の内容|イイネを付けた人の直近の記事|イイネを付けた人のプロフィール|\n` +
-            //     likeMes.map((a) =>
-            //         `|"${a.target}"|${a.visitorName}|${Option.getOrElse(a.mentionPost,()=>'')}|${Option.getOrElse(a.recentVisitorPost,()=>'')}|${a.visitorProf}|`).join('\n') +
-            //     '\nこのリストの中から１行を選んでください。選ぶ基準は不適切な表現が含まれていない、広告ではない1行を選びます。\n' +
-            //     '選んだ1行について、snsでイイネを付けてくれた人に感謝を短く伝えます。イイネを付けた人の直近の記事を考慮しながら、イイネが付いた記事の内容を報告してください。\n' +
-            //     '報告は次の内容を含んだjson形式のテキストで報告してください。形式: {id:(選んだ記事のid),text:(イイネへの感謝の文章)}'
 
             const replyText = `We received the following reply to our SNS post:\n` +
                 `|id|The name of the person who replied|Content of the article with the reply|Content of the reply article|Profile of the person who replied|\n` +
                 replyMes.map((a) =>
-                    `|"${a.target}"|${a.visitorName}|${Option.getOrElse(a.repliedPost,() => '')}|${Option.getOrElse(a.mentionPost,()=> '')}|${a.visitorProf || ''}|`).join('\n') +
+                    `|"${a.target}"|${a.visitorName}|${Option.getOrElse(a.repliedPost, () => '')}|${Option.getOrElse(a.mentionPost, () => '')}|${a.visitorProf || ''}|`).join('\n') +
                 '\n'
 
-            const content:ToolContentResponse[] = []
+            const content: ToolContentResponse[] = []
             if (replyMes.length > 0) {
               content.push({
                 type: 'text',
@@ -464,7 +400,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               Effect.provide(SnsServiceLive))
         }
 
-        const replySnsWriter =(message: string, id: string) => {
+        const replySnsWriter = (message: string, id: string) => {
           const appendLicence = 'powered ' + LabelClaude  //  追加ライセンスの文字列をclient LLMに制御させることは信頼できないので、直近の生成行為に対する文字列を強制付加する
           //  TODO 固定フィルタ
           return Effect.gen(function* () {
@@ -488,7 +424,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               return yield* Effect.fail(new AnswerError('id is invalid'))
             }
             return yield* SnsService.snsReply(message, `${appendLicence} ${feedTag} `, id2).pipe(
-                Effect.andThen(a => ({
+                Effect.andThen(() => ({
                   content: [
                     {
                       type: "text",
@@ -501,7 +437,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           })
         }
 
-        const postSnsWriter = (message: string, image?: any) => {
+        const postSnsWriter = (message: string) => {
           //  特定タグを強制付加する 長すぎは強制的に切る 特定ライセンス記述を強制付加する その他固定フィルタ機能を置く
           const appendLicence = 'powered ' + recentUseLabels.join(',')  //  追加ライセンスの文字列をclient LLMに制御させることは信頼できないので、直近の生成行為に対する文字列を強制付加する
           //  TODO 固定フィルタ
@@ -527,7 +463,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               mime: "image/png"
             } : undefined
             return yield* SnsService.snsPost(message, `${appendLicence} ${feedTag} `, imageData).pipe(
-                Effect.andThen(a => ({
+                Effect.andThen(() => ({
                   content: [
                     {
                       type: "text",
@@ -743,10 +679,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                   message: {
                     type: "string",
                     description: "A description of the journey. important: Do not use offensive language."
-                  },
-                  image: {
-                    type: "string",
-                    description: "A image file of the journey scene. base64 png file encoded to string."
                   }
                 },
                 required: ["message"]
@@ -767,14 +699,13 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                     description: "The ID of the original post to which you want to add a reply."
                   }
                 },
-                required: ["message","id"]
+                required: ["message", "id"]
               }
             },
           ]
 
           server.setRequestHandler(ListToolsRequestSchema, async () => {
             return await Effect.gen(function* () {
-              // const exist =false// yield* Ref.get(travelerExist)
               if (env.isPractice) {
                 return {
                   tools: [
@@ -823,14 +754,16 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                   }]
                 const cmd: Tool[] = []
                 if (env.travelerExist) {
-                  cmd.push({
-                        name: "kick_traveler",  //  pythonがあったらよいとか、db設定がよいとか、tipsを取得する。tipsの取得を行うのはproject側スクリプトとか、script batchとか
-                        description: "kick the traveler",
-                        inputSchema: {
-                          type: "object",
-                          properties: {}
-                        }
-                      },
+                  cmd.push(
+                      //  TODO tool change Notificationがきかないので一旦はずしておく
+                      // {
+                      //   name: "kick_traveler",  //  pythonがあったらよいとか、db設定がよいとか、tipsを取得する。tipsの取得を行うのはproject側スクリプトとか、script batchとか
+                      //   description: "kick the traveler",
+                      //   inputSchema: {
+                      //     type: "object",
+                      //     properties: {}
+                      //   }
+                      // },
                       ...basicToolsCommand,
                       ...GET_LOCATION_COMMAND,
                       ...SETTING_COMMANDS,
@@ -856,11 +789,10 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           });
 
           server.setRequestHandler(CallToolRequestSchema, async (request) => {
-            // console.log(`CallToolRequestSchema:`,request)
             const toolSwitch = () => {
               switch (request.params.name) {
                 case "tips":
-                  return tips().pipe(Effect.provide([StoryServiceLive,NodeFileSystem.layer]))
+                  return tips().pipe(Effect.provide([StoryServiceLive, NodeFileSystem.layer]))
                 case "set_person_mode":
                   return setPersonMode(String(request.params.arguments?.person))
                 case "get_traveler_info":
@@ -904,8 +836,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 case "get_sns_feeds":
                   return getSnsFeeds()
                 case "post_sns_writer":
-                  const image = request.params.arguments?.image;
-                  return postSnsWriter(String(request.params.arguments?.message), image)
+                  return postSnsWriter(String(request.params.arguments?.message))
                 case "reply_sns_writer":
                   return replySnsWriter(String(request.params.arguments?.message), String(request.params.arguments?.id))
                 default:
@@ -915,7 +846,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
 
             return await toolSwitch().pipe(
                 Effect.andThen(a => a as { content: ToolContentResponse[] }),
-                // Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer]),
                 Effect.catchIf(a => a instanceof AnswerError, e => {
                   return Effect.succeed({
                     content: [{
@@ -937,10 +867,9 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 Effect.runPromise)
           });
 
-          // console.log(initSystemMode)
           const transport = new StdioServerTransport();
-          return DbService.initSystemMode().pipe(Effect.andThen(a => Effect.tryPromise({
-                try: signal => {
+          return DbService.initSystemMode().pipe(Effect.andThen(() => Effect.tryPromise({
+                try: () => {
                   return server.connect(transport)
                 },
                 catch: error => {
@@ -952,18 +881,18 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
 
         function sendToolListChanged() {
           return Effect.tryPromise({
-            try: signal => server.sendToolListChanged(),
+            try: () => server.sendToolListChanged(),
             catch: error => {
               //  MCPではstdoutは切られている
               McpLogService.logError(`sendToolListChanged error:${error}`)
               return new Error(`sendToolListChanged error:${error}`)
             }
-          }).pipe(Effect.tap(a => McpLogService.log('sendToolListChanged put')))
+          }).pipe(Effect.tap(() => McpLogService.log('sendToolListChanged put')))
         }
 
         function sendLoggingMessage(message: string, level = 'info') {
           return Effect.tryPromise({
-            try: signal => server.sendLoggingMessage({
+            try: () => server.sendLoggingMessage({
               level: level as "info" | "error" | "debug" | "notice" | "warning" | "critical" | "alert" | "emergency",
               data: message,
             }),

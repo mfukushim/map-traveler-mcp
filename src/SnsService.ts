@@ -14,7 +14,6 @@ const agent = new AtpAgent({service: 'https://bsky.social'})
 let isLogin = false
 
 export interface AtPubNotification {
-  // clientId: number;
   mentionType: string;
   createdAt: string;
   name: string;
@@ -24,7 +23,6 @@ export interface AtPubNotification {
   rootUri?: string;
   parentUri?: string;
   detectEpoch: number;
-  // mentionDayDiff: number;
 }
 
 export class SnsService extends Effect.Service<SnsService>()("traveler/SnsService", {
@@ -36,16 +34,15 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
             if (!(Process.env.bs_id && Process.env.bs_pass && Process.env.bs_handle)) return yield* Effect.fail(new Error('no bs account'));
             if (isLogin) return yield* Effect.succeed(true);
             yield* Effect.tryPromise({
-              try: signal => {
+              try: () => {
                 return agent.login({
                   identifier: Process.env.bs_id || '',
                   password: Process.env.bs_pass || '',
                 })
-              }
-              ,
+              },
               catch: error => new Error(`${error}`)
             }).pipe(Effect.tap(a => !a.success && Effect.fail(new Error("bs login fail"))),
-                Effect.andThen(a => {
+                Effect.andThen(() => {
                   isLogin = true
                   return 'true'
                 }));
@@ -53,8 +50,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
         }
 
         function uploadBlob(image: Buffer, mime = "image/png") {
-          // const mime = mediaType === "webm" ? "image/webm" : mediaType === "gif" ? "image/gif" : mediaType === "jpeg" ? "image/jpeg" : "image/png"
-          return Effect.tryPromise(signal => agent.uploadBlob(image, {encoding: mime,})).pipe(
+          return Effect.tryPromise(() => agent.uploadBlob(image, {encoding: mime,})).pipe(
               Effect.tap(a => !a.success && Effect.fail(new Error(`bs uploadBlob error:${a.headers}`))),
               Effect.andThen(a => a.data.blob)
           )
@@ -75,7 +71,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
             }
           }
           return reLogin().pipe(
-              Effect.andThen(a => {
+              Effect.andThen(() => {
                 const rt = new RichText({text: message})
                 const post = {
                   $type: "app.bsky.feed.post",
@@ -83,7 +79,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
                   facets: rt.facets || [],
                   createdAt: dayjs().toISOString(),
                 }
-                return Effect.tryPromise(signal => rt.detectFacets(agent)).pipe(Effect.andThen(a1 => Effect.succeed(post)))
+                return Effect.tryPromise(() => rt.detectFacets(agent)).pipe(Effect.andThen(() => Effect.succeed(post)))
               }),
               Effect.andThen(post => {
                 return image ? uploadBlob(image.buf, image.mime).pipe(
@@ -102,7 +98,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
               }),
               Effect.andThen(a => {
                 return Effect.tryPromise({
-                  try: signal => agent.post(a),
+                  try: () => agent.post(a),
                   catch: error => new Error(`${error}`)
                 })
               }),
@@ -112,23 +108,19 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
         }
 
         function getOwnProfile() {
-          const bsHandle = Process.env.bs_handle
-          if (!bsHandle) {
-            return Effect.fail(new Error('no bs handle'))
-          }
-          return getProfile(Process.env.bs_handle!);
+          return Process.env.bs_handle ? getProfile(Process.env.bs_handle!) : Effect.fail(new Error('no bs handle'));
         }
 
         function getProfile(handle: string) {
           return reLogin().pipe(
-              Effect.andThen(Effect.tryPromise(signal => agent.getProfile({actor: handle}))),
+              Effect.andThen(Effect.tryPromise(() => agent.getProfile({actor: handle}))),
               Effect.tap(a => !a.success && Effect.fail(new Error('getProfile error'))),
               Effect.andThen(a => a.data));
         }
 
         function getActorLikes(handle: string) {
           return reLogin().pipe(
-              Effect.andThen(Effect.tryPromise(signal => agent.getActorLikes({actor: handle}))),
+              Effect.andThen(Effect.tryPromise(() => agent.getActorLikes({actor: handle}))),
               Effect.tap(a => !a.success && Effect.fail(new Error('getActorLikes error'))),
               Effect.retry(Schedule.recurs(2).pipe(Schedule.intersect(Schedule.spaced("10 seconds")))),
               Effect.andThen(a => a.data))
@@ -136,7 +128,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
 
         function getAuthorFeed(handle: string, length ?: number) {
           return reLogin().pipe(
-              Effect.andThen(Effect.tryPromise(signal => agent.getAuthorFeed({
+              Effect.andThen(Effect.tryPromise(() => agent.getAuthorFeed({
                 actor: handle,
                 filter: 'posts_no_replies',
                 limit: length || 10,
@@ -156,7 +148,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
             limit: length || 10,
           };
           return reLogin().pipe(
-              Effect.andThen(Effect.tryPromise(signal => agent.app.bsky.feed.getFeed(params))),
+              Effect.andThen(Effect.tryPromise(() => agent.app.bsky.feed.getFeed(params))),
               Effect.tap(a => !a.success && Effect.fail(new Error('getActorLikes error'))),
               Effect.retry(Schedule.recurs(2).pipe(Schedule.intersect(Schedule.spaced("10 seconds")))),
               Effect.andThen(a => a.data),
@@ -169,7 +161,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
 
         function getPost(uri: string) {
           return reLogin().pipe(
-              Effect.andThen(Effect.tryPromise(signal => agent.getPosts({uris: [uri]}))),
+              Effect.andThen(Effect.tryPromise(() => agent.getPosts({uris: [uri]}))),
               Effect.tap(a => !a.success && Effect.fail(new Error('getPost fail'))),
               Effect.retry(Schedule.recurs(2).pipe(Schedule.intersect(Schedule.spaced("10 seconds")))),
               Effect.andThen(a => a.data))
@@ -190,7 +182,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
                 id: yield* DbService.saveSnsPost(JSON.stringify(bsPostId), Process.env.bs_handle)
               })
             }
-            //  他sns
+            //  TODO 他sns
             return postIds
           })
         }
@@ -208,14 +200,14 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
                 id: yield* DbService.saveSnsPost(JSON.stringify(bsPostId), Process.env.bs_handle)
               })
             }
-            //  他sns
+            //  当面はbsのみ
             return postIds
           })
         }
 
-        function getNotification(seenAtEpoch?: number) { //  : Promise<AtPubNotification[]>
+        function getNotification(seenAtEpoch?: number) {
           return reLogin().pipe(
-              Effect.andThen(Effect.tryPromise(signal => agent.listNotifications())),
+              Effect.andThen(Effect.tryPromise(() => agent.listNotifications())),
               Effect.tap(a => !a.success && Effect.fail(new Error('getNotification fail'))),
               Effect.andThen(a => a.data.notifications),
               Effect.tap(a => McpLogService.logTrace(`notification num:${a.length}`)),
@@ -224,7 +216,6 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
                 return a.filter(v => (!seenAtEpoch || dayjs(v.indexedAt).unix() > seenAtEpoch) && v.reason !== "follow").map(value => {
                   if (value.reason === "reply") {
                     return {
-                      // clientId: clientId,
                       uri: value.uri, //  reply記事そのもの
                       cid: value.cid,
                       rootUri: (value.record as any).reply.root.uri as string,  //  replyの起点記事
@@ -234,17 +225,10 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
                       handle: value.author.handle,
                       createdAt: (value.record as any).createdAt as string,
                       detectEpoch: dayjs(value.indexedAt).unix(),
-                      // mentionDayDiff: diff
                     }
                   } else {
                     //  like
-                    // const basePost = await this.getPost(clientId, uri);
-                    // if (basePost) {
-                    //   const baseCreated = dayjs(basePost.posts[0].indexedAt)
-                    //   diff = dayjs(value.indexedAt).diff(baseCreated, "day")
-                    // }
                     return {
-                      // clientId: clientId,
                       uri: (value.record as any).subject.uri, //  likeそのものではなくその付けた元,
                       cid: (value.record as any).subject.cid,
                       mentionType: value.reason as string,
@@ -252,13 +236,11 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
                       handle: value.author.handle,
                       createdAt: (value.record as any).createdAt as string,
                       detectEpoch: dayjs(value.indexedAt).unix(),
-                      // mentionDayDiff: diff
                     }
                   }
                 })
               })
           )
-
         }
 
         return {
@@ -277,7 +259,6 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
       }
   )
 }) {
-
 }
 
 export const SnsServiceLive = SnsService.Default
