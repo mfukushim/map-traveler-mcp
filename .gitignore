@@ -18,8 +18,6 @@ scratchpad/*
 /src/db/mimi_test.sqlite
 /tools/test/hotelPict.png
 /tools/test/makeHotelPict.jpg
-/tools/1734408861_planeImage.jpg
-/tools/test.jpg
 /.env.test
 /.github/actions/setup/action.yml
 /.github/workflows/check.yml

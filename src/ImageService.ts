@@ -19,16 +19,17 @@ export const defaultBaseCharPrompt = 'depth of field, cinematic composition, mas
 
 let recentImage: Buffer | undefined //  直近の1生成画像を保持する snsのpostに自動引用する
 
+const key: string = Process.env.sd_key || ''
+const defaultPixAiModelId = '1648918127446573124';
+
+const pixAiClient = new PixAIClient({
+  apiKey: Process.env.pixAi_key || '',
+  webSocketImpl: WebSocket
+})
+
 export class ImageService extends Effect.Service<ImageService>()("traveler/ImageService", {
   accessors: true,
   effect: Effect.gen(function* () {
-    const key: string = Process.env.sd_key || ''
-    const defaultPixAiModelId = '1648918127446573124';
-
-    const pixAiClient = new PixAIClient({
-      apiKey: Process.env.pixAi_key || '',
-      webSocketImpl: WebSocket
-    })
 
     function sdMakeTextToImage(prompt: string, opt?: {
       width: number,
@@ -152,6 +153,9 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       steps: number,
       cfg_scale: number,
     }) {
+      if (!Process.env.pixAi_key) {
+        return Effect.fail(new Error('no key'))
+      }
       return Effect.retry(
           Effect.gen(function* () {
             let mediaId
@@ -208,7 +212,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               Effect.tap(a => McpLogService.logTrace(`downloadMedia out:${a.slice(0, 10)}`)),
               Effect.tapError(a => McpLogService.logError(`downloadMedia err:${a}`)),
               Effect.andThen(a => Effect.succeed(Buffer.from(a).toString('base64')))
-          ), Schedule.recurs(4).pipe(Schedule.intersect(Schedule.spaced("10 seconds")))).pipe(Effect.provide([McpLogServiceLive]))
+          ), Schedule.recurs(4).pipe(Schedule.intersect(Schedule.spaced("10 seconds")))).pipe(Effect.provide([McpLogServiceLive]));
     }
 
     /**
@@ -498,7 +502,6 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
                       Effect.tap(a => McpLogService.logTrace(`'check runner image:${retry},${a}`)),  //, retry, number, alphaNum.rect.w, alphaNum.rect.h\
                       Effect.andThen(a => {
                         //  非透明度が0.02以上かつ範囲の縦と横の比率が3:1以上なら完了 counterfeit V3=0.015, counterfeit LX 0.03 にしてみる
-                        //  TODO 非透明面積に乱数要素を入れてある程度強制的に立ち絵を発生させるか
                         //  比率値を3から2.5にしてみる。ダメ映像が増えたらまた調整する。。非透明率を0.015にしてみる
                         return a.number > bodyAreaRatio && a.alphaNum.rect.h / a.alphaNum.rect.w > bodyHWRatio
                             ? Effect.succeed(avatarImage) : Effect.fail(new Error('avatar fail'));

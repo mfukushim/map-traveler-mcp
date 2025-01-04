@@ -175,6 +175,9 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
      * @param method
      */
     function calcDomesticTravelRoute(depLat: number, depLng: number, destLat: number, destLng: number, depCountry: string, destCountry: string, method: "BICYCLING" | "TRANSIT" = "BICYCLING") {
+      if (!Process.env.GoogleMapApi_key) {
+        return Effect.fail(new Error('no key'))
+      }
       return Effect.gen(function* () {
         const client = yield* HttpClient.HttpClient
         return yield* client.get(`https://maps.googleapis.com/maps/api/directions/json`, {
@@ -246,6 +249,9 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
      * @param address
      */
     function getMapLocation(address: string) {
+      if (!Process.env.GoogleMapApi_key) {
+        return Effect.fail(new Error('no key'))
+      }
       return Effect.gen(function* () {
         const client = yield* HttpClient.HttpClient
         return yield* HttpClientRequest.post('https://places.googleapis.com/v1/places:searchText').pipe(
@@ -283,6 +289,9 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
      * @param additionalType
      */
     function getNearly(lat: number, lng: number, radius = 2000, findLandMark = false, additionalType: string[] = []) {
+      if (!Process.env.GoogleMapApi_key) {
+        return Effect.fail(new Error('no key'))
+      }
       return Effect.gen(function* () {
         const client = yield* HttpClient.HttpClient
         return yield* HttpClientRequest.post('https://places.googleapis.com/v1/places:searchNearby').pipe(
@@ -377,6 +386,9 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
     }
 
     function getStreetViewImage(lat: number, lng: number, bearing: number, width: number, height: number) {
+      if (!Process.env.GoogleMapApi_key) {
+        return Effect.fail(new Error('no key'))
+      }
       const query = querystring.stringify({
         size: `${width}x${height}`,
         location: `${lat.toFixed(15)},${lng.toFixed(15)}`,
