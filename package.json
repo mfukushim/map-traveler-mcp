@@ -10,6 +10,7 @@
     "assets",
     "drizzle/"
   ],
+  "packageManager": "pnpm@9.10.0",
   "license": "MIT",
   "description": "Virtual traveler library for MCP",
   "private": "true",
