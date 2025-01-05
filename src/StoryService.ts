@@ -4,6 +4,7 @@ import timezone = require("dayjs/plugin/timezone")
 import {MapDef, MapService} from "./MapService.js";
 import {DbService, env} from "./DbService.js";
 import {McpLogService} from "./McpLogService.js";
+import * as Process from "node:process";
 
 dayjs.extend(timezone)
 
@@ -137,6 +138,7 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
       })
     }
 
+    //  region info
     /**
      * 現在のステータスからユーザに何か指南する情報を与える
      * または汎用のtipsを示す
@@ -193,7 +195,14 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
                 ' https://platform.stability.ai/docs/getting-started https://platform.stability.ai/account/keys ' +
                 ' https://pixai.art/ https://platform.pixai.art/docs/getting-started/00---quickstart/ ' +
                 ' Please specify the API key in the configuration file(claude_desktop_config.json).' +
-                ' "env":["pixAi_key=(api key)"] or "env":["sd_key=(api key)"] ')
+                `claude_desktop_config.json\n
+\`\`\`
+"env":{"pixAi_key":"xyzxyz"}
+or
+"env":{"sd_key":"xyzxyz"}
+\`\`\`
+`
+            )
           }
           if (!env.pythonExist) {
             textList.push('In order to synthesize avatar images, your PC must be running Python.' +
@@ -201,6 +210,11 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
           }
           //  基本動作状態
           //  TODO bsアカウントがあれば
+          const bsEnable = Process.env.bs_id && Process.env.bs_pass && Process.env.bs_handle
+          if (!bsEnable) {
+            textList.push('' +
+                '')
+          }
 
         }
 
@@ -269,6 +283,7 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
         }
       })
     }
+    // endregion
 
     return {
       tips,

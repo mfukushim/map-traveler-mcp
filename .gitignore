@@ -19,9 +19,6 @@ scratchpad/*
 /tools/test/hotelPict.png
 /tools/test/makeHotelPict.jpg
 /.env.test
-/.github/actions/setup/action.yml
-/.github/workflows/check.yml
-/.github/workflows/snapshot.yml
 /.vscode/extensions.json
 /.vscode/settings.json
 /simpleLog.txt

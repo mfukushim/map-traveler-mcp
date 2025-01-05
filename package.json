@@ -1,22 +1,26 @@
 {
-  "name": "map-traveler-mcp",
+  "name": "@mfukushim/map-traveler-mcp",
   "version": "0.1.0",
   "type": "module",
   "bin": {
     "map-traveler-mcp": "build/esm/index.js"
   },
   "files": [
-    "dist"
+    "build/esm/",
+    "assets",
+    "drizzle/"
   ],
   "license": "MIT",
   "description": "Virtual traveler library for MCP",
+  "private": "true",
   "repository": {
     "type": "git",
-    "url": "https://github.com/mfukushim/map-traveler-mcp"
+    "url": "https://github.com/mfukushim/map-traveler-mcp.git"
   },
   "publishConfig": {
     "access": "public",
-    "directory": "dist"
+    "directory": "dist",
+    "registry":"https://npm.pkg.github.com"
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",
@@ -80,11 +84,6 @@
       "include": [
         "**/*.ts"
       ]
-    }
-  },
-  "pnpm": {
-    "patchedDependencies": {
-      "babel-plugin-annotate-pure-calls@0.4.0": "patches/babel-plugin-annotate-pure-calls@0.4.0.patch"
     }
   }
 }
