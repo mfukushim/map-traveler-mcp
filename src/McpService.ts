@@ -490,6 +490,11 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                   name: "role.txt",
                   description: "The purpose and role of AI"
                 }, {
+                  uri: "file:///roleWithSns.txt",
+                  mimeType: "text/plain",
+                  name: "roleWithSns.txt",
+                  description: "The purpose and role of AI with SNS"
+                }, {
                   uri: "file:///credit.txt",
                   mimeType: "text/plain",
                   name: "credit.txt",
