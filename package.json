@@ -21,7 +21,7 @@
   "publishConfig": {
     "access": "public",
     "directory": "dist",
-    "registry":"https://npm.pkg.github.com",
+    "registry": "https://npm.pkg.github.com",
     "@mfukushim:registry": "https://npm.pkg.github.com"
   },
   "scripts": {
@@ -86,6 +86,11 @@
       "include": [
         "**/*.ts"
       ]
+    }
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "babel-plugin-annotate-pure-calls@0.4.0": "patches/babel-plugin-annotate-pure-calls@0.4.0.patch"
     }
   }
 }
