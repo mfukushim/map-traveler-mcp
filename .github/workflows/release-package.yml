@@ -9,11 +9,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
         with:
-          node-version: 22
-      - run: npm ci
-      - run: npm test
+          token: ${{ secrets.PERSONALACCESSTOKEN }}
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - run: pnpm build
 
   publish-gpr:
     needs: build
@@ -28,6 +28,7 @@ jobs:
           node-version: 22
           registry-url: https://npm.pkg.github.com/
       - run: npm ci
+      - run: npm build:npm
       - run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}

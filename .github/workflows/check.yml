@@ -23,10 +23,6 @@ jobs:
       - name: Install dependencies
         uses: ./.github/actions/setup
       - run: pnpm build
-      - run: pnpm codegen
-      - name: Check source state
-        run: git add packages/*/src && git diff-index --cached HEAD --exit-code
-          packages/*/src
   types:
     name: Types
     runs-on: ubuntu-latest

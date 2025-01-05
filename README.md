@@ -1,4 +1,4 @@
-# map-traveler-mcp
+# @mfukushim/map-traveler-mcp
 
 Google map上を仮想的に旅するアバターの環境を作るMCP serverです。
 
@@ -7,46 +7,51 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 ## 設定
 
 複数のGoogle mapのアクセスや画像生成など複数のAPIのアクセスキーを取得して設定する必要があります。
-しかし、確認用にAPIキーを必要としない練習モードで実行することもできます。
 
-必要とするAPI
 
-Google Map API - Google Street View static,Near Places (NEW), 
-
-練習モードの場合は以下の設定でOKです。
+Claude Desktopで使用する場合の設定  
+claude_desktop_config.json
 ```json
 {
   "mcpServers": {
     "traveler": {
       "command": "npx",
-      "args": ["-y", "map-traveler-mcp"]
+      "args": ["-y", "@mfukushim/map-traveler-mcp"],
+      "env":{
+      	  	"GoogleMapApi_key":"(Google Map APIのキー)",
+            "pixAi_key":"(pixAi APIのキー)",
+			"sd_key":"(またはStability.aiのAPIのキー",
+			"sqlite_path":"(db保存ファイルのパス 例 %USERPROFILE%/Desktop/traveler.sqlite など)",
+			"bs_id":"(bluesky snsの登録アドレス)",
+			"bs_pass":"(bluesky snsのパスワード)",
+			"bs_handle":"(bluesky snsのハンドル名 例 geo-less-traveler.bsky.social など)"
+      }
+    }
+  }
+}
+```
+Google Map APIは以下の3つの権限を設定してください。  
+- Street View Static API
+- Places API (New)
+- Time Zone API
+
+
+画像生成AIを使う場合は、 pixAi_keyまたはsd_keyのいずれかを設定します。  
+bluesky SNSのアドレス/パスワード は任意です。自動ポストするので専用のアカウントを取ることを推奨します。  
+
+確認用にAPIキーを必要としない練習モードで実行することもできます。
+
+練習モードの設定  
+claude_desktop_config.json
+```json
+{
+  "mcpServers": {
+    "traveler": {
+      "command": "npx",
+      "args": ["-y", "@mfukushim/map-traveler-mcp"]
     }
   }
 }
 ```
 
-This template leverages [tsx](https://tsx.is) to allow execution of TypeScript files via NodeJS as if they were written in plain JavaScript.
-
-To execute a file with `tsx`:
-
-```sh
-pnpm tsx ./path/to/the/file.ts
-```
-
-## Operations
-
-**Building**
-
-To build the package:
-
-```sh
-pnpm build
-```
-
-**Testing**
-
-To test the package:
-
-```sh
-pnpm test
-```
+## 使い方

@@ -25,7 +25,8 @@
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",
-    "build": "pnpm build-esm && pnpm build-annotate",
+    "build": "pnpm build-esm",
+    "build:npm": "npm build-esm",
     "build-esm": "tsc -b tsconfig.build.json",
     "build-annotate": "babel build/esm --plugins annotate-pure-calls --out-dir build/esm --source-maps",
     "build:shx": "pnpm build-esm && shx chmod +x build/esm/*.js",

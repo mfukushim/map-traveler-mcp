@@ -14,7 +14,7 @@ import 'dotenv/config'
 import {McpLogService} from "./McpLogService.js";
 import {FileSystem} from "@effect/platform";
 import {NodeFileSystem} from "@effect/platform-node";
-import {AnswerError} from "./index.js";
+import {AnswerError} from "./mapTraveler.js";
 import * as path from "path";
 
 

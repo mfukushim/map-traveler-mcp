@@ -17,7 +17,7 @@ import {FetchHttpClient, FileSystem} from "@effect/platform";
 import {ImageService, ImageServiceLive} from "./ImageService.js";
 import {NodeFileSystem} from "@effect/platform-node";
 import {McpLogService, McpLogServiceLive} from "./McpLogService.js";
-import {AnswerError} from "./index.js";
+import {AnswerError} from "./mapTraveler.js";
 import {AtPubNotification, SnsService, SnsServiceLive} from "./SnsService.js";
 import * as Process from "node:process";
 import {FeedViewPost} from "@atproto/api/dist/client/types/app/bsky/feed/defs.js";
