@@ -6,6 +6,7 @@ import {FetchHttpClient} from "@effect/platform";
 import * as fs from "node:fs";
 import {McpLogServiceLive} from "../src/McpLogService.js";
 
+const inGitHubAction = process.env.GITHUB_ACTIONS === 'true';
 
 describe("Map", () => {
 
@@ -62,7 +63,9 @@ describe("Map", () => {
         Effect.provide(MapServiceLive),
         Effect.tapError(e =>Effect.logError(e.toString())),
         Effect.tap(a => {
-          fs.writeFileSync("tools/test.jpg", a)
+          if (!inGitHubAction) {
+            fs.writeFileSync("tools/test.jpg", a);
+          }
           return Effect.log(a.length);
         }),
         Effect.catchIf(a => a.toString() === 'Error: no key', e => Effect.succeed({})),

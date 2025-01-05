@@ -9,6 +9,8 @@ import {NodeFileSystem} from "@effect/platform-node"
 import {transparentBackground} from "transparent-background";
 import {McpLogService, McpLogServiceLive} from "../src/McpLogService.js";
 
+const inGitHubAction = process.env.GITHUB_ACTIONS === 'true';
+
 describe("Image", () => {
   beforeAll(async () => {
     return await DbService.initSystemMode().pipe(
@@ -29,7 +31,10 @@ describe("Image", () => {
         runPromise
     )
 
-    fs.writeFileSync("tools/test/makeHotelPict.jpg", res)
+    if (!inGitHubAction) {
+      fs.writeFileSync("tools/test/makeHotelPict.jpg", res);
+    }
+
     expect(res).toBeInstanceOf(Buffer)
   })
   it("pixAiMakeT2I", async () => {
@@ -44,7 +49,7 @@ describe("Image", () => {
         Effect.tap(a => Effect.log(a.length)),
         runPromise
     )
-    if ("noKey" !== res) {
+    if ("noKey" !== res && !inGitHubAction) {
       fs.writeFileSync("tools/test/pixAiMakeImage.jpg", Buffer.from(res, "base64"));
     }
     expect(typeof res).toBe('string')
@@ -63,7 +68,7 @@ describe("Image", () => {
         Effect.tap(a => McpLogService.log(a.length).pipe(Effect.provide(McpLogServiceLive))),
         runPromise
     )
-    if ("noKey" !== res) {
+    if ("noKey" !== res && !inGitHubAction) {
       fs.writeFileSync("tools/test/pixAiMakeI2I.jpg", Buffer.from(res, "base64"))
     }
     expect(typeof res).toBe('string')
@@ -74,7 +79,9 @@ describe("Image", () => {
     const buf = await transparentBackground(buffer, "png", {
       fast: false,
     });
-    fs.writeFileSync("tools/test/rembg.jpg", buf)
+    if (!inGitHubAction) {
+      fs.writeFileSync("tools/test/rembg.jpg", buf);
+    }
     expect(buf).toBeInstanceOf(Buffer)
   })
   it("makeRunnerImageV3_i2i", async () => {
@@ -87,7 +94,9 @@ describe("Image", () => {
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => Effect.logError(e.toString())),
         Effect.tap(a => {
-          fs.writeFileSync("tools/test/makeRunnerImageV3.png", a.buf);
+          if (!inGitHubAction) {
+            fs.writeFileSync("tools/test/makeRunnerImageV3.png", a.buf);
+          }
         }),
         Effect.catchIf(a => a.toString() === 'Error: no key', e => Effect.succeed({})),
         Effect.tap(a => Effect.log(a)),
