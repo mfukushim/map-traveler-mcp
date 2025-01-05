@@ -20,7 +20,8 @@
   "publishConfig": {
     "access": "public",
     "directory": "dist",
-    "registry":"https://npm.pkg.github.com"
+    "registry":"https://npm.pkg.github.com",
+    "@mfukushim:registry": "https://npm.pkg.github.com"
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",

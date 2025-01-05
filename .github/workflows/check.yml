@@ -18,6 +18,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PERSONALACCESSTOKEN }}
       - name: Install dependencies
         uses: ./.github/actions/setup
       - run: pnpm codegen
@@ -30,6 +32,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PERSONALACCESSTOKEN }}
       - name: Install dependencies
         uses: ./.github/actions/setup
       - run: pnpm check
@@ -39,6 +43,8 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PERSONALACCESSTOKEN }}
       - name: Install dependencies
         uses: ./.github/actions/setup
       - run: pnpm test
