@@ -1,16 +1,6 @@
 import {sqliteTable, integer, text, real, unique} from "drizzle-orm/sqlite-core"
 
 
-//  TODO マイグレーション時にschema.tsの直下にschema.jsが作られてそれが常に不一致になるようだ。。都度schema.jsを削除しないとdb周りがおかしくなる。。
-
-export const testTab = sqliteTable("test_tab", {
-  id: integer('id', {mode: "number"}).primaryKey({autoIncrement: true}),
-  issueId: text("issue_id").notNull(),
-  comment: text("comment"),
-  del: integer("del", {mode: "boolean"}).default(false).notNull(),
-  created: integer("created", {mode: "timestamp"}).notNull(),
-});
-
 
 export const runAvatar = sqliteTable("run_avatar", {
   id: integer('id', {mode: "number"}).primaryKey({autoIncrement: true}),
@@ -34,7 +24,6 @@ export const avatarModel = sqliteTable("avatar_model", {
 
 
 export const runAbroadRoute = sqliteTable("run_abroad_route", {
-    // id: integer("id").primaryKey().notNull(),
     id: integer('id', {mode: "number"}).primaryKey({autoIncrement: true}).notNull(),
     html_instructions: text('html_instructions').notNull(),
     maneuver: text('maneuver').notNull(), //  本来向き操作の意味だがferryがここに入っているのでそれに合わせてairplaneをここに入れる
@@ -131,11 +120,9 @@ export const run_history = sqliteTable("run_history", {
     appendPrompt: text("appendPrompt").default('NULL'),
     pictAuthor: text("pictAuthor").default('NULL'),
   },
-  (table) => {
-    return {
-      UQ_seq: unique("UQ_seq").on(table.seq),
-    }
-  });
+  (table) => [
+      unique("UQ_seq").on(table.seq),
+  ])
 
 export type SnsType = "bs"| "tw"| "md"| "sk";
 

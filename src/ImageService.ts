@@ -1,4 +1,4 @@
-import {Effect, Option, Schedule} from "effect";
+import {Effect, Schedule} from "effect";
 import sharp = require("sharp");
 import {FetchHttpClient, HttpClient, HttpClientRequest, FileSystem} from "@effect/platform";
 import dayjs from "dayjs";
@@ -19,84 +19,17 @@ export const defaultBaseCharPrompt = 'depth of field, cinematic composition, mas
 
 let recentImage: Buffer | undefined //  直近の1生成画像を保持する snsのpostに自動引用する
 
+const key: string = Process.env.sd_key || ''
+const defaultPixAiModelId = '1648918127446573124';
+
+const pixAiClient = new PixAIClient({
+  apiKey: Process.env.pixAi_key || '',
+  webSocketImpl: WebSocket
+})
+
 export class ImageService extends Effect.Service<ImageService>()("traveler/ImageService", {
   accessors: true,
   effect: Effect.gen(function* () {
-    const key: string = Process.env.sd_key || ''// config.get('StabilityAI.key')  // Process.env.GoogleMapApi_key
-    const defaultPixAiModelId = '1648918127446573124';
-
-    const pixAiClient = new PixAIClient({
-      apiKey: Process.env.pixAi_key || '',
-      webSocketImpl: WebSocket
-    })
-
-    /**
-     * SDモデル基本定義
-     * モデル名からモデルパラメータを設定する部分をとりあえず定数定義→TODO MCP版ではプロンプトはenvへ
-     */
-    const modelInfoList = [
-      {
-        name: 'CounterfeitXL_β',
-        modelFile: 'CounterfeitXL_β.safetensors',
-        vaeFile: 'diffusion_pytorch_model.safetensors',
-        baseNegaPrompt: 'embedding:negativeXL_D.safetensors,elf', //  将来サンプラーとスケジューラーもモデル指定にするかも
-        modelSnsName: 'CounterfeitXL_β'
-      },
-      {
-        name: 'emi',
-        modelFile: 'emi.safetensors',
-        vaeFile: 'diffusion_pytorch_model_emi.safetensors',
-        baseNegaPrompt: 'embedding:unaestheticXL_AYv1.safetensors,text', //  将来サンプラーとスケジューラーもモデル指定にするかも
-        modelSnsName: 'emi'
-      },
-      {
-        name: 'emi2',
-        modelFile: 'emi-2.safetensors',
-        vaeFile: 'diffusion_pytorch_model_emi2.safetensors',
-        baseNegaPrompt: 'embedding:unaestheticXLv31.safetensors,text', //  将来サンプラーとスケジューラーもモデル指定にするかも
-        modelSnsName: 'emi-2'
-      },
-      {
-        name: 'emi25',
-        modelFile: 'emi-2-5.safetensors',
-        vaeFile: 'diffusion_pytorch_model_emi25.safetensors',
-        baseNegaPrompt: 'embedding:unaestheticXL_bp5.safetensors,text', //  将来サンプラーとスケジューラーもモデル指定にするかも
-        modelSnsName: 'emi-2.5'
-      },
-      {
-        name: 'animagine3',
-        modelFile: 'animagine-xl-3.0.safetensors',
-        vaeFile: 'diffusion_pytorch_model.safetensors',
-        baseNegaPrompt: 'nsfw,lowres,bad anatomy,bad hands,text,error,missing fingers,extra digit,fewer digits,cropped,worst quality,low quality,normal quality,jpeg artifacts,signature,watermark,username,blurry,artist name,elf', //  将来サンプラーとスケジューラーもモデル指定にするかも
-        modelSnsName: 'animagine-xl-3.0'
-      },
-      {
-        name: 'animagine31',
-        modelFile: 'animagine-xl-3.1.safetensors',
-        vaeFile: 'diffusion_pytorch_model.safetensors',
-        baseNegaPrompt: 'nsfw,lowres,bad anatomy,bad hands,text,error,missing fingers,extra digit,fewer digits,cropped,worst quality,low quality,normal quality,jpeg artifacts,signature,watermark,username,blurry,artist name,elf', //  将来サンプラーとスケジューラーもモデル指定にするかも
-        modelSnsName: 'animagine-xl-3.1'
-      },
-      {
-        name: 'bluePencilXl6',
-        modelFile: 'blue_pencil-XL-v6.0.0.safetensors',
-        vaeFile: 'diffusion_pytorch_model.safetensors',
-        baseNegaPrompt: 'nsfw,lowres,bad anatomy,bad hands,text,error,missing fingers,extra digit,fewer digits,cropped,worst quality,low quality,normal quality,jpeg artifacts,signature,watermark,username,blurry,artist name,elf', //  将来サンプラーとスケジューラーもモデル指定にするかも
-        modelSnsName: 'blue_pencil-XL6'
-      },
-      {
-        name: 'CounterfeitXL25',
-        modelFile: 'CounterfeitXL-V2.5.safetensors',
-        vaeFile: 'diffusion_pytorch_model.safetensors',
-        baseNegaPrompt: 'embedding:negativeXL_D.safetensors,elf', //  将来サンプラーとスケジューラーもモデル指定にするかも
-        modelSnsName: 'CounterfeitXL-2.5'
-      },
-    ]
-
-    function getModelInfo(modelName: string) {
-      return Option.fromNullable(modelInfoList.find(value => value.name === modelName))
-    }
-
 
     function sdMakeTextToImage(prompt: string, opt?: {
       width: number,
@@ -125,8 +58,6 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           return yield* Effect.fail(new Error('param weight too long'))
         }
         const client = yield* HttpClient.HttpClient;
-        // const form = new FormData()
-        // form.append('responseType','arraybuffer')
         return yield* HttpClientRequest.post(`https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image`).pipe(
             HttpClientRequest.setHeaders({
               Authorization: `Bearer ${key}`,
@@ -150,7 +81,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               }
               return Effect.succeed(a.artifacts.map(c => c.base64))
             }),
-            Effect.retry({times: 2}),
+            Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
             Effect.mapError(e => new Error(`sdMakeTextToImage error:${e}`)),
             Effect.scoped,
         )
@@ -172,12 +103,12 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             form.append("image_strength", 0.35)
             form.append("init_image_mode", "IMAGE_STRENGTH")
             form.append("init_image", inImage)
-            form.append("text_prompts[0][text]", "A dog space commander")
+            form.append("text_prompts[0][text]", prompt)
             form.append("text_prompts[0][weight]", 1)
-            form.append("cfg_scale", 7)
-            form.append("sampler", "K_DPM_2_ANCESTRAL")
-            form.append("samples", 3)
-            form.append("steps", 30)
+            form.append("cfg_scale", opt?.cfg_scale || 7)
+            form.append("sampler", opt?.sampler || "K_DPM_2_ANCESTRAL")
+            form.append("samples", opt?.samples || 3)
+            form.append("steps", opt?.steps || 30)
             return yield* HttpClientRequest.post(`https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/image-to-image`).pipe(
                 HttpClientRequest.setHeaders({
                   Authorization: `Bearer ${key}`,
@@ -194,13 +125,12 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
                   }
                   return Effect.succeed(a.artifacts.map(c => c.base64))
                 }),
-                Effect.retry({times: 2}),
+                Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
                 Effect.mapError(e => new Error(`sdMakeImageToImage error:${e}`)),
                 Effect.scoped,
             )
           }
       ).pipe(Effect.provide(FetchHttpClient.layer))
-
     }
 
     function sdMakeImage(prompt: string, inImage?: Buffer, opt?: {
@@ -211,10 +141,8 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       steps: number,
       cfg_scale: number,
     }) {
-      if (inImage) {
-        return sdMakeImageToImage(prompt, inImage, opt).pipe(Effect.andThen(a => a[0]))
-      }
-      return sdMakeTextToImage(prompt, opt).pipe(Effect.andThen(a => a[0]))
+      return inImage ? sdMakeImageToImage(prompt, inImage, opt).pipe(Effect.andThen(a => a[0]))
+          : sdMakeTextToImage(prompt, opt).pipe(Effect.andThen(a => a[0]));
     }
 
     function pixAiMakeImage(prompt: string, inImage?: Buffer, opt?: {
@@ -225,6 +153,9 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       steps: number,
       cfg_scale: number,
     }) {
+      if (!Process.env.pixAi_key) {
+        return Effect.fail(new Error('no key'))
+      }
       return Effect.retry(
           Effect.gen(function* () {
             let mediaId
@@ -232,13 +163,10 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               const blob = new Blob([inImage], {type: 'image/jpeg'});
               const file = new File([blob], "image.jpg", {type: 'image/jpeg'})
               mediaId = yield* Effect.tryPromise({
-                try: signal => pixAiClient.uploadMedia(file),
+                try: () => pixAiClient.uploadMedia(file),
                 catch: error => new Error(`uploadMedia fail:${error}`)
               }).pipe(Effect.andThen(a1 => {
-                if (!a1.mediaId) {
-                  return Effect.fail(new Error(`uploadMedia fail`))
-                }
-                return Effect.succeed(a1.mediaId)
+                return !a1.mediaId ? Effect.fail(new Error(`uploadMedia fail`)) : Effect.succeed(a1.mediaId);
               }))
             }
             return mediaId
@@ -248,23 +176,18 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               Effect.andThen(a => {
                 const body = a ? {
                   prompts: prompt,
-                  modelId: Process.env.pixAi_modelId || defaultPixAiModelId, //1648918127446573124
-                  width: 512,
-                  height: 512,
+                  modelId: Process.env.pixAi_modelId || defaultPixAiModelId,
+                  width: opt?.width || 512,
+                  height: opt?.height || 512,
                   mediaId: a
                 } : {
                   prompts: prompt,
-                  modelId: Process.env.pixAi_modelId || defaultPixAiModelId, //1648918127446573124
-                  width: 512,
-                  height: 512,
+                  modelId: Process.env.pixAi_modelId || defaultPixAiModelId,
+                  width: opt?.width || 512,
+                  height: opt?.height || 512,
                 }
                 return Effect.tryPromise({
-                  try: signal => pixAiClient.generateImage(body,
-                      // {
-                      // onUpdate: task => {
-                      // console.log(new Date(), 'Task update:', task)
-                      // }
-                      // }
+                  try: () => pixAiClient.generateImage(body,
                   ),
                   catch: error => new Error(`generateImage fail:${error}`)
                 })
@@ -273,38 +196,27 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               Effect.tapError(a => McpLogService.logError(`generateImage ${a}`)),
               Effect.andThen(task => {
                 return Effect.tryPromise({
-                  try: signal => pixAiClient.getMediaFromTask(task as TaskBaseFragment), //  TODO
+                  try: () => pixAiClient.getMediaFromTask(task as TaskBaseFragment),
                   catch: error => new Error(`getMediaFromTask fail:${error}`)
                 })
               }),
               Effect.tap(a => McpLogService.logTrace(`getMediaFromTask ${a}`)),
               Effect.andThen(media => {
-                if (!media) {
-                  return Effect.fail(new Error(`media fail1:${media}`))
-                }
-                if (Array.isArray(media)) {
-                  return Effect.fail(new Error(`media fail2:${media}`))
-                }
+                if (!media) return Effect.fail(new Error(`media fail1:${media}`))
+                if (Array.isArray(media)) return Effect.fail(new Error(`media fail2:${media}`))
                 return Effect.tryPromise({
-                  try: signal => pixAiClient.downloadMedia(media as MediaBaseFragment), // TODO
+                  try: () => pixAiClient.downloadMedia(media as MediaBaseFragment),
                   catch: error => new Error(`downloadMedia fail:${error}`)
                 });
               }),
               Effect.tap(a => McpLogService.logTrace(`downloadMedia out:${a.slice(0, 10)}`)),
               Effect.tapError(a => McpLogService.logError(`downloadMedia err:${a}`)),
               Effect.andThen(a => Effect.succeed(Buffer.from(a).toString('base64')))
-          ), Schedule.recurs(4).pipe(Schedule.intersect(Schedule.spaced("10 seconds")))).pipe(Effect.provide([McpLogServiceLive]))
+          ), Schedule.recurs(4).pipe(Schedule.intersect(Schedule.spaced("10 seconds")))).pipe(Effect.provide([McpLogServiceLive]));
     }
 
     /**
      * ホテル画像
-     * , modelInfo: {
-     *                              vaeFile: string | undefined;
-     *                              modelFile: string | undefined;
-     *                              modelSnsName: string | undefined;
-     *                              name: string | undefined;
-     *                              baseNegaPrompt: string | undefined
-     *                            }
      * @param baseCharPrompt
      * @param selectGen
      * @param hour
@@ -316,7 +228,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         if (!env.anyImageAiExist || env.isPractice) {
           //  画像生成AIがなければ固定ホテル画像を使う
           const fs = yield* FileSystem.FileSystem
-          return yield* fs.readFile(path.join(__pwd,'assets/hotelPict.png')).pipe(Effect.andThen(a => Buffer.from(a)))
+          return yield* fs.readFile(path.join(__pwd, 'assets/hotelPict.png')).pipe(Effect.andThen(a => Buffer.from(a)))
         }
         let prompt = (baseCharPrompt || defaultBaseCharPrompt) + ',';
         if (hour < 6 || hour >= 19) {
@@ -387,28 +299,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               }
             }),
             Effect.andThen(a => Buffer.from(a[0], 'base64')))
-        // negative_prompt: modelInfo?.baseNegaPrompt || 'embedding:negativeXL_D.safetensors,elf',
-        // width: 768, height: 768, strength: 0.65,
-        // model: modelInfo?.modelFile || 'CounterfeitXL_β.safetensors',
-        // vae: modelInfo?.vaeFile || 'diffusion_pytorch_model.safetensors',
-        // sampler_name: 'lcm', //'dpmpp_2s_ancestral',
-        // scheduler: 'karras',
       })
-    }
-
-
-    function imageCrop(rawImage: Buffer) {
-      return Effect.gen(function* () {
-        const img = sharp(rawImage, {animated: true})
-        const meta = yield* Effect.tryPromise(signal => img.metadata());
-        const out = yield* Effect.tryPromise(signal => img.resize({
-          width: (meta.width || 256),
-          height: Math.floor((meta.height || 256) * 0.6),
-          fit: "inside"
-        }).png().toBuffer());
-        return Option.some(out.toString('base64'))
-      }).pipe(Effect.catchAll(e => Effect.succeed(Option.none())))
-
     }
 
     /**
@@ -420,12 +311,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
      */
     const generatePrompt = (baseCharPrompt: string, simple = false, withAbort = false) => {
       return Effect.gen(function* () {
-        let backPrompt: string
-        if (simple || withAbort) {
-          backPrompt = ',(simple background:1.2)' //  ,simple background
-        } else {
-          backPrompt = ',road'
-        }
+        const backPrompt = (simple || withAbort) ? ',(simple background:1.2)' : ',road'
         //  ここがキャラの基本スタイル
         const basePrompt = baseCharPrompt + backPrompt;
         const prompt: string[] = [];
@@ -517,7 +403,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
      */
     function checkPersonImage(avatarImage: Buffer, windowSize: { w: number; h: number }) {
       return Effect.gen(function* () {
-        const image = yield* Effect.tryPromise(signal => Jimp.read(avatarImage));
+        const image = yield* Effect.tryPromise(() => Jimp.read(avatarImage));
         // アルファ領域のピクセル数をカウントと囲むサイズを抽出する
         let minX = Number.MAX_SAFE_INTEGER
         let minY = Number.MAX_SAFE_INTEGER
@@ -568,12 +454,12 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             const windowSize = {w: 832, h: 1216}
             const cutPos = sideBias ? (Math.random() < 0.5 ? Math.random() * 0.3 : 0.7 + Math.random() * 0.3) : Math.random()
             const shiftX = Math.floor((innerSize.w - windowSize.w) * cutPos);  //  0～1で均等にランダム切り出しだったはず
-            const innerImage = yield* Effect.tryPromise(signal => sharp(basePhoto).resize({
+            const innerImage = yield* Effect.tryPromise(() => sharp(basePhoto).resize({
               width: innerSize.w,
               height: innerSize.h,
               fit: "fill"
             }).toBuffer());
-            const clopImage = yield* Effect.tryPromise(signal => sharp(innerImage).extract({
+            const clopImage = yield* Effect.tryPromise(() => sharp(innerImage).extract({
               left: shiftX,
               top: innerSize.h - windowSize.h,
               width: windowSize.w,
@@ -606,42 +492,38 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
                 Effect.andThen(a => Buffer.from(a, 'base64')),
                 Effect.tap(sdImage => localDebug && fs.writeFile('tools/test/testOutGen.png', sdImage, {flag: "w"})),
                 Effect.andThen(sdImage => Effect.tryPromise({
-                  try: signal => transparentBackground(sdImage, "png", {fast: false}),
+                  try: () => transparentBackground(sdImage, "png", {fast: false}),
                   catch: error => `transparentBackground error:${error}`
                 })),
                 Effect.tap(avatarImage => localDebug && fs.writeFile('tools/test/testOutRmBg.png', avatarImage, {flag: "w"})),
                 Effect.tap(avatarImage => {
-                  //  TODO tap内のfailは正しくきくっけ?
                   //  非透明度判定 0.02以上
                   return checkPersonImage(avatarImage, windowSize).pipe(
                       Effect.tap(a => McpLogService.logTrace(`'check runner image:${retry},${a}`)),  //, retry, number, alphaNum.rect.w, alphaNum.rect.h\
                       Effect.andThen(a => {
                         //  非透明度が0.02以上かつ範囲の縦と横の比率が3:1以上なら完了 counterfeit V3=0.015, counterfeit LX 0.03 にしてみる
-                        //  TODO 非透明面積に乱数要素を入れてある程度強制的に立ち絵を発生させるか
-                        if (a.number > bodyAreaRatio && a.alphaNum.rect.h / a.alphaNum.rect.w > bodyHWRatio) { //  比率値を3から2.5にしてみる。ダメ映像が増えたらまた調整する。。非透明率を0.015にしてみる
-                          Effect.succeed(avatarImage)
-                        }
-                        Effect.fail(new Error('avatar fail'))
+                        //  比率値を3から2.5にしてみる。ダメ映像が増えたらまた調整する。。非透明率を0.015にしてみる
+                        return a.number > bodyAreaRatio && a.alphaNum.rect.h / a.alphaNum.rect.w > bodyHWRatio
+                            ? Effect.succeed(avatarImage) : Effect.fail(new Error('avatar fail'));
                       })
                   );
                 }),
-                Effect.retry({times: 7})
+                Effect.retry(Schedule.recurs(7).pipe(Schedule.intersect(Schedule.spaced("5 seconds"))))
             )
-            const stayImage = yield* Effect.tryPromise(signal => {
+            const stayImage = yield* Effect.tryPromise(() => {
               return sharp(innerImage).composite([{
                 input: avatarImage,
                 left: shiftX,
                 top: innerSize.h - windowSize.h
               }]).toBuffer()
-            }).pipe(Effect.andThen(a => Effect.tryPromise(signal => sharp(a).extract({
+            }).pipe(Effect.andThen(a => Effect.tryPromise(() => sharp(a).extract({
               left: (innerSize.w - outSize.w) / 2,
               top: (innerSize.h - outSize.h) / 2,
               width: outSize.w,
               height: outSize.h
             }).toBuffer())))
             recentImage = stayImage
-        yield *McpLogService.logTrace(`stayImage:${recentImage}`)
-
+            yield* McpLogService.logTrace(`stayImage:${recentImage}`)
             return {
               buf: stayImage,
               shiftX,
@@ -662,16 +544,14 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
 
     return {
       getRecentImageAndClear,
-      getModelInfo,
       makeHotelPict,
       makeEtcTripImage,
-      imageCrop,
       makeRunnerImageV3,
       pixAiMakeImage,
       generatePrompt,
     }
   }),
-  dependencies: [McpLogServiceLive]  //  この様式で書くことでservice内のgen()内の変数が有効になるので、極力こちらで書く。。
+  dependencies: [McpLogServiceLive]
 }) {
 }
 
