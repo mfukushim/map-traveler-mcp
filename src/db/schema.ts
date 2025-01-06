@@ -132,8 +132,8 @@ export const avatar_sns = sqliteTable("avatar_sns", {
   snsType: text("snsType", {length: 4,enum:["bs", "tw", "md", "sk"]}).notNull(),
   snsHandleName: text("snsHandleName").notNull(),
   snsId: text("snsId").notNull(),
-  checkedPostId: text("checkedPostId").notNull(),
-  mentionPostId: text("mentionPostId").notNull(),
+  feedSeenAt: integer("checkedPostId").notNull().default(0),
+  mentionSeenAt: integer("mentionPostId").notNull().default(0),
   created: integer("created", {mode: 'timestamp'}).notNull(),
   enable: integer("enable", {mode: "boolean"}).default(false).notNull(),
 });

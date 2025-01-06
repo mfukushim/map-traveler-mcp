@@ -221,7 +221,7 @@ describe("Mcp", () => {
     const res = await Effect.gen(function* () {
       return yield* McpService.getSnsFeeds()
     }).pipe(
-        Effect.provide([McpServiceLive]),
+        Effect.provide([McpServiceLive,DbServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => Effect.logError(e.toString())),
         Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed({content: []})),
@@ -235,7 +235,7 @@ describe("Mcp", () => {
     const res = await Effect.gen(function* () {
       return yield* McpService.getSnsMentions()
     }).pipe(
-        Effect.provide([McpServiceLive, SnsServiceLive, McpLogServiceLive]),
+        Effect.provide([McpServiceLive, SnsServiceLive, McpLogServiceLive,DbServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => Effect.logError(e.toString())),
         Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed({content: []})),
@@ -247,7 +247,7 @@ describe("Mcp", () => {
   it("replySnsWriter", async () => {
     //  vitest --run --testNamePattern=replySnsWriter McpService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* McpService.replySnsWriter("リプライテスト6", "\"at://did:plc:ygcsenazbvhyjmxeltz4fgw4/app.bsky.feed.post/3letmqctays2a,bafyreigqfjn2spwkuqziieuh5xijimyyld7dpbnpajxc7ax5bkokyyxjna\"")
+      return yield* McpService.replySnsWriter("リプライテスト6", "\"at://did:plc:ygcsenazbvhyjmxeltz4fgw4/app.bsky.feed.post/3letmqctays2a-bafyreigqfjn2spwkuqziieuh5xijimyyld7dpbnpajxc7ax5bkokyyxjna\"")
     }).pipe(
         Effect.provide([McpServiceLive, SnsServiceLive, McpLogServiceLive, DbServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),

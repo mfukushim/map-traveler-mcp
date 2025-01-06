@@ -1,15 +1,21 @@
 // @vitest-environment node
 
-import {describe, expect, it} from "@effect/vitest"
+import {beforeAll, describe, expect, it} from "@effect/vitest"
 import {Effect, Logger, LogLevel} from "effect";
 import {SnsService, SnsServiceLive} from "../src/SnsService.js";
 import {McpLogService, McpLogServiceLive} from "../src/McpLogService.js";
 import {runPromise} from "effect/Effect";
 import * as fs from "node:fs";
-import {DbServiceLive} from "../src/DbService.js";
+import {DbService, DbServiceLive} from "../src/DbService.js";
 
 
 describe("Sns", () => {
+  beforeAll(async () => {
+    return await DbService.initSystemMode().pipe(
+      Effect.provide([DbServiceLive, McpLogServiceLive]),
+      Effect.runPromise
+    )
+  });
   it("bsPost単純ポスト", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
@@ -105,7 +111,7 @@ describe("Sns", () => {
     const res = await Effect.gen(function* () {
       return yield* SnsService.getFeed("at://did:plc:ygcsenazbvhyjmxeltz4fgw4/app.bsky.feed.generator/marble_square25", 2)
     }).pipe(
-        Effect.provide([SnsServiceLive, McpLogServiceLive]),
+        Effect.provide([SnsServiceLive, McpLogServiceLive,DbServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
         Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed({})),
@@ -119,7 +125,7 @@ describe("Sns", () => {
     const res = await Effect.gen(function* () {
       return yield* SnsService.getNotification()
     }).pipe(
-        Effect.provide([SnsServiceLive, McpLogServiceLive]),
+        Effect.provide([SnsServiceLive, McpLogServiceLive,DbServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
         Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed([])),
@@ -131,7 +137,7 @@ describe("Sns", () => {
   it("snsReply", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* SnsService.snsReply("リプライテスト"," test","at://did:plc:ygcsenazbvhyjmxeltz4fgw4/app.bsky.feed.post/3letmqctays2a,bafyreigqfjn2spwkuqziieuh5xijimyyld7dpbnpajxc7ax5bkokyyxjna")
+      return yield* SnsService.snsReply("リプライテスト"," test","at://did:plc:ygcsenazbvhyjmxeltz4fgw4/app.bsky.feed.post/3letmqctays2a-bafyreigqfjn2spwkuqziieuh5xijimyyld7dpbnpajxc7ax5bkokyyxjna")
     }).pipe(
         Effect.provide([SnsServiceLive, McpLogServiceLive,DbServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),

@@ -125,8 +125,8 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
                   snsType: "bs",
                   snsHandleName: Process.env.bs_handle,
                   snsId: Process.env.bs_id,
-                  checkedPostId: '',
-                  mentionPostId: '',
+                  feedSeenAt: 0,
+                  mentionSeenAt: 0,
                   created: created,
                   enable: true,
                 }).returning()).pipe(
@@ -226,12 +226,23 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       }).returning()).pipe(
           Effect.andThen(a => a.length === 1 ? Effect.succeed(a[0].id) : Effect.fail(new Error('saveSnsPost'))))
     }
+    
+    function getAvatarSns(avatarId: number,snsType: SnsType) {
+      return stub(db.select().from(avatar_sns).where(and(eq(avatar_sns.assignAvatarId, avatarId), eq(avatar_sns.snsType, snsType)))).pipe(Effect.andThen(takeOne))
+    }
 
-    function updateSnsCursor(avatarId: number, snsType: SnsType, cursor: string) {
-      return stub(db.update(avatar_sns).set({checkedPostId: cursor})
-          .where(and(eq(avatar_sns.assignAvatarId, avatarId), eq(avatar_sns.snsType, snsType))).returning()).pipe(
-          Effect.andThen(a =>
-              a.length === 1 ? Effect.succeed(a[0].id) : Effect.fail(new Error('updateSnsCursor')))
+    function updateSnsFeedSeenAt(avatarId: number, snsType: SnsType, timeEpoch: number) {
+      return stub(db.update(avatar_sns).set({feedSeenAt: timeEpoch})
+        .where(and(eq(avatar_sns.assignAvatarId, avatarId), eq(avatar_sns.snsType, snsType))).returning()).pipe(
+        Effect.andThen(a =>
+          a.length === 1 ? Effect.succeed(a[0].id) : Effect.fail(new Error('updateSnsFeedSeenAt')))
+      )
+    }
+    function updateSnsMentionSeenAt(avatarId: number, snsType: SnsType, timeEpoch: number) {
+      return stub(db.update(avatar_sns).set({mentionSeenAt: timeEpoch})
+        .where(and(eq(avatar_sns.assignAvatarId, avatarId), eq(avatar_sns.snsType, snsType))).returning()).pipe(
+        Effect.andThen(a =>
+          a.length === 1 ? Effect.succeed(a[0].id) : Effect.fail(new Error('updateSnsMentionSeenAt')))
       )
     }
 
@@ -347,7 +358,9 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       getRecentRunStatus,
       practiceRunStatus,
       saveSnsPost,
-      updateSnsCursor,
+      getAvatarSns,
+      updateSnsFeedSeenAt,
+      updateSnsMentionSeenAt,
       updateBasePrompt,
       getEnv,
       saveEnv,
