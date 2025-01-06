@@ -1,3 +1,4 @@
+/*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
 import { relations } from "drizzle-orm/relations";
 import {avatarModel, run_history, run_status, runAbroadRoute, runAvatar, runTerminal} from "./schema.js";
 

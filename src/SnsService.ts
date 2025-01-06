@@ -1,3 +1,4 @@
+/*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
 import {Effect, Schedule} from "effect";
 import {RichText} from '@atproto/api'
 import {AtpAgent} from '@atproto/api'

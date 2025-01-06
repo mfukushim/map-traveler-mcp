@@ -1,3 +1,5 @@
+/*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
+
 import {Effect} from "effect";
 import {drizzle} from 'drizzle-orm/libsql';
 import {migrate} from 'drizzle-orm/libsql/migrator';

@@ -36,6 +36,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install
       - run: pnpm build
-      - run: pnpm publish
+      - run: pnpm publish --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}

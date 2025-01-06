@@ -1,3 +1,4 @@
+/*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
 import {Effect, Schedule} from "effect";
 import sharp = require("sharp");
 import {FetchHttpClient, HttpClient, HttpClientRequest, FileSystem} from "@effect/platform";

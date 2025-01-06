@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+/*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
+
 import {Effect} from "effect";
 import {McpService, McpServiceLive} from "./McpService.js";
 import {DbServiceLive} from "./DbService.js";

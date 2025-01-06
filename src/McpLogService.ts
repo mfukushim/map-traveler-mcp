@@ -1,3 +1,4 @@
+/*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
 import {Effect} from "effect";
 import 'dotenv/config'
 import * as fs from "node:fs";

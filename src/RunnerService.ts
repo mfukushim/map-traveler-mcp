@@ -1,3 +1,4 @@
+/*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
 import {Effect, Option, Schema} from "effect";
 import {MapService, MapDef} from "./MapService.js";
 import {__pwd, DbService, DbServiceLive, env, RunStatus} from "./DbService.js";
