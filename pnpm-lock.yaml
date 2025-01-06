@@ -114,7 +114,6 @@ importers:
       vitest:
         specifier: ^2.0.5
         version: 2.1.8(@types/node@22.10.2)
-    publishDirectory: dist
 
 packages:
 
