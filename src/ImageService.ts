@@ -6,7 +6,6 @@ import dayjs from "dayjs";
 import FormData from 'form-data';
 import {transparentBackground} from "transparent-background";
 import {Jimp} from "jimp";
-import {uint8Array} from "@effect/platform/HttpBody";
 import {PixAIClient} from '@pixai-art/client'
 import {type MediaBaseFragment, TaskBaseFragment} from "@pixai-art/client/types/generated/graphql.js";
 import * as Process from "node:process";
@@ -54,37 +53,40 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         if (param.buf) {
           param.list.push({text: param.buf, weight: 1})
         }
-        yield* McpLogService.logTrace(param.list);
+        yield* McpLogService.logTrace(`sdMakeTextToImage:${param.list}`);
         if (param.list.length > 10) {
           return yield* Effect.fail(new Error('param weight too long'))
         }
         const client = yield* HttpClient.HttpClient;
         return yield* HttpClientRequest.post(`https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image`).pipe(
-            HttpClientRequest.setHeaders({
-              Authorization: `Bearer ${key}`,
-              Accept: "application/json",
-            }),
-            HttpClientRequest.bodyJson({
-              cfg_scale: opt?.cfg_scale || 7,
-              height: opt?.height || 1024,
-              width: opt?.width || 1024,
-              sampler: opt?.sampler || "K_DPM_2_ANCESTRAL",
-              samples: opt?.samples || 1,
-              steps: opt?.steps || 30,
-              text_prompts: param.list
-            }),
-            Effect.flatMap(client.execute),
-            Effect.flatMap(a => a.json),
-            Effect.andThen(a => a as { artifacts: { base64: string, finishReason: string, seed: number }[] }),
-            Effect.flatMap(a => {
-              if (a.artifacts.some(b => b.finishReason !== 'SUCCESS') || a.artifacts.length === 0) {
-                return Effect.fail(`fail sd`)
-              }
-              return Effect.succeed(a.artifacts.map(c => c.base64))
-            }),
-            Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
-            Effect.mapError(e => new Error(`sdMakeTextToImage error:${e}`)),
-            Effect.scoped,
+          HttpClientRequest.setHeaders({
+            Authorization: `Bearer ${key}`,
+            Accept: "application/json",
+          }),
+          HttpClientRequest.bodyJson({
+            cfg_scale: opt?.cfg_scale || 7,
+            height: opt?.height || 1024,
+            width: opt?.width || 1024,
+            sampler: opt?.sampler || "K_DPM_2_ANCESTRAL",
+            samples: opt?.samples || 1,
+            steps: opt?.steps || 30,
+            text_prompts: param.list
+          }),
+          Effect.flatMap(client.execute),
+          Effect.flatMap(a => a.json),
+          Effect.andThen(a => a as { artifacts: { base64: string, finishReason: string, seed: number }[] }),
+          Effect.flatMap(a => {
+            if (a.artifacts.some(b => b.finishReason !== 'SUCCESS') || a.artifacts.length === 0) {
+              return Effect.fail(new Error(`fail sd`))
+            }
+            return Effect.tryPromise(() => sharp(Buffer.from(a.artifacts[0].base64, 'base64')).resize({
+              width: 512,
+              height: 512
+            }).png().toBuffer())
+          }),
+          Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
+          Effect.mapError(e => new Error(`sdMakeTextToImage error:${e}`)),
+          Effect.scoped,
         )
       }).pipe(Effect.provide(FetchHttpClient.layer))
 
@@ -98,40 +100,86 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       steps: number,
       cfg_scale: number
     }) {
-      return Effect.gen(function* () {
-            const client = yield* HttpClient.HttpClient
-            const form = new FormData()
-            form.append("image_strength", 0.35)
-            form.append("init_image_mode", "IMAGE_STRENGTH")
-            form.append("init_image", inImage)
-            form.append("text_prompts[0][text]", prompt)
-            form.append("text_prompts[0][weight]", 1)
-            form.append("cfg_scale", opt?.cfg_scale || 7)
-            form.append("sampler", opt?.sampler || "K_DPM_2_ANCESTRAL")
-            form.append("samples", opt?.samples || 3)
-            form.append("steps", opt?.steps || 30)
-            return yield* HttpClientRequest.post(`https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/image-to-image`).pipe(
-                HttpClientRequest.setHeaders({
-                  Authorization: `Bearer ${key}`,
-                  Accept: "application/json",
-                  ...form.getHeaders()
-                }),
-                HttpClientRequest.setBody(uint8Array(form.getBuffer())),
-                client.execute,
-                Effect.flatMap(a => a.json),
-                Effect.andThen(a => a as { artifacts: { base64: string, finishReason: string, seed: number }[] }),
-                Effect.flatMap(a => {
-                  if (a.artifacts.some(b => b.finishReason !== 'SUCCESS') || a.artifacts.length === 0) {
-                    return Effect.fail(`fail sd`)
-                  }
-                  return Effect.succeed(a.artifacts.map(c => c.base64))
-                }),
-                Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
-                Effect.mapError(e => new Error(`sdMakeImageToImage error:${e}`)),
-                Effect.scoped,
-            )
+      return Effect.tryPromise(() => sharp(inImage).resize({width: 1024, height: 1024}).png().toBuffer()).pipe(
+        Effect.andThen(a =>
+          Effect.tryPromise({
+            try: () => {
+              const formData = new FormData()
+              formData.append('init_image', a)
+              formData.append('init_image_mode', 'IMAGE_STRENGTH')
+              formData.append('image_strength', 0.35)
+              formData.append('text_prompts[0][text]', prompt)
+              formData.append('cfg_scale', 7)
+              formData.append('samples', 1)
+              formData.append('steps', 30)
+              return fetch(
+                `https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/image-to-image`,
+                {
+                  method: 'POST',
+                  headers: {
+                    ...formData.getHeaders(),
+                    Accept: 'application/json',
+                    Authorization: `Bearer ${key}`,
+                  },
+                  body: formData.getBuffer(),
+                }
+              )
+            },
+            catch: error => new Error(`${error}`)
+          })),
+        Effect.andThen(a => a.json()),
+        Effect.andThen(a => a as { artifacts: { base64: string, finishReason: string, seed: number }[] }),
+        Effect.flatMap(a => {
+          if (!a.artifacts || a.artifacts.some(b => b.finishReason !== 'SUCCESS') || a.artifacts.length === 0) {
+            return Effect.fail(new Error(`fail sd`))
           }
-      ).pipe(Effect.provide(FetchHttpClient.layer))
+          return Effect.tryPromise(() => sharp(Buffer.from(a.artifacts[0].base64, 'base64')).resize({
+            width: 512,
+            height: 512
+          }).png().toBuffer())
+        }),
+      )
+      /*
+            return Effect.gen(function* () {
+                const client = yield* HttpClient.HttpClient
+                const form = new FormData()
+                form.append("image_strength", 0.35)
+                form.append("init_image_mode", "IMAGE_STRENGTH")
+                form.append("init_image", inImage)
+                form.append("text_prompts[0][text]", prompt)
+                form.append("text_prompts[0][weight]", 1)
+                form.append("cfg_scale", opt?.cfg_scale || 7)
+                form.append("sampler", opt?.sampler || "K_DPM_2_ANCESTRAL")
+                form.append("samples", opt?.samples || 3)
+                form.append("steps", opt?.steps || 30)
+                form.append("content-type", "multipart/form-data")
+                return yield* HttpClientRequest.post(`https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/image-to-image`).pipe(
+                  HttpClientRequest.setHeaders({
+                    ...form.getHeaders(),
+                    Authorization: `Bearer ${key}`,
+                    Accept: "application/json",
+                    "content-type": "multipart/form-data",
+                  }),
+                  HttpClientRequest.setBody(uint8Array(form.getBuffer())),
+                  client.execute,
+                  Effect.flatMap(a => a.json),
+                  Effect.andThen(a => a as { artifacts: { base64: string, finishReason: string, seed: number }[] }),
+                  Effect.flatMap(a => {
+                    if (!a.artifacts || a.artifacts.some(b => b.finishReason !== 'SUCCESS') || a.artifacts.length === 0) {
+                      return Effect.fail(new Error(`fail sd`))
+                    }
+                    return Effect.tryPromise(() => sharp(Buffer.from(a.artifacts[0].base64, 'base64')).resize({
+                      width: 512,
+                      height: 512
+                    }).png().toBuffer())
+                  }),
+                  Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
+                  Effect.mapError(e => new Error(`sdMakeImageToImage error:${e}`)),
+                  Effect.scoped,
+                )
+              }
+            ).pipe(Effect.provide(FetchHttpClient.layer))
+      */
     }
 
     function sdMakeImage(prompt: string, inImage?: Buffer, opt?: {
@@ -142,8 +190,10 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       steps: number,
       cfg_scale: number,
     }) {
-      return inImage ? sdMakeImageToImage(prompt, inImage, opt).pipe(Effect.andThen(a => a[0]))
-          : sdMakeTextToImage(prompt, opt).pipe(Effect.andThen(a => a[0]));
+      if (!Process.env.sd_key) {
+        return Effect.fail(new Error('no key'))
+      }
+      return inImage ? sdMakeImageToImage(prompt, inImage, opt) : sdMakeTextToImage(prompt, opt);
     }
 
     function pixAiMakeImage(prompt: string, inImage?: Buffer, opt?: {
@@ -158,62 +208,62 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         return Effect.fail(new Error('no key'))
       }
       return Effect.retry(
-          Effect.gen(function* () {
-            let mediaId
-            if (inImage) {
-              const blob = new Blob([inImage], {type: 'image/jpeg'});
-              const file = new File([blob], "image.jpg", {type: 'image/jpeg'})
-              mediaId = yield* Effect.tryPromise({
-                try: () => pixAiClient.uploadMedia(file),
-                catch: error => new Error(`uploadMedia fail:${error}`)
-              }).pipe(Effect.andThen(a1 => {
-                return !a1.mediaId ? Effect.fail(new Error(`uploadMedia fail`)) : Effect.succeed(a1.mediaId);
-              }))
+        Effect.gen(function* () {
+          let mediaId
+          if (inImage) {
+            const blob = new Blob([inImage], {type: 'image/jpeg'});
+            const file = new File([blob], "image.jpg", {type: 'image/jpeg'})
+            mediaId = yield* Effect.tryPromise({
+              try: () => pixAiClient.uploadMedia(file),
+              catch: error => new Error(`uploadMedia fail:${error}`)
+            }).pipe(Effect.andThen(a1 => {
+              return !a1.mediaId ? Effect.fail(new Error(`uploadMedia fail`)) : Effect.succeed(a1.mediaId);
+            }))
+          }
+          return mediaId
+        }).pipe(
+          Effect.tap(a => McpLogService.logTrace(`uploadMedia ${a}`)),
+          Effect.tapError(a => McpLogService.logError(`uploadMedia error ${a}`)),
+          Effect.andThen(a => {
+            const body = a ? {
+              prompts: prompt,
+              modelId: Process.env.pixAi_modelId || defaultPixAiModelId,
+              width: opt?.width || 512,
+              height: opt?.height || 512,
+              mediaId: a
+            } : {
+              prompts: prompt,
+              modelId: Process.env.pixAi_modelId || defaultPixAiModelId,
+              width: opt?.width || 512,
+              height: opt?.height || 512,
             }
-            return mediaId
-          }).pipe(
-              Effect.tap(a => McpLogService.logTrace(`uploadMedia ${a}`)),
-              Effect.tapError(a => McpLogService.logError(`uploadMedia error ${a}`)),
-              Effect.andThen(a => {
-                const body = a ? {
-                  prompts: prompt,
-                  modelId: Process.env.pixAi_modelId || defaultPixAiModelId,
-                  width: opt?.width || 512,
-                  height: opt?.height || 512,
-                  mediaId: a
-                } : {
-                  prompts: prompt,
-                  modelId: Process.env.pixAi_modelId || defaultPixAiModelId,
-                  width: opt?.width || 512,
-                  height: opt?.height || 512,
-                }
-                return Effect.tryPromise({
-                  try: () => pixAiClient.generateImage(body,
-                  ),
-                  catch: error => new Error(`generateImage fail:${error}`)
-                })
-              }),
-              Effect.tap(a => McpLogService.logTrace(`generateImage ${a.status}`)),
-              Effect.tapError(a => McpLogService.logError(`generateImage ${a}`)),
-              Effect.andThen(task => {
-                return Effect.tryPromise({
-                  try: () => pixAiClient.getMediaFromTask(task as TaskBaseFragment),
-                  catch: error => new Error(`getMediaFromTask fail:${error}`)
-                })
-              }),
-              Effect.tap(a => McpLogService.logTrace(`getMediaFromTask ${a}`)),
-              Effect.andThen(media => {
-                if (!media) return Effect.fail(new Error(`media fail1:${media}`))
-                if (Array.isArray(media)) return Effect.fail(new Error(`media fail2:${media}`))
-                return Effect.tryPromise({
-                  try: () => pixAiClient.downloadMedia(media as MediaBaseFragment),
-                  catch: error => new Error(`downloadMedia fail:${error}`)
-                });
-              }),
-              Effect.tap(a => McpLogService.logTrace(`downloadMedia out:${a.slice(0, 10)}`)),
-              Effect.tapError(a => McpLogService.logError(`downloadMedia err:${a}`)),
-              Effect.andThen(a => Effect.succeed(Buffer.from(a).toString('base64')))
-          ), Schedule.recurs(4).pipe(Schedule.intersect(Schedule.spaced("10 seconds")))).pipe(Effect.provide([McpLogServiceLive]));
+            return Effect.tryPromise({
+              try: () => pixAiClient.generateImage(body,
+              ),
+              catch: error => new Error(`generateImage fail:${error}`)
+            })
+          }),
+          Effect.tap(a => McpLogService.logTrace(`generateImage ${a.status}`)),
+          Effect.tapError(a => McpLogService.logError(`generateImage ${a}`)),
+          Effect.andThen(task => {
+            return Effect.tryPromise({
+              try: () => pixAiClient.getMediaFromTask(task as TaskBaseFragment),
+              catch: error => new Error(`getMediaFromTask fail:${error}`)
+            })
+          }),
+          Effect.tap(a => McpLogService.logTrace(`getMediaFromTask ${a}`)),
+          Effect.andThen(media => {
+            if (!media) return Effect.fail(new Error(`media fail1:${media}`))
+            if (Array.isArray(media)) return Effect.fail(new Error(`media fail2:${media}`))
+            return Effect.tryPromise({
+              try: () => pixAiClient.downloadMedia(media as MediaBaseFragment),
+              catch: error => new Error(`downloadMedia fail:${error}`)
+            });
+          }),
+          Effect.tap(a => McpLogService.logTrace(`downloadMedia out:${a.slice(0, 10)}`)),
+          Effect.tapError(a => McpLogService.logError(`downloadMedia err:${a}`)),
+          Effect.andThen(a => Effect.succeed(Buffer.from(a).toString('base64')))
+        ), Schedule.recurs(4).pipe(Schedule.intersect(Schedule.spaced("10 seconds")))).pipe(Effect.provide([McpLogServiceLive]));
     }
 
     /**
@@ -245,14 +295,14 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           prompt += `,${append}`
         }
         return yield* selectImageGenerator(selectGen, prompt).pipe(
-            Effect.tap(a => {
-              const data = Buffer.from(a, "base64");
-              recentImage = data
-              if (localDebug) {
-                return FileSystem.FileSystem.pipe(Effect.andThen(fs => fs.writeFile('tools/test/hotelPict.png', data, {flag: "w"})))
-              }
-            }),
-            Effect.andThen(a => Buffer.from(a, 'base64'))
+          Effect.tap(a => {
+            const data = Buffer.from(a, "base64");
+            recentImage = data
+            if (localDebug) {
+              return FileSystem.FileSystem.pipe(Effect.andThen(fs => fs.writeFile('tools/test/hotelPict.png', data, {flag: "w"})))
+            }
+          }),
+          Effect.andThen(a => Buffer.from(a, 'base64'))
         )
       })
     }
@@ -292,14 +342,14 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         const appendPrompt = appendPrompts.join(',')
         const prompt = `${basePrompt},${appendPrompt}`
         return yield* selectImageGenerator(selectGen, prompt).pipe(
-            Effect.tap(a => {
-              const data = Buffer.from(a, "base64");
-              recentImage = data
-              if (localDebug) {
-                return FileSystem.FileSystem.pipe(Effect.andThen(fs => fs.writeFile('tools/test/hotelPict.png', data, {flag: "w"})))
-              }
-            }),
-            Effect.andThen(a => Buffer.from(a[0], 'base64')))
+          Effect.tap(a => {
+            const data = Buffer.from(a, "base64");
+            recentImage = data
+            if (localDebug) {
+              return FileSystem.FileSystem.pipe(Effect.andThen(fs => fs.writeFile('tools/test/hotelPict.png', data, {flag: "w"})))
+            }
+          }),
+          Effect.andThen(a => Buffer.from(a[0], 'base64')))
       })
     }
 
@@ -393,7 +443,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         case 'pixAi':
           return pixAiMakeImage(prompt, inImage, opt)
         default:
-          return sdMakeImage(prompt, inImage, opt)
+          return sdMakeImage(prompt, inImage, opt).pipe(Effect.andThen(a => a.toString('base64')))
       }
     };
 
@@ -439,100 +489,100 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
      * @param sideBias 貼り付け位置を左右に偏らせる
      */
     function makeRunnerImageV3(
-        basePhoto: Buffer,
-        baseCharPrompt: string,
-        selectGen: string,
-        withAbort = false,
-        localDebug = false,
-        bodyAreaRatio = 0.042,
-        bodyHWRatio = 2.3,
-        sideBias = false
+      basePhoto: Buffer,
+      baseCharPrompt: string,
+      selectGen: string,
+      withAbort = false,
+      localDebug = false,
+      bodyAreaRatio = 0.042,
+      bodyHWRatio = 2.3,
+      sideBias = false
     ) {
       return Effect.gen(function* () {
-            const fs = yield* FileSystem.FileSystem
-            const outSize = {w: 1600, h: 1000}
-            const innerSize = {w: 1600, h: 1600}
-            const windowSize = {w: 832, h: 1216}
-            const cutPos = sideBias ? (Math.random() < 0.5 ? Math.random() * 0.3 : 0.7 + Math.random() * 0.3) : Math.random()
-            const shiftX = Math.floor((innerSize.w - windowSize.w) * cutPos);  //  0～1で均等にランダム切り出しだったはず
-            const innerImage = yield* Effect.tryPromise(() => sharp(basePhoto).resize({
-              width: innerSize.w,
-              height: innerSize.h,
-              fit: "fill"
-            }).toBuffer());
-            const clopImage = yield* Effect.tryPromise(() => sharp(innerImage).extract({
-              left: shiftX,
-              top: innerSize.h - windowSize.h,
-              width: windowSize.w,
-              height: windowSize.h
-            }).toBuffer())
-            if (localDebug) {
-              yield* fs.writeFile('tools/test/testOutInClop.png', clopImage, {flag: "w"})
-            }
-
-            /** 画像評価リトライ */
-            let retry = 7 //  5回リトライになってるな 現在初期値7 最小値2(でないと画像できない)
-            const fixedThreshold = 3  //  バストショットに切り替える閾値 2,1の2回はバストショット生成を試みる
-            let isFixedBody = false
-            let appendPrompt: string | undefined
-
-            const avatarImage = yield* Effect.gen(function* () {
-              const {prompt, append} = yield* generatePrompt(baseCharPrompt, retry < fixedThreshold, withAbort)
-              appendPrompt = append
-              retry--
-              if (retry < fixedThreshold) {
-                //  立ち絵
-                isFixedBody = true
-                return yield* selectImageGenerator(selectGen, prompt)
-              } else {
-                //  画面i2i
-                isFixedBody = false
-                return yield* selectImageGenerator(selectGen, prompt, clopImage)
-              }
-            }).pipe(
-                Effect.andThen(a => Buffer.from(a, 'base64')),
-                Effect.tap(sdImage => localDebug && fs.writeFile('tools/test/testOutGen.png', sdImage, {flag: "w"})),
-                Effect.andThen(sdImage => Effect.tryPromise({
-                  try: () => transparentBackground(sdImage, "png", {fast: false}),
-                  catch: error => `transparentBackground error:${error}`
-                })),
-                Effect.tap(avatarImage => localDebug && fs.writeFile('tools/test/testOutRmBg.png', avatarImage, {flag: "w"})),
-                Effect.tap(avatarImage => {
-                  //  非透明度判定 0.02以上
-                  return checkPersonImage(avatarImage, windowSize).pipe(
-                      Effect.tap(a => McpLogService.logTrace(`'check runner image:${retry},${a}`)),  //, retry, number, alphaNum.rect.w, alphaNum.rect.h\
-                      Effect.andThen(a => {
-                        //  非透明度が0.02以上かつ範囲の縦と横の比率が3:1以上なら完了 counterfeit V3=0.015, counterfeit LX 0.03 にしてみる
-                        //  比率値を3から2.5にしてみる。ダメ映像が増えたらまた調整する。。非透明率を0.015にしてみる
-                        return a.number > bodyAreaRatio && a.alphaNum.rect.h / a.alphaNum.rect.w > bodyHWRatio
-                            ? Effect.succeed(avatarImage) : Effect.fail(new Error('avatar fail'));
-                      })
-                  );
-                }),
-                Effect.retry(Schedule.recurs(7).pipe(Schedule.intersect(Schedule.spaced("5 seconds"))))
-            )
-            const stayImage = yield* Effect.tryPromise(() => {
-              return sharp(innerImage).composite([{
-                input: avatarImage,
-                left: shiftX,
-                top: innerSize.h - windowSize.h
-              }]).toBuffer()
-            }).pipe(Effect.andThen(a => Effect.tryPromise(() => sharp(a).extract({
-              left: (innerSize.w - outSize.w) / 2,
-              top: (innerSize.h - outSize.h) / 2,
-              width: outSize.w,
-              height: outSize.h
-            }).toBuffer())))
-            recentImage = stayImage
-            yield* McpLogService.logTrace(`stayImage:${recentImage}`)
-            return {
-              buf: stayImage,
-              shiftX,
-              shiftY: innerSize.h - windowSize.h,
-              fit: !isFixedBody,
-              append: appendPrompt
-            }
+          const fs = yield* FileSystem.FileSystem
+          const outSize = {w: 1600, h: 1000}
+          const innerSize = {w: 1600, h: 1600}
+          const windowSize = {w: 832, h: 1216}
+          const cutPos = sideBias ? (Math.random() < 0.5 ? Math.random() * 0.3 : 0.7 + Math.random() * 0.3) : Math.random()
+          const shiftX = Math.floor((innerSize.w - windowSize.w) * cutPos);  //  0～1で均等にランダム切り出しだったはず
+          const innerImage = yield* Effect.tryPromise(() => sharp(basePhoto).resize({
+            width: innerSize.w,
+            height: innerSize.h,
+            fit: "fill"
+          }).toBuffer());
+          const clopImage = yield* Effect.tryPromise(() => sharp(innerImage).extract({
+            left: shiftX,
+            top: innerSize.h - windowSize.h,
+            width: windowSize.w,
+            height: windowSize.h
+          }).toBuffer())
+          if (localDebug) {
+            yield* fs.writeFile('tools/test/testOutInClop.png', clopImage, {flag: "w"})
           }
+
+          /** 画像評価リトライ */
+          let retry = 7 //  5回リトライになってるな 現在初期値7 最小値2(でないと画像できない)
+          const fixedThreshold = 3  //  バストショットに切り替える閾値 2,1の2回はバストショット生成を試みる
+          let isFixedBody = false
+          let appendPrompt: string | undefined
+
+          const avatarImage = yield* Effect.gen(function* () {
+            const {prompt, append} = yield* generatePrompt(baseCharPrompt, retry < fixedThreshold, withAbort)
+            appendPrompt = append
+            retry--
+            if (retry < fixedThreshold) {
+              //  立ち絵
+              isFixedBody = true
+              return yield* selectImageGenerator(selectGen, prompt)
+            } else {
+              //  画面i2i
+              isFixedBody = false
+              return yield* selectImageGenerator(selectGen, prompt, clopImage)
+            }
+          }).pipe(
+            Effect.andThen(a => Buffer.from(a, 'base64')),
+            Effect.tap(sdImage => localDebug && fs.writeFile('tools/test/testOutGen.png', sdImage, {flag: "w"})),
+            Effect.andThen(sdImage => Effect.tryPromise({
+              try: () => transparentBackground(sdImage, "png", {fast: false}),
+              catch: error => `transparentBackground error:${error}`
+            })),
+            Effect.tap(avatarImage => localDebug && fs.writeFile('tools/test/testOutRmBg.png', avatarImage, {flag: "w"})),
+            Effect.tap(avatarImage => {
+              //  非透明度判定 0.02以上
+              return checkPersonImage(avatarImage, windowSize).pipe(
+                Effect.tap(a => McpLogService.logTrace(`'check runner image:${retry},${a}`)),  //, retry, number, alphaNum.rect.w, alphaNum.rect.h\
+                Effect.andThen(a => {
+                  //  非透明度が0.02以上かつ範囲の縦と横の比率が3:1以上なら完了 counterfeit V3=0.015, counterfeit LX 0.03 にしてみる
+                  //  比率値を3から2.5にしてみる。ダメ映像が増えたらまた調整する。。非透明率を0.015にしてみる
+                  return a.number > bodyAreaRatio && a.alphaNum.rect.h / a.alphaNum.rect.w > bodyHWRatio
+                    ? Effect.succeed(avatarImage) : Effect.fail(new Error('avatar fail'));
+                })
+              );
+            }),
+            Effect.retry(Schedule.recurs(7).pipe(Schedule.intersect(Schedule.spaced("5 seconds"))))
+          )
+          const stayImage = yield* Effect.tryPromise(() => {
+            return sharp(innerImage).composite([{
+              input: avatarImage,
+              left: shiftX,
+              top: innerSize.h - windowSize.h
+            }]).toBuffer()
+          }).pipe(Effect.andThen(a => Effect.tryPromise(() => sharp(a).extract({
+            left: (innerSize.w - outSize.w) / 2,
+            top: (innerSize.h - outSize.h) / 2,
+            width: outSize.w,
+            height: outSize.h
+          }).toBuffer())))
+          recentImage = stayImage
+          yield* McpLogService.logTrace(`stayImage:${recentImage}`)
+          return {
+            buf: stayImage,
+            shiftX,
+            shiftY: innerSize.h - windowSize.h,
+            fit: !isFixedBody,
+            append: appendPrompt
+          }
+        }
       )
     }
 
@@ -548,7 +598,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       makeHotelPict,
       makeEtcTripImage,
       makeRunnerImageV3,
-      pixAiMakeImage,
+      selectImageGenerator,
       generatePrompt,
     }
   }),

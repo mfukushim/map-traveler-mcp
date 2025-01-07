@@ -7,6 +7,7 @@ import * as querystring from "querystring";
 import {Jimp} from "jimp";
 import * as Process from "node:process";
 import {McpLogService, McpLogServiceLive} from "./McpLogService.js";
+import {AnswerError} from "./mapTraveler.js";
 
 /**
  * Google Map API定義
@@ -47,26 +48,26 @@ export class MapDef {
     places: MapDef.GmPlacesSchema
   })
   static readonly GmStepSchema = Schema.Struct({
-        html_instructions: Schema.String,
-        distance: Schema.Struct({
-          text: Schema.String,
-          value: Schema.Number,
-        }),
-        duration: Schema.Struct({
-          text: Schema.String,
-          value: Schema.Number,
-        }),
-        start_location: Schema.Struct({
-          lat: Schema.Number,
-          lng: Schema.Number
-        }),
-        end_location: Schema.Struct({
-          lat: Schema.Number,
-          lng: Schema.Number
-        }),
-        maneuver: Schema.UndefinedOr(Schema.String),  //  移動向きの意味だがフェリー旅では ferry の文字列が入っていた
-        travel_mode: Schema.String
-      }
+      html_instructions: Schema.String,
+      distance: Schema.Struct({
+        text: Schema.String,
+        value: Schema.Number,
+      }),
+      duration: Schema.Struct({
+        text: Schema.String,
+        value: Schema.Number,
+      }),
+      start_location: Schema.Struct({
+        lat: Schema.Number,
+        lng: Schema.Number
+      }),
+      end_location: Schema.Struct({
+        lat: Schema.Number,
+        lng: Schema.Number
+      }),
+      maneuver: Schema.UndefinedOr(Schema.String),  //  移動向きの意味だがフェリー旅では ferry の文字列が入っていた
+      travel_mode: Schema.String
+    }
   )
 
   static readonly DirectionStepSchema = Schema.mutable(Schema.Struct({
@@ -116,6 +117,13 @@ export class MapDef {
   static readonly DirectionsSchema = Schema.Struct({
     status: Schema.String,
     routes: Schema.Array(MapDef.GmRouteSchema)
+  })
+  static readonly ErrorSchema = Schema.Struct({
+    error: Schema.Struct({
+      code: Schema.Number,
+      message: Schema.String,
+      status: Schema.String,
+    })
   })
 }
 
@@ -189,24 +197,35 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
             key: key
           }
         }).pipe(
-            Effect.retry({times: 2}),
-            Effect.flatMap(a => HttpClientResponse.schemaBodyJson(MapDef.DirectionsSchema)(a)),
-            Effect.scoped,
-            Effect.tap(a => a.status === 'OK' && McpLogService.logTrace('calcDomesticTravelRoute: OK')),
-            Effect.tapError(e => McpLogService.logError(`calcDomesticTravelRoute error:${JSON.stringify(e)}`)),
-            Effect.andThen(a => {
-              //  最初の選択の単一routesの単一legだけでよい
-              return {
-                summary: a.routes[0].summary,
-                leg: {
-                  ...a.routes[0].legs[0],
-                  start_country: depCountry,
-                  end_country: destCountry,
-                },
-                start_country: 'jp',
-                end_country: 'jp'
+          Effect.retry({times: 2}),
+          Effect.flatMap(a => HttpClientResponse.schemaBodyJson(Schema.Union(
+            MapDef.DirectionsSchema.pipe(Schema.attachPropertySignature('kind', 'routes')),
+            MapDef.ErrorSchema.pipe(Schema.attachPropertySignature('kind', 'error'))))(a)),
+          Effect.scoped,
+          Effect.tap(a => McpLogService.logTrace(`calcDomesticTravelRoute: ${JSON.stringify(a)}`)),
+          Effect.tapError(e => McpLogService.logError(`calcDomesticTravelRoute error:${JSON.stringify(e)}`)),
+          Effect.flatMap(a => {
+            if (a.kind === 'routes') {
+              if (a.status === 'OK' && a.routes.length > 0) {
+                //  最初の選択の単一routesの単一legだけでよい
+                return Effect.succeed({
+                  summary: a.routes[0].summary,
+                  leg: {
+                    ...a.routes[0].legs[0],
+                    start_country: depCountry,
+                    end_country: destCountry,
+                  },
+                  start_country: 'jp',
+                  end_country: 'jp'
+                });
+              } else if(a.status === 'REQUEST_DENIED') {
+                return Effect.fail(new AnswerError(`directions API request denied. Check Api setting.`))
               }
-            })
+            } else if (a.kind === 'error') {
+              return Effect.fail(new AnswerError(`A system error has occurred. ${a.error.message}`))
+            }
+            return Effect.fail(new AnswerError(`No suitable route was found`))
+          })
         )
       }).pipe(Effect.provide(FetchHttpClient.layer))
     }
@@ -226,21 +245,21 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
             key: key
           }
         }).pipe(
-            Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
-            Effect.flatMap(a => a.json),
-            Effect.scoped,
-            Effect.tap(a => McpLogService.logTrace(a)),
-            Effect.tapError(e => McpLogService.logError(`getTimezoneByLatLng error:${JSON.stringify(e)}`)),
-            Effect.andThen(a => a as { status: string, timeZoneId?: string }),
-            Effect.tap(a => (a.status !== 'OK' || !a.timeZoneId) && Effect.fail(new Error('getTimezoneByLatLng error'))),
-            Effect.andThen(a => a.timeZoneId!)
+          Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
+          Effect.flatMap(a => a.json),
+          Effect.scoped,
+          Effect.tap(a => McpLogService.logTrace(`getTimezoneByLatLng:${a}`)),
+          Effect.tapError(e => McpLogService.logError(`getTimezoneByLatLng error:${JSON.stringify(e)}`)),
+          Effect.andThen(a => a as { status: string, timeZoneId?: string }),
+          Effect.tap(a => (a.status !== 'OK' || !a.timeZoneId) && Effect.fail(new Error('getTimezoneByLatLng error'))),
+          Effect.andThen(a => a.timeZoneId!)
         )
       }).pipe(Effect.provide([FetchHttpClient.layer, McpLogServiceLive]))
     }
 
     const getCountry = (place: typeof MapDef.GmPlaceSchema.Type) => {
       const countryData = place.addressComponents.pipe(
-          Option.andThen(a => Option.fromNullable(a.find(value => value.types.includes('country')))))
+        Option.andThen(a => Option.fromNullable(a.find(value => value.types.includes('country')))))
       return Option.getOrElse(countryData, () => ({shortText: 'JP'})).shortText  //  TODO 見つからない場合、現時点 日本想定
     }
 
@@ -256,20 +275,25 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
       return Effect.gen(function* () {
         const client = yield* HttpClient.HttpClient
         return yield* HttpClientRequest.post('https://places.googleapis.com/v1/places:searchText').pipe(
-            HttpClientRequest.setHeaders({
-              "Content-Type": "application/json",
-              "X-Goog-Api-Key": key,
-              'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.addressComponents,places.location,places.photos,places.id'  //  places.displayName,places.location
-            }),
-            HttpClientRequest.bodyJson({
-              textQuery: address
-            }),
-            Effect.flatMap(client.execute),
-            Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
+          HttpClientRequest.setHeaders({
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": key,
+            'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.addressComponents,places.location,places.photos,places.id'  //  places.displayName,places.location
+          }),
+          HttpClientRequest.bodyJson({
+            textQuery: address
+          }),
+          Effect.flatMap(client.execute),
+          Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
           Effect.flatMap(a => a.text),
-          Effect.flatMap(a => Schema.decode(Schema.parseJson(MapDef.GmTextSearchSchema))(a)),
-            Effect.scoped,
-            Effect.andThen(adr => {
+          Effect.tap(a => McpLogService.logTrace(`getMapLocation:${a}`)),
+          Effect.flatMap(a => Schema.decode(Schema.parseJson(Schema.Union(
+            MapDef.GmTextSearchSchema.pipe(Schema.attachPropertySignature('kind', 'places')),
+            MapDef.ErrorSchema.pipe(Schema.attachPropertySignature('kind', 'error'))
+          )))(a)),
+          Effect.scoped,
+          Effect.flatMap(adr => {
+            if (adr.kind === 'places') {
               return Effect.succeed(Option.some({
                 status: "OK",
                 address: adr.places[0].formattedAddress,
@@ -277,7 +301,11 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
                 lat: adr.places[0].location.latitude,
                 lng: adr.places[0].location.longitude
               }))
-            })
+            } else if (adr.kind === 'error') {
+              return Effect.fail(new AnswerError(`A system error has occurred. ${adr.error.message}`))
+            }
+            return Effect.succeed(Option.none())
+          })
         )
       }).pipe(Effect.provide(FetchHttpClient.layer))
     }
@@ -297,31 +325,31 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
       return Effect.gen(function* () {
         const client = yield* HttpClient.HttpClient
         return yield* HttpClientRequest.post('https://places.googleapis.com/v1/places:searchNearby').pipe(
-            HttpClientRequest.setHeaders({
-              "Content-Type": "application/json",
-              "X-Goog-Api-Key": key,
-              'X-Goog-FieldMask': 'places.id,places.displayName,places.primaryType,places.location,places.shortFormattedAddress,places.formattedAddress'
-                  + (findLandMark ? '' : ',places.addressComponents,places.photos')
-            }),
-            HttpClientRequest.bodyJson({
-              maxResultCount: 6,
-              languageCode: "ja",
-              locationRestriction: {
-                circle: {
-                  center: {
-                    latitude: lat,
-                    longitude: lng
-                  },
-                  radius: radius
-                }
-              },
-              includedTypes: findLandMark ? ["tourist_attraction", "museum", "park", "national_park", "historical_landmark", "aquarium", "zoo", "university", "library", "art_gallery"].concat(additionalType) : undefined
-            }),
-            Effect.flatMap(client.execute),
-            Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
-            Effect.flatMap(a => HttpClientResponse.schemaBodyJson(MapDef.GmTextSearchSchema)(a)),
-            Effect.onError(cause => McpLogService.logError(`getNearly error:${JSON.stringify(cause)}`)),
-            Effect.scoped,
+          HttpClientRequest.setHeaders({
+            "Content-Type": "application/json",
+            "X-Goog-Api-Key": key,
+            'X-Goog-FieldMask': 'places.id,places.displayName,places.primaryType,places.location,places.shortFormattedAddress,places.formattedAddress'
+              + (findLandMark ? '' : ',places.addressComponents,places.photos')
+          }),
+          HttpClientRequest.bodyJson({
+            maxResultCount: 6,
+            languageCode: "ja",
+            locationRestriction: {
+              circle: {
+                center: {
+                  latitude: lat,
+                  longitude: lng
+                },
+                radius: radius
+              }
+            },
+            includedTypes: findLandMark ? ["tourist_attraction", "museum", "park", "national_park", "historical_landmark", "aquarium", "zoo", "university", "library", "art_gallery"].concat(additionalType) : undefined
+          }),
+          Effect.flatMap(client.execute),
+          Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
+          Effect.flatMap(a => HttpClientResponse.schemaBodyJson(MapDef.GmTextSearchSchema)(a)),
+          Effect.onError(cause => McpLogService.logError(`getNearly error:${JSON.stringify(cause)}`)),
+          Effect.scoped,
         )
       }).pipe(Effect.provide(FetchHttpClient.layer))
     }
@@ -355,18 +383,18 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
                 return_error_code: true
               }
             }).pipe(
-                Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
-                Effect.flatMap(a => a.json),
-                Effect.scoped,
-                Effect.tap(a => McpLogService.logTrace(a)),
-                Effect.tapError(e => McpLogService.logError(`findStreetViewMeta error:${JSON.stringify(e)}`)),
-                Effect.andThen(a => {
-                  if ((a as { status: string }).status === 'OK') {
-                    result = {lat: checkLat, lng: checkLng}
-                    return 0
-                  }
-                  return b - 1
-                })
+              Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
+              Effect.flatMap(a => a.json),
+              Effect.scoped,
+              Effect.tap(a => McpLogService.logTrace(`findStreetViewMeta:${a}`)),
+              Effect.tapError(e => McpLogService.logError(`findStreetViewMeta error:${JSON.stringify(e)}`)),
+              Effect.andThen(a => {
+                if ((a as { status: string }).status === 'OK') {
+                  result = {lat: checkLat, lng: checkLng}
+                  return 0
+                }
+                return b - 1
+              })
             )
           }
         })
@@ -432,8 +460,8 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
    */
   static getBearing(startLat: number, startLng: number, endLat: number, endLng: number) {
     return geolib.getRhumbLineBearing(
-        {lat: startLat, lng: startLng},
-        {lat: endLat, lng: endLng}
+      {lat: startLat, lng: startLng},
+      {lat: endLat, lng: endLng}
     );
   }
 }

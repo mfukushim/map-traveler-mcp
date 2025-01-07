@@ -38,6 +38,7 @@ Please set the following three Credentials for Google Map API.
 - Street View Static API
 - Places API (New)
 - Time Zone API
+- Directions API
 
 https://developers.google.com/maps/documentation/streetview/get-api-key
 

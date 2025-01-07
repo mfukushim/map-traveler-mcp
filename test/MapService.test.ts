@@ -13,9 +13,9 @@ describe("Map", () => {
   it("getMapLocation", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* MapService.getMapLocation("横浜")
+      return  yield* MapService.getMapLocation("東京駅")
     }).pipe(
-        Effect.provide([MapService.Default, FetchHttpClient.layer]),
+        Effect.provide([MapService.Default, FetchHttpClient.layer,McpLogServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => Effect.logError(e.toString())),
         Effect.catchIf(a => a.toString() === 'Error: no key', e => Effect.succeed(Option.none())),
