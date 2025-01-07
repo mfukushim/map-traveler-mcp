@@ -22,7 +22,7 @@ export class MapDef {
     }),
     displayName: Schema.Struct({
       text: Schema.String,
-      languageCode: Schema.String
+      languageCode: Schema.UndefinedOr(Schema.String)
     }),
     primaryTypeDisplayName: Schema.OptionFromUndefinedOr(Schema.Struct({
       text: Schema.String,
@@ -266,7 +266,8 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
             }),
             Effect.flatMap(client.execute),
             Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
-            Effect.flatMap(a => HttpClientResponse.schemaBodyJson(MapDef.GmTextSearchSchema)(a)),
+          Effect.flatMap(a => a.text),
+          Effect.flatMap(a => Schema.decode(Schema.parseJson(MapDef.GmTextSearchSchema))(a)),
             Effect.scoped,
             Effect.andThen(adr => {
               return Effect.succeed(Option.some({

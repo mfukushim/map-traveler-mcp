@@ -110,7 +110,7 @@ describe("Mcp", () => {
   it("setCurrentLocation", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* McpService.setCurrentLocation("横浜駅")
+      return yield* McpService.setCurrentLocation("東京都千代田区丸の内1丁目9-1")
     }).pipe(
         Effect.provide([McpServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
