@@ -25,7 +25,7 @@ import {FeedViewPost} from "@atproto/api/dist/client/types/app/bsky/feed/defs.js
 import * as path from "path";
 
 //  Toolのcontentの定義だがzodから持ってくると重いのでここで定義
-interface ToolContentResponse {
+export interface ToolContentResponse {
   type: string;
   text?: string;
   data?: string;
@@ -104,6 +104,12 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             content: [{
               type: "text",
               text: `The traveller's information is as follows: ${a}`
+            } as ToolContentResponse]
+          })),
+          Effect.orElseSucceed(() => ({
+            content: [{
+              type: "text",
+              text: `There is no traveler information.`
             } as ToolContentResponse]
           }))
         )
@@ -189,11 +195,9 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             `address:${address.value.address}`,
             `latitude:${address.value.lat}, longitude:${address.value.lng}`
           ];
-          const dest = yield* DbService.getEnv('destination').pipe(Effect.orElseSucceed(() => undefined));
-          if (dest) {
-            const res = yield* RunnerService.setDestinationAddress(dest)
-            setMessage.push(res.message)
-          }
+          yield* DbService.getEnv('destination').pipe(
+            Effect.andThen(dest => RunnerService.setDestinationAddress(dest)),
+            Effect.andThen(a => setMessage.push(a.message)));
           return {
             content: [{
               type: "text",
@@ -236,7 +240,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 type: "image",
                 data: a.image.toString("base64"),
                 mimeType: 'image/png'
-              }]
+              }] as ToolContentResponse[]
             };
           }),
           Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer, McpLogServiceLive]),
@@ -800,7 +804,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               case "tips":
                 return tips().pipe(Effect.provide([StoryServiceLive, NodeFileSystem.layer]))
               case "set_person_mode":
-                return setPersonMode(String(request.params.arguments?.person))
+                return setPersonMode(String(request.params.arguments?.person)).pipe(Effect.provide([DbServiceLive,McpLogServiceLive]))
               case "get_traveler_info":
                 return getTravelerInfo().pipe(
                   Effect.provide([DbServiceLive, McpLogServiceLive])
@@ -849,7 +853,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 return Effect.fail(new Error("Unknown tool"));
             }
           }
-
+          
           return await toolSwitch().pipe(
             Effect.andThen(a => a as { content: ToolContentResponse[] }),
             Effect.catchIf(a => a instanceof AnswerError, e => {
@@ -861,7 +865,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               })
             }),
             Effect.catchAll(e => {
-              return McpLogService.logError(`catch all:${JSON.stringify(e)}`).pipe(Effect.as({
+              return McpLogService.logError(`catch all:${JSON.stringify(e.toString())}`).pipe(Effect.as({
                 content: [{
                   type: "text",
                   text: "Sorry,unknown system error."

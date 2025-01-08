@@ -60,14 +60,16 @@ describe("Image", () => {
     }).pipe(
       Effect.provide([ImageService.Default, FetchHttpClient.layer, McpLogServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.andThen(a => {
+        if (!inGitHubAction) {
+          fs.writeFileSync("tools/test/pixAiMakeImage.jpg", a);
+        }
+        return "succeed";
+      }),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.catchIf(a => a.message === 'no key', e => Effect.succeed("noKey")),
-      Effect.tap(a => Effect.log(a.length)),
       runPromise
     )
-    if ("noKey" !== res && !inGitHubAction) {
-      fs.writeFileSync("tools/test/pixAiMakeImage.jpg", Buffer.from(res, "base64"));
-    }
     expect(typeof res).toBe('string')
   })
   it("pixAiMakeI2I", async () => {
@@ -79,14 +81,16 @@ describe("Image", () => {
     }).pipe(
       Effect.provide([ImageService.Default, FetchHttpClient.layer, McpLogServiceLive]), //  layer
       Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.andThen(a => {
+        if (!inGitHubAction) {
+          fs.writeFileSync("tools/test/pixAiMakeI2I.jpg", a)
+        }
+        return "succeed";
+      }),
       Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
       Effect.catchIf(a => a.message === 'no key', e => Effect.succeed("noKey")),
-      Effect.tap(a => McpLogService.log(a.length).pipe(Effect.provide(McpLogServiceLive))),
       runPromise
     )
-    if ("noKey" !== res && !inGitHubAction) {
-      fs.writeFileSync("tools/test/pixAiMakeI2I.jpg", Buffer.from(res, "base64"))
-    }
     expect(typeof res).toBe('string')
   })
   it("sdMakeT2I", async () => {
@@ -96,14 +100,16 @@ describe("Image", () => {
     }).pipe(
       Effect.provide([ImageService.Default, FetchHttpClient.layer, McpLogServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.andThen(a => {
+        if (!inGitHubAction) {
+          fs.writeFileSync("tools/test/sdMakeImage.jpg", a);
+        }
+        return "succeed";
+      }),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.catchIf(a => a.message === 'no key', e => Effect.succeed("noKey")),
-      Effect.tap(a => Effect.log(a.length)),
       runPromise
     )
-    if ("noKey" !== res && !inGitHubAction) {
-      fs.writeFileSync("tools/test/sdMakeImage.jpg", Buffer.from(res, "base64"));
-    }
     expect(typeof res).toBe('string')
   })
   it("sdMakeI2I", async () => {
@@ -115,14 +121,16 @@ describe("Image", () => {
     }).pipe(
       Effect.provide([ImageService.Default, FetchHttpClient.layer, McpLogServiceLive]), //  layer
       Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.andThen(a => {
+        if (!inGitHubAction) {
+          fs.writeFileSync("tools/test/sdMakeI2I.jpg", a)
+        }
+        return "succeed";
+      }),
       Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
       Effect.catchIf(a => a.message === 'no key', e => Effect.succeed("noKey")),
-      Effect.tap(a => McpLogService.log(a.length).pipe(Effect.provide(McpLogServiceLive))),
       runPromise
     )
-    if ("noKey" !== res && !inGitHubAction) {
-      fs.writeFileSync("tools/test/sdMakeI2I.jpg", Buffer.from(res, "base64"))
-    }
     expect(typeof res).toBe('string')
   })
   it("rembg", async () => {
@@ -140,7 +148,7 @@ describe("Image", () => {
     //  vitest --run --testNamePattern=makeRunnerImageV3_i2i ImageService.test.ts
     const res = await Effect.gen(function* () {
       const buffer = fs.readFileSync('tools/test.jpg');
-      return yield* ImageService.makeRunnerImageV3(buffer, "1 girl,anime", 'pixAi', false, true)  //
+      return yield* ImageService.makeRunnerImageV3(buffer, "depth of field, cinematic composition, masterpiece, best quality,looking at viewer,anime,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut", 'pixAi', false, true)  //
     }).pipe(
       Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]), //  layer
       Logger.withMinimumLogLevel(LogLevel.Trace),
@@ -160,7 +168,7 @@ describe("Image", () => {
     //  vitest --run --testNamePattern=makeRunnerImageV3_i2i ImageService.test.ts
     const res = await Effect.gen(function* () {
       const buffer = fs.readFileSync('tools/test.jpg');
-      return yield* ImageService.makeRunnerImageV3(buffer, "1 girl,anime", 'sd', false, true)  //
+      return yield* ImageService.makeRunnerImageV3(buffer, "depth of field, cinematic composition, masterpiece, best quality,looking at viewer,anime,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut",'sd', false, true)  //
     }).pipe(
       Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]), //  layer
       Logger.withMinimumLogLevel(LogLevel.Trace),

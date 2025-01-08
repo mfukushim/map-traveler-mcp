@@ -32,12 +32,12 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
   effect: Effect.gen(function* () {
 
     function sdMakeTextToImage(prompt: string, opt?: {
-      width: number,
-      height: number,
-      sampler: string,
-      samples: number,
-      steps: number,
-      cfg_scale: number
+      width?: number,
+      height?: number,
+      sampler?: string,
+      samples?: number,
+      steps?: number,
+      cfg_scale?: number
     }) {
       return Effect.gen(function* () {
         const param = prompt.split(',').reduce((p, c) => {
@@ -79,10 +79,11 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             if (a.artifacts.some(b => b.finishReason !== 'SUCCESS') || a.artifacts.length === 0) {
               return Effect.fail(new Error(`fail sd`))
             }
-            return Effect.tryPromise(() => sharp(Buffer.from(a.artifacts[0].base64, 'base64')).resize({
-              width: 512,
-              height: 512
-            }).png().toBuffer())
+            return Effect.succeed(Buffer.from(a.artifacts[0].base64, 'base64'))
+            // return Effect.tryPromise(() => sharp(Buffer.from(a.artifacts[0].base64, 'base64')).resize({
+            //   width: 512,
+            //   height: 512
+            // }).png().toBuffer())
           }),
           Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
           Effect.mapError(e => new Error(`sdMakeTextToImage error:${e}`)),
@@ -93,14 +94,14 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     }
 
     function sdMakeImageToImage(prompt: string, inImage: Buffer, opt?: {
-      width: number,
-      height: number,
-      sampler: string,
-      samples: number,
-      steps: number,
-      cfg_scale: number
+      width?: number,
+      height?: number,
+      sampler?: string,
+      samples?: number,
+      steps?: number,
+      cfg_scale?: number
     }) {
-      return Effect.tryPromise(() => sharp(inImage).resize({width: 1024, height: 1024}).png().toBuffer()).pipe(
+      return Effect.tryPromise(() => sharp(inImage).resize({width: opt?.width || 1024, height: opt?.height || 1024}).png().toBuffer()).pipe(
         Effect.andThen(a =>
           Effect.tryPromise({
             try: () => {
@@ -133,10 +134,11 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           if (!a.artifacts || a.artifacts.some(b => b.finishReason !== 'SUCCESS') || a.artifacts.length === 0) {
             return Effect.fail(new Error(`fail sd`))
           }
-          return Effect.tryPromise(() => sharp(Buffer.from(a.artifacts[0].base64, 'base64')).resize({
-            width: 512,
-            height: 512
-          }).png().toBuffer())
+          return Effect.succeed(Buffer.from(a.artifacts[0].base64, 'base64'))
+          // return Effect.tryPromise(() => sharp(Buffer.from(a.artifacts[0].base64, 'base64')).resize({
+          //   width: opt?.width || 1024,
+          //   height: opt?.height || 1024
+          // }).png().toBuffer())
         }),
       )
       /*
@@ -183,12 +185,12 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     }
 
     function sdMakeImage(prompt: string, inImage?: Buffer, opt?: {
-      width: number,
-      height: number,
-      sampler: string,
-      samples: number,
-      steps: number,
-      cfg_scale: number,
+      width?: number,
+      height?: number,
+      sampler?: string,
+      samples?: number,
+      steps?: number,
+      cfg_scale?: number,
     }) {
       if (!Process.env.sd_key) {
         return Effect.fail(new Error('no key'))
@@ -197,12 +199,12 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     }
 
     function pixAiMakeImage(prompt: string, inImage?: Buffer, opt?: {
-      width: number,
-      height: number,
-      sampler: string,
-      samples: number,
-      steps: number,
-      cfg_scale: number,
+      width?: number,
+      height?: number,
+      sampler?: string,
+      samples?: number,
+      steps?: number,
+      cfg_scale?: number,
     }) {
       if (!Process.env.pixAi_key) {
         return Effect.fail(new Error('no key'))
@@ -260,9 +262,10 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               catch: error => new Error(`downloadMedia fail:${error}`)
             });
           }),
-          Effect.tap(a => McpLogService.logTrace(`downloadMedia out:${a.slice(0, 10)}`)),
+          Effect.andThen(a => Buffer.from(a)),
+          Effect.tap(a => McpLogService.logTrace(`downloadMedia out:${a.length}`)),
           Effect.tapError(a => McpLogService.logError(`downloadMedia err:${a}`)),
-          Effect.andThen(a => Effect.succeed(Buffer.from(a).toString('base64')))
+          // Effect.andThen(a => Effect.succeed(Buffer.from(a).toString('base64')))
         ), Schedule.recurs(4).pipe(Schedule.intersect(Schedule.spaced("10 seconds")))).pipe(Effect.provide([McpLogServiceLive]));
     }
 
@@ -296,13 +299,13 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         }
         return yield* selectImageGenerator(selectGen, prompt).pipe(
           Effect.tap(a => {
-            const data = Buffer.from(a, "base64");
-            recentImage = data
+            // const data = Buffer.from(a, "base64");
+            recentImage = a
             if (localDebug) {
-              return FileSystem.FileSystem.pipe(Effect.andThen(fs => fs.writeFile('tools/test/hotelPict.png', data, {flag: "w"})))
+              return FileSystem.FileSystem.pipe(Effect.andThen(fs => fs.writeFile('tools/test/hotelPict.png', a, {flag: "w"})))
             }
           }),
-          Effect.andThen(a => Buffer.from(a, 'base64'))
+          // Effect.andThen(a => Buffer.from(a, 'base64'))
         )
       })
     }
@@ -343,13 +346,14 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         const prompt = `${basePrompt},${appendPrompt}`
         return yield* selectImageGenerator(selectGen, prompt).pipe(
           Effect.tap(a => {
-            const data = Buffer.from(a, "base64");
-            recentImage = data
+            // const data = Buffer.from(a, "base64");
+            recentImage = a
             if (localDebug) {
-              return FileSystem.FileSystem.pipe(Effect.andThen(fs => fs.writeFile('tools/test/hotelPict.png', data, {flag: "w"})))
+              return FileSystem.FileSystem.pipe(Effect.andThen(fs => fs.writeFile('tools/test/hotelPict.png', a, {flag: "w"})))
             }
-          }),
-          Effect.andThen(a => Buffer.from(a[0], 'base64')))
+          })
+          // Effect.andThen(a => Buffer.from(a[0], 'base64')))
+        )
       })
     }
 
@@ -432,18 +436,19 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     }
 
     const selectImageGenerator = (generatorId: string, prompt: string, inImage?: Buffer, opt?: {
-      width: number,
-      height: number,
-      sampler: string,
-      samples: number,
-      steps: number,
-      cfg_scale: number,
+      width?: number,
+      height?: number,
+      sampler?: string,
+      samples?: number,
+      steps?: number,
+      cfg_scale?: number,
     }) => {
       switch (generatorId) {
         case 'pixAi':
           return pixAiMakeImage(prompt, inImage, opt)
         default:
-          return sdMakeImage(prompt, inImage, opt).pipe(Effect.andThen(a => a.toString('base64')))
+          return sdMakeImage(prompt, inImage, opt)
+          // return sdMakeImage(prompt, inImage, opt).pipe(Effect.andThen(a => a.toString('base64')))
       }
     };
 
@@ -533,14 +538,14 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             if (retry < fixedThreshold) {
               //  立ち絵
               isFixedBody = true
-              return yield* selectImageGenerator(selectGen, prompt)
+              return yield* selectImageGenerator(selectGen, prompt,undefined,{width:windowSize.w,height:windowSize.h})
             } else {
               //  画面i2i
               isFixedBody = false
-              return yield* selectImageGenerator(selectGen, prompt, clopImage)
+              return yield* selectImageGenerator(selectGen, prompt, clopImage,{width:windowSize.w,height:windowSize.h})
             }
           }).pipe(
-            Effect.andThen(a => Buffer.from(a, 'base64')),
+            // Effect.andThen(a => Buffer.from(a, 'base64')),
             Effect.tap(sdImage => localDebug && fs.writeFile('tools/test/testOutGen.png', sdImage, {flag: "w"})),
             Effect.andThen(sdImage => Effect.tryPromise({
               try: () => transparentBackground(sdImage, "png", {fast: false}),
@@ -572,9 +577,9 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             top: (innerSize.h - outSize.h) / 2,
             width: outSize.w,
             height: outSize.h
-          }).toBuffer())))
+          }).resize({width: 512,height: 512}).toBuffer()))) //  現状のClaude MCPだと512*512以上のbase64はエラーになりそう
           recentImage = stayImage
-          yield* McpLogService.logTrace(`stayImage:${recentImage}`)
+          yield* McpLogService.logTrace(`stayImage:${recentImage?.length}`)
           return {
             buf: stayImage,
             shiftX,

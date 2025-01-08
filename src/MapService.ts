@@ -125,6 +125,8 @@ export class MapDef {
       status: Schema.String,
     })
   })
+  static readonly EmptySchema = Schema.Struct({
+  })
 }
 
 export class MapService extends Effect.Service<MapService>()("traveler/MapService", {
@@ -200,7 +202,9 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
           Effect.retry({times: 2}),
           Effect.flatMap(a => HttpClientResponse.schemaBodyJson(Schema.Union(
             MapDef.DirectionsSchema.pipe(Schema.attachPropertySignature('kind', 'routes')),
-            MapDef.ErrorSchema.pipe(Schema.attachPropertySignature('kind', 'error'))))(a)),
+            MapDef.ErrorSchema.pipe(Schema.attachPropertySignature('kind', 'error')),
+            MapDef.EmptySchema.pipe(Schema.attachPropertySignature('kind', 'empty')),
+          ))(a)),
           Effect.scoped,
           Effect.tap(a => McpLogService.logTrace(`calcDomesticTravelRoute: ${JSON.stringify(a)}`)),
           Effect.tapError(e => McpLogService.logError(`calcDomesticTravelRoute error:${JSON.stringify(e)}`)),
@@ -289,7 +293,8 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
           Effect.tap(a => McpLogService.logTrace(`getMapLocation:${a}`)),
           Effect.flatMap(a => Schema.decode(Schema.parseJson(Schema.Union(
             MapDef.GmTextSearchSchema.pipe(Schema.attachPropertySignature('kind', 'places')),
-            MapDef.ErrorSchema.pipe(Schema.attachPropertySignature('kind', 'error'))
+            MapDef.ErrorSchema.pipe(Schema.attachPropertySignature('kind', 'error')),
+            MapDef.EmptySchema.pipe(Schema.attachPropertySignature('kind', 'empty')),
           )))(a)),
           Effect.scoped,
           Effect.flatMap(adr => {
@@ -347,7 +352,12 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
           }),
           Effect.flatMap(client.execute),
           Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
-          Effect.flatMap(a => HttpClientResponse.schemaBodyJson(MapDef.GmTextSearchSchema)(a)),
+          Effect.flatMap(a => HttpClientResponse.schemaBodyJson(Schema.Union(
+            MapDef.GmTextSearchSchema.pipe(Schema.attachPropertySignature('kind', 'places')),
+            MapDef.ErrorSchema.pipe(Schema.attachPropertySignature('kind', 'error')),
+            MapDef.EmptySchema.pipe(Schema.attachPropertySignature('kind', 'empty')),
+          ))(a)),
+          // Effect.flatMap(a => HttpClientResponse.schemaBodyJson(MapDef.GmTextSearchSchema)(a)),
           Effect.onError(cause => McpLogService.logError(`getNearly error:${JSON.stringify(cause)}`)),
           Effect.scoped,
         )

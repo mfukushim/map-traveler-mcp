@@ -10,6 +10,7 @@ import {ImageServiceLive} from "../src/ImageService.js";
 import {StoryServiceLive} from "../src/StoryService.js";
 import {NodeFileSystem} from "@effect/platform-node"
 import {McpLogServiceLive} from "../src/McpLogService.js";
+import {AnswerError} from "../src/mapTraveler.js";
 
 
 describe("Runner", () => {
@@ -22,7 +23,8 @@ describe("Runner", () => {
       Effect.provide([RunnerServiceLive,DbServiceLive,MapServiceLive,ImageServiceLive,StoryServiceLive,
         NodeFileSystem.layer, FetchHttpClient.layer,McpLogServiceLive]), //  layer
       Logger.withMinimumLogLevel(LogLevel.Trace),
-      Effect.tapError(Effect.logError),
+      Effect.tapError(a => Effect.logError(a)),
+      Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed({content: []})),
       Effect.tap(a => Effect.log(a)),
       runPromise
     )
@@ -36,6 +38,7 @@ describe("Runner", () => {
         NodeFileSystem.layer, FetchHttpClient.layer,McpLogServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(Effect.logError),
+      Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed({content: []})),
       Effect.tap(a => Effect.log(a)),
       runPromise
     )

@@ -1,4 +1,5 @@
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
+
 import {sqliteTable, integer, text, real, unique} from "drizzle-orm/sqlite-core"
 
 

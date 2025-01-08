@@ -17,6 +17,7 @@ import {FileSystem} from "@effect/platform";
 import {NodeFileSystem} from "@effect/platform-node";
 import {AnswerError} from "./mapTraveler.js";
 import * as path from "path";
+import {ToolContentResponse} from "./McpService.js";
 
 
 dayjs.extend(utc)
@@ -121,7 +122,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
 
         const abortText = abort ? `I have received a message to discontinue my trip. This time, I will discontinue my trip.\n` : ''
         const posText = Option.isSome(nearFacilities.townName) ? `Town name is ${nearFacilities.townName.value}\n` : 'Town name is unknown.\n'
-        const content: { type: string, text?: string, data?: string, mimeType?: string }[] = [{
+        const content: ToolContentResponse[] = [{
           type: "text",
           text: abortText + locText + posText + (includeNearbyFacilities ? facilityText : '') + `${useImage ? (image ? '' : `\nSorry,I'm busy traveling so I couldn't take a photo.`) : ''}`
         }];
@@ -130,7 +131,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
             type: "image",
             data: image.toString('base64'),
             mimeType: 'image/png'
-          })
+          } as ToolContentResponse)
         }
         return {out: {content}, address: nearFacilities.address}
       }).pipe(Effect.provide(NodeFileSystem.layer))

@@ -110,7 +110,7 @@ describe("Mcp", () => {
   it("setCurrentLocation", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* McpService.setCurrentLocation("東京都千代田区丸の内1丁目9-1")
+      return yield* McpService.setCurrentLocation("456 Random Street, Lost City") //東京都千代田区丸の内1丁目9-1
     }).pipe(
         Effect.provide([McpServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
@@ -136,7 +136,7 @@ describe("Mcp", () => {
   it("setDestinationAddress", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* McpService.setDestinationAddress("川崎駅")
+      return yield* McpService.setDestinationAddress("456 Random Street, Lost City")  //川崎駅
     }).pipe(
         Effect.provide([McpServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
@@ -146,6 +146,20 @@ describe("Mcp", () => {
     )
     expect(res.content).toBeInstanceOf(Array)
   })
+  it("getTravelerInfo", async () => {
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    const res = await Effect.gen(function* () {
+      return yield* McpService.getTravelerInfo()
+    }).pipe(
+      Effect.provide([McpServiceLive, DbServiceLive]),
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      // Effect.tapError(e => Effect.logError(e.toString())),
+      Effect.tap(a => Effect.log(a)),
+      runPromise
+    )
+    expect(res.content).toBeInstanceOf(Array)
+  })
+
   it("startJourneyPractice", async () => {
     //  vitest --run --testNamePattern=startJourneyPractice McpService.test.ts
     const res = await Effect.gen(function* () {
