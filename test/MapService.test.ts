@@ -30,15 +30,30 @@ describe("Map", () => {
     const res = await Effect.gen(function* () {
       return yield* MapService.getNearly(37.68206875, 140.4550529784091, 2000)  //
     }).pipe(
-        Effect.provide([MapServiceLive, FetchHttpClient.layer, McpLogServiceLive]), //  layer
-        Logger.withMinimumLogLevel(LogLevel.Trace),
-        Effect.tapError(e => Effect.logError(e.toString())),
-        Effect.catchIf(a => a.toString() === 'Error: no key', e => Effect.succeed({})),
-        Effect.tap(a => Effect.log(a)),
-        runPromise
+      Effect.provide([MapServiceLive, FetchHttpClient.layer, McpLogServiceLive]), //  layer
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.tapError(e => Effect.logError(e.toString())),
+      Effect.catchIf(a => a.toString() === 'Error: no key', e => Effect.succeed({})),
+      Effect.tap(a => Effect.log(a)),
+      runPromise
     )
 
     expect(res).toBeInstanceOf(Object)
+  })
+  it("getTimezoneByLatLng", async () => {
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    const res = await Effect.gen(function* () {
+      return yield* MapService.getTimezoneByLatLng(35.681236200000008, 139.7671248)  //
+    }).pipe(
+      Effect.provide([MapServiceLive, FetchHttpClient.layer, McpLogServiceLive]), //  layer
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.tapError(e => Effect.logError(e.toString())),
+      Effect.catchIf(a => a.toString() === 'Error: no key', e => Effect.succeed({})),
+      Effect.tap(a => Effect.log(a)),
+      runPromise
+    )
+
+    expect(typeof res).not.toBeNull()
   })
   it("calcDomesticTravelRoute", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts

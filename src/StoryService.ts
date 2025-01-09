@@ -170,7 +170,7 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
         textList.push('Currently in practice mode. You can only go to fixed locations.' +
           ' To switch to normal mode, you need to obtain and set a Google Map API key.' +
           ' key for detail: https://developers.google.com/maps/documentation/streetview/get-api-key ' +
-          ' Need Credentials: [Street View Static API],[Places API (New)],[Time Zone API]' +
+          ' Need Credentials: [Street View Static API],[Places API (New)],[Time Zone API],[Directions API]' +
           ' Please specify the API key in the configuration file(claude_desktop_config.json).' +
           ' And restart app. Claude Desktop App. Claude App may shrink into the taskbar, so please quit it completely.\n' +
           `claude_desktop_config.json\n

@@ -526,8 +526,8 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           }
 
           /** 画像評価リトライ */
-          let retry = 7 //  5回リトライになってるな 現在初期値7 最小値2(でないと画像できない)
-          const fixedThreshold = 3  //  バストショットに切り替える閾値 2,1の2回はバストショット生成を試みる
+          let retry = 4 //  5回リトライになってるな 現在初期値7 最小値2(でないと画像できない)
+          const fixedThreshold = 2  //  バストショットに切り替える閾値 2,1の2回はバストショット生成を試みる
           let isFixedBody = false
           let appendPrompt: string | undefined
 
@@ -564,7 +564,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
                 })
               );
             }),
-            Effect.retry(Schedule.recurs(7).pipe(Schedule.intersect(Schedule.spaced("5 seconds"))))
+            Effect.retry(Schedule.recurs(3).pipe(Schedule.intersect(Schedule.spaced("5 seconds"))))
           )
           const stayImage = yield* Effect.tryPromise(() => {
             return sharp(innerImage).composite([{

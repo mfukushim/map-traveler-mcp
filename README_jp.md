@@ -38,6 +38,7 @@ Google Map APIは以下の3つの権限を設定してください。
 - Street View Static API
 - Places API (New)
 - Time Zone API
+- Directions API
 
 
 画像生成AIを使う場合は、 pixAi_keyまたはsd_keyのいずれかを設定します。またPCにpython3.8以上がインストールされている必要があります。 

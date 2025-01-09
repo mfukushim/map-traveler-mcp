@@ -1,4 +1,5 @@
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
+
 import {Effect, Option} from "effect"
 import {Server} from "@modelcontextprotocol/sdk/server/index.js";
 import {StdioServerTransport} from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -197,7 +198,9 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           ];
           yield* DbService.getEnv('destination').pipe(
             Effect.andThen(dest => RunnerService.setDestinationAddress(dest)),
-            Effect.andThen(a => setMessage.push(a.message)));
+            Effect.andThen(a => setMessage.push(a.message)),
+            Effect.orElse(() => Effect.succeed(true))
+          );
           return {
             content: [{
               type: "text",
@@ -569,21 +572,22 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               properties: {}
             }
           },
-          {
-            name: "set_person_mode",  //  環境情報はリソースに反映する できれば更新イベントを出す
-            description: "set a traveler's view mode. Third person or Second person.",
-            inputSchema: {
-              type: "object",
-              properties: {
-                person: {
-                  type: "string",
-                  enum: ["third_person", "second_person"],
-                  description: "traveler's view mode."
-                },
-              },
-              required: ["person"]
-            }
-          },
+          //  TODO 当面はずす
+          // {
+          //   name: "set_person_mode",  //  環境情報はリソースに反映する できれば更新イベントを出す
+          //   description: "set a traveler's view mode. Third person or Second person.",
+          //   inputSchema: {
+          //     type: "object",
+          //     properties: {
+          //       person: {
+          //         type: "string",
+          //         enum: ["third_person", "second_person"],
+          //         description: "traveler's view mode."
+          //       },
+          //     },
+          //     required: ["person"]
+          //   }
+          // },
           {
             name: "get_traveler_info",
             description: "get a traveler's setting.For example, traveler's name, the language traveler speak, Personality and speaking habits, etc.",
@@ -803,8 +807,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             switch (request.params.name) {
               case "tips":
                 return tips().pipe(Effect.provide([StoryServiceLive, NodeFileSystem.layer]))
-              case "set_person_mode":
-                return setPersonMode(String(request.params.arguments?.person)).pipe(Effect.provide([DbServiceLive,McpLogServiceLive]))
+              // case "set_person_mode":
+              //   return setPersonMode(String(request.params.arguments?.person)).pipe(Effect.provide([DbServiceLive,McpLogServiceLive]))
               case "get_traveler_info":
                 return getTravelerInfo().pipe(
                   Effect.provide([DbServiceLive, McpLogServiceLive])
@@ -865,7 +869,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               })
             }),
             Effect.catchAll(e => {
-              return McpLogService.logError(`catch all:${JSON.stringify(e.toString())}`).pipe(Effect.as({
+              return McpLogService.logError(`catch all:${JSON.stringify(e.toString())},${e}`).pipe(Effect.as({
                 content: [{
                   type: "text",
                   text: "Sorry,unknown system error."

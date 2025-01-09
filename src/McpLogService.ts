@@ -1,4 +1,5 @@
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
+
 import {Effect} from "effect";
 import 'dotenv/config'
 import * as fs from "node:fs";
@@ -10,16 +11,20 @@ import * as Process from "node:process";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const __pwd = __dirname.endsWith('src') ? path.join(__dirname,'..'):path.join(__dirname,'../..')
-const logPath = path.join(__pwd,"simpleLog.txt")
+const logPath = "/tmp/simpleLog.txt"
+// const logPath = path.join(__pwd,"simpleLog.txt")
 
-
-const logLevel = Process.env.ServerLog ? (Process.env.ServerLog as string).split(','):[]
+const logLevel = ["log","trace","error","sync"]
+// const logLevel = Process.env.ServerLog ? (Process.env.ServerLog as string).split(','):[]
 
 export function logSync(message:unknown) {
-  if(logLevel.includes('sync')) {
+  if(process.env.VITEST !== 'true' && logLevel.includes('sync')) {
     fs.writeFileSync(logPath,"s:"+(message as any).toString()+"\n",{flag:"a"})
   }
 }
+
+logSync(`pwd:${__pwd}`)
+logSync(`ServerLog:${Process.env.ServerLog}`)
 
 
 export class McpLogService extends Effect.Service<McpLogService>()("traveler/McpLogService", {
@@ -63,4 +68,4 @@ export class McpLogService extends Effect.Service<McpLogService>()("traveler/Mcp
 }) {
 }
 
-export const McpLogServiceLive = McpLogService.Default
+export const McpLogServiceLive = McpLogService.Default;

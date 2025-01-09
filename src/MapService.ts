@@ -240,6 +240,9 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
      * @param lng
      */
     function getTimezoneByLatLng(lat: number, lng: number) {
+      if (!Process.env.GoogleMapApi_key) {
+        return Effect.fail(new Error('no key'))
+      }
       return Effect.gen(function* () {
         const client = yield* HttpClient.HttpClient
         return yield* client.get(`https://maps.googleapis.com/maps/api/timezone/json`, {
@@ -252,7 +255,7 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
           Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
           Effect.flatMap(a => a.json),
           Effect.scoped,
-          Effect.tap(a => McpLogService.logTrace(`getTimezoneByLatLng:${a}`)),
+          Effect.tap(a => McpLogService.logTrace(`getTimezoneByLatLng:${JSON.stringify(a)}`)),
           Effect.tapError(e => McpLogService.logError(`getTimezoneByLatLng error:${JSON.stringify(e)}`)),
           Effect.andThen(a => a as { status: string, timeZoneId?: string }),
           Effect.tap(a => (a.status !== 'OK' || !a.timeZoneId) && Effect.fail(new Error('getTimezoneByLatLng error'))),
