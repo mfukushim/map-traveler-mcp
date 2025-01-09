@@ -18,7 +18,7 @@ import {fileURLToPath} from 'url';
 import {dirname} from 'path';
 import * as path from "node:path";
 import {logSync, McpLogService, McpLogServiceLive} from "./McpLogService.js";
-import {findSystemPython} from "transparent-background/lib/utils.js";
+// import {findSystemPython} from "transparent-background/lib/utils.js";
 import {practiceData} from "./RunnerService.js";
 import {defaultBaseCharPrompt} from "./ImageService.js";
 
@@ -323,10 +323,10 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         if (Process.env.sd_key || Process.env.pixAi_key) {
           env.anyImageAiExist = true
         }
-        env.pythonExist = findSystemPython() !== null
-        if ((Process.env.bs_id && Process.env.bs_pass && Process.env.bs_handle)) {
-          env.anySnsExist = true
-        }
+        // env.pythonExist = findSystemPython() !== null
+        // if ((Process.env.bs_id && Process.env.bs_pass && Process.env.bs_handle)) {
+        //   env.anySnsExist = true
+        // }
         if (Process.env.no_sns_post) {
           env.noSnsPost = true
         }

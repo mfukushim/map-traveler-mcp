@@ -1,6 +1,6 @@
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
 
-import {Effect, Option} from "effect"
+import {Effect, Option, Scope} from "effect"
 import {Server} from "@modelcontextprotocol/sdk/server/index.js";
 import {StdioServerTransport} from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -24,6 +24,7 @@ import {AtPubNotification, SnsService, SnsServiceLive} from "./SnsService.js";
 import * as Process from "node:process";
 import {FeedViewPost} from "@atproto/api/dist/client/types/app/bsky/feed/defs.js";
 import * as path from "path";
+import {CommandExecutor} from "@effect/platform/CommandExecutor";
 
 //  Toolのcontentの定義だがzodから持ってくると重いのでここで定義
 export interface ToolContentResponse {
@@ -526,7 +527,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 text: a
               }]
             })),
-            Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer]),
+            Effect.provide([StoryServiceLive]),
+            // Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer]),
             Effect.runPromise
           ).catch(e => {
             if (e instanceof Error) {
@@ -858,6 +860,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             }
           }
           
+          const x = toolSwitch()
           return await toolSwitch().pipe(
             Effect.andThen(a => a as { content: ToolContentResponse[] }),
             Effect.catchIf(a => a instanceof AnswerError, e => {
@@ -869,7 +872,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               })
             }),
             Effect.catchAll(e => {
-              return McpLogService.logError(`catch all:${JSON.stringify(e.toString())},${e}`).pipe(Effect.as({
+              return McpLogService.logError(`catch all:${e.toString()},${JSON.stringify(e)}`).pipe(Effect.as({
                 content: [{
                   type: "text",
                   text: "Sorry,unknown system error."
@@ -877,7 +880,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               }))
             }),
             Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive,
-              FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer, McpLogServiceLive]),
+              FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer, McpLogServiceLive,Scope]),
             Effect.runPromise)
         });
 

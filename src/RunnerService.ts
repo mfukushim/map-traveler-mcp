@@ -196,7 +196,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         if (e instanceof AnswerError) {
           return Effect.fail(e)
         }
-        return McpLogService.logError(`getCurrentView catch:${e}`).pipe(Effect.andThen(() =>
+        return McpLogService.logError(`getCurrentView catch:${e},${JSON.stringify(e)}`).pipe(Effect.andThen(() =>
           Effect.fail(new AnswerError("Sorry,I don't know where you are right now. Please wait a moment and ask again."))));
       }))
     }

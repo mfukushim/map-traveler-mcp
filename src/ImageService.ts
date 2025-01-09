@@ -1,10 +1,11 @@
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
+
 import {Effect, Schedule} from "effect";
 import sharp = require("sharp");
-import {FetchHttpClient, HttpClient, HttpClientRequest, FileSystem} from "@effect/platform";
+import {FetchHttpClient, HttpClient, HttpClientRequest, FileSystem, Command} from "@effect/platform";
 import dayjs from "dayjs";
 import FormData from 'form-data';
-import {transparentBackground} from "transparent-background";
+// import {transparentBackground} from "transparent-background";
 import {Jimp} from "jimp";
 import {PixAIClient} from '@pixai-art/client'
 import {type MediaBaseFragment, TaskBaseFragment} from "@pixai-art/client/types/generated/graphql.js";
@@ -14,6 +15,7 @@ import {McpLogService, McpLogServiceLive} from "./McpLogService.js";
 import {__pwd, env} from "./DbService.js";
 import WebSocket from 'ws'
 import * as path from "path";
+import { NodeCommandExecutor, NodeFileSystem } from "@effect/platform-node";
 
 export const defaultBaseCharPrompt = 'depth of field, cinematic composition, masterpiece, best quality,looking at viewer,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut'
 
@@ -481,6 +483,25 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         return {alphaNum, number};
       })
     }
+    
+    const rembg = (sdImage:Buffer) => {
+      return Effect.gen(function *() {
+        const fs = yield* FileSystem.FileSystem
+        const tempIn = yield *fs.makeTempFileScoped()
+        const tempOut = yield *fs.makeTempFileScoped()
+        yield *fs.writeFile(tempIn,sdImage)
+        const cmd = Command.make("rembg","i",tempIn,tempOut)
+        const res = yield *Command.string(cmd);
+        yield *McpLogService.logTrace(`rembg-cli:${res}`)
+        return yield *fs.readFile(tempOut)
+      }).pipe(Effect.andThen(a => Buffer.from(a)))
+      //  TODO Mac OSでなぜか現在使用不能。。。
+      // return Effect.tryPromise({
+      //   try: () => transparentBackground(sdImage, "png", {fast: false}),
+      //   catch: error => `transparentBackground error:${error}`
+      // })
+      // return Effect.succeed(sdImage)
+    }
 
     /**
      * 旅画像生成処理V3
@@ -547,10 +568,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           }).pipe(
             // Effect.andThen(a => Buffer.from(a, 'base64')),
             Effect.tap(sdImage => localDebug && fs.writeFile('tools/test/testOutGen.png', sdImage, {flag: "w"})),
-            Effect.andThen(sdImage => Effect.tryPromise({
-              try: () => transparentBackground(sdImage, "png", {fast: false}),
-              catch: error => `transparentBackground error:${error}`
-            })),
+            Effect.andThen(sdImage => rembg(sdImage)),
             Effect.tap(avatarImage => localDebug && fs.writeFile('tools/test/testOutRmBg.png', avatarImage, {flag: "w"})),
             Effect.tap(avatarImage => {
               //  非透明度判定 0.02以上
@@ -607,7 +625,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       generatePrompt,
     }
   }),
-  dependencies: [McpLogServiceLive]
+  dependencies: [McpLogServiceLive,NodeCommandExecutor.layer,NodeFileSystem.layer]
 }) {
 }
 

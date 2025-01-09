@@ -5,9 +5,11 @@ import {runPromise} from "effect/Effect";
 import {FetchHttpClient} from "@effect/platform";
 import * as fs from "node:fs";
 import {DbService, DbServiceLive} from "../src/DbService.js";
-import {NodeFileSystem} from "@effect/platform-node"
-import {transparentBackground} from "transparent-background";
+import {NodeCommandExecutor, NodeContext, NodeFileSystem} from "@effect/platform-node"
+// import {transparentBackground} from "transparent-background";
 import {McpLogService, McpLogServiceLive} from "../src/McpLogService.js";
+import {NodeRuntime} from "node:inspector";
+import {PlatformError} from "@effect/platform/Error";
 
 const inGitHubAction = process.env.GITHUB_ACTIONS === 'true';
 
@@ -133,24 +135,24 @@ describe("Image", () => {
     )
     expect(typeof res).toBe('string')
   })
-  it("rembg", async () => {
-    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
-    const buffer = fs.readFileSync('tools/testRembg.png');
-    const buf = await transparentBackground(buffer, "png", {
-      fast: false,
-    });
-    if (!inGitHubAction) {
-      fs.writeFileSync("tools/test/rembg.jpg", buf);
-    }
-    expect(buf).toBeInstanceOf(Buffer)
-  })
+  // it("rembg", async () => {
+  //   //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+  //   const buffer = fs.readFileSync('tools/testRembg.png');
+  //   const buf = await transparentBackground(buffer, "png", {
+  //     fast: false,
+  //   });
+  //   if (!inGitHubAction) {
+  //     fs.writeFileSync("tools/test/rembg.jpg", buf);
+  //   }
+  //   expect(buf).toBeInstanceOf(Buffer)
+  // })
   it("makeRunnerImageV3_i2iPixAI", async () => {
     //  vitest --run --testNamePattern=makeRunnerImageV3_i2i ImageService.test.ts
     const res = await Effect.gen(function* () {
       const buffer = fs.readFileSync('tools/test.jpg');
       return yield* ImageService.makeRunnerImageV3(buffer, "depth of field, cinematic composition, masterpiece, best quality,looking at viewer,anime,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut", 'pixAi', false, true)  //
     }).pipe(
-      Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]), //  layer
+      Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive,NodeContext.layer,NodeCommandExecutor.layer]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => {
