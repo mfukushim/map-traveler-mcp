@@ -2,6 +2,8 @@
 
 [English](./README.md)
 
+### [注意] 適切なrembgコンポーネントが見つからないため現時点Mac OSではインストールできません。
+
 Google map上を仮想的に旅するアバターの環境を作るMCP serverです。
 
 Claude DesktopなどのMCP clientから、アバターに指示をして、移動する旅の様子と写真を報告することができます。

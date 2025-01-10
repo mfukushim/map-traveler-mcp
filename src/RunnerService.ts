@@ -153,7 +153,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
             const vehiclePrompt = maneuver?.includes('ferry') ? '(on ship deck:1.3),(ferry:1.2),sea,handrails' :
               maneuver?.includes('airplane') ? '(airplane cabin:1.3),reclining seat,sitting' : ''
             const image = includePhoto && env.anyImageAiExist && (yield* ImageService.makeEtcTripImage(basePrompt, useAiImageGen, vehiclePrompt, loc.timeZoneId, localDebug))
-            const out: { type: string; text?: string; data?: string; mimeType?: string }[] = [
+            const out: ToolContentResponse[] = [
               {
                 type: "text",
                 text: `I'm on the ${maneuver} now. Longitude and Latitude is almost ${loc.lat},${loc.lng}`
@@ -178,7 +178,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
             //  ホテル画像
             const hour = dayjs().tz(loc.timeZoneId).hour()
             const image1 = includePhoto && (yield* ImageService.makeHotelPict(basePrompt, useAiImageGen, hour, undefined, localDebug))
-            const out: { type: string; text?: string; data?: string; mimeType?: string }[] = [
+            const out: ToolContentResponse[] = [
               {type: "text", text: `I am in a hotel in ${runStatus.to}.`}
             ]
             if (image1) {
@@ -196,7 +196,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         if (e instanceof AnswerError) {
           return Effect.fail(e)
         }
-        return McpLogService.logError(`getCurrentView catch:${e}`).pipe(Effect.andThen(() =>
+        return McpLogService.logError(`getCurrentView catch:${e},${JSON.stringify(e)}`).pipe(Effect.andThen(() =>
           Effect.fail(new AnswerError("Sorry,I don't know where you are right now. Please wait a moment and ask again."))));
       }))
     }

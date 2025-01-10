@@ -206,9 +206,14 @@ or
 `
             )
           }
-          if (!env.pythonExist) {
-            textList.push('In order to synthesize avatar images, your PC must be running Python.' +
-              ' Please install Python on your PC using information from the Internet.')
+          if (!env.pythonExist || !env.enableRemBg) {
+            textList.push('In order to synthesize avatar images, your PC must be running Python and install rembg.' +
+              ` Please install Python and rembg on your PC using information from the Internet.\n
+\`\`\`
+"env":{"rembg_path":"(absolute path to rembg cli)"}
+\`\`\`\n
+To keep your pc environment clean, I recommend using a Python virtual environment such as venv.
+`)
           }
           //  基本動作状態
           const bsEnable = Process.env.bs_id && Process.env.bs_pass && Process.env.bs_handle

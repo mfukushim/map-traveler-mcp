@@ -2,6 +2,8 @@
 
 [Japanese](./README_jp.md)
 
+### [Note:] Cannot install on Mac OS at this time because the appropriate rembg component cannot be found.
+
 This is an MCP server that creates an environment for an avatar to virtually travel on Google Maps.
 
 From an MCP client such as Claude Desktop, you can give instructions to the avatar and report on the progress of its journey with photos.

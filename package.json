@@ -1,6 +1,6 @@
 {
   "name": "@mfukushim/map-traveler-mcp",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "type": "module",
   "bin": {
     "map-traveler-mcp": "build/esm/mapTraveler.js"
@@ -25,7 +25,7 @@
   "scripts": {
     "codegen": "build-utils prepare-v2",
     "build": "pnpm build-esm",
-    "build:npm": "npm build-esm",
+    "build:npm": "npm run build-esm",
     "build-esm": "tsc -b tsconfig.build.json",
     "build-annotate": "babel build/esm --plugins annotate-pure-calls --out-dir build/esm --source-maps",
     "build:shx": "pnpm build-esm && shx chmod +x build/esm/*.js",
@@ -37,12 +37,12 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.1",
     "@atproto/api": "^0.13.23",
-    "@effect/platform": "latest",
-    "@effect/platform-node": "latest",
+    "@effect/platform": "^0.72.1",
+    "@effect/platform-node": "^0.68.1",
     "@effect/sql": "^0.22.3",
     "@effect/sql-sqlite-node": "^0.23.2",
     "@libsql/client": "^0.14.0",
-    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@modelcontextprotocol/sdk": "^1.1.0",
     "@pixai-art/client": "^0.4.0",
     "dayjs": "^1.11.13",
     "dotenv": "^16.4.7",
@@ -53,7 +53,6 @@
     "jimp": "^1.6.0",
     "openai": "^4.75.0",
     "sharp": "^0.33.5",
-    "transparent-background": "^1.5.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
