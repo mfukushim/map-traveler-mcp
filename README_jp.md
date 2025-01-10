@@ -25,9 +25,10 @@ claude_desktop_config.json
       "args": ["-y", "@mfukushim/map-traveler-mcp"],
       "env":{
       	  	"GoogleMapApi_key":"(Google Map APIのキー)",
+            "sqlite_path":"(db保存ファイルのパス 例 %USERPROFILE%/Desktop/traveler.sqlite など)",
+            "rembg_path": "(インストールしたrembg cliの絶対パス)",
             "pixAi_key":"(pixAi APIのキー)",
 			"sd_key":"(またはStability.aiのAPIのキー",
-			"sqlite_path":"(db保存ファイルのパス 例 %USERPROFILE%/Desktop/traveler.sqlite など)",
 			"bs_id":"(bluesky snsの登録アドレス)",
 			"bs_pass":"(bluesky snsのパスワード)",
 			"bs_handle":"(bluesky snsのハンドル名 例 geo-less-traveler.bsky.social など)"
@@ -36,16 +37,22 @@ claude_desktop_config.json
   }
 }
 ```
-Google Map APIは以下の3つの権限を設定してください。  
+Google Map APIは以下の4つの権限を設定してください。  
 - Street View Static API
 - Places API (New)
 - Time Zone API
 - Directions API
 
+https://developers.google.com/maps/documentation/streetview/get-api-key
 
-画像生成AIを使う場合は、 pixAi_keyまたはsd_keyのいずれかを設定します。またPCにpython3.8以上がインストールされている必要があります。 
+画像生成AIを使う場合は、 pixAi_keyまたはsd_keyのいずれかを設定します。またPCにpython3.7~3.11がインストールされrembg cliをインストールしている必要があります(仮想環境推奨)。 
 
-bluesky SNSのアドレス/パスワード は任意です。自動ポストするので専用のアカウントを取ることを推奨します。  
+https://platform.pixai.art/docs
+https://platform.stability.ai/docs/api-reference#tag/SDXL-1.0-and-SD1.6/operation/textToImage
+
+bluesky SNSのアドレス/パスワードの設定は任意です。自動ポストするので専用のアカウントを取ることを推奨します。  
+
+https://bsky.app/
 
 確認用にAPIキーを必要としない練習モードで実行することもできます。
 
@@ -64,47 +71,40 @@ claude_desktop_config.json
 
 ## 使い方
 
+練習モードまで
+
 1. nodejs 22をインストールします。
-2. もしpython3.8以上がなければpythonをインストールします。
-3. Claude Desktopを使える状況にします。
-4. 以下のコマンドをターミナルから実行します(やや初期インストールが重いため、事前インストールする)
-   ```bash
-   npx @mfukushim/map-traveler-mcp
-   
-   Need to install the following packages:
-   @mfukushim/map-traveler-mcp@0.0.1
-   Ok to proceed? (y) y
-   ```
-   
-5. claude_desktop_config.jsonに上記のいずれかの設定を反映します。
-6. Claude Desktopを再起動します。設定に少し時間がかかるかもしれません(エラーが出る場合は。再度Claude Desktopを再起動してみてください。上手くいかない場合は下記、注意を参照ください。)。以下のマークが画面右下に出ることを確認します。  
+2. Claude Desktopを使える状況にします。
+3. claude_desktop_config.jsonに上記のいずれかの設定を反映します。
+4. Claude Desktopを再起動します。設定に少し時間がかかるかもしれません(エラーが出る場合は。再度Claude Desktopを再起動してみてください。上手くいかない場合は下記、注意を参照ください。)。以下のマークが画面右下に出ることを確認します。  
 ![img_1.png](img_1.png)
-7. 「いまどこにいますか」「旅に出かけてください」と問いかけてください。会話が始まります。API使用時には確認画面が出るのでAllowを選んでください。
+5. 「いまどこにいますか」「旅に出かけてください」と問いかけてください。会話が始まります。API使用時には確認画面が出るのでAllowを選んでください。
 ![img_4.png](img_4.png)
-8. Attach from MCPを選択し、role.txtを選択してください。
+6. Attach from MCPを選択し、role.txtを選択してください。
 ![img_2.png](img_2.png)
 ![img_3.png](img_3.png)
-9. 旅用のプロンプトが組み込まれたので自由に会話してみてください。
+7. 旅用のプロンプトが組み込まれたので自由に会話してみてください。
 
-## 注意
+本格的に使う
 
-初回の起動は数分(2分くらい)時間がかかるためClaude Desktopがエラー表示すると思います。再起動で正しく動作すると思いますが、うまくいかない場合は以下の方法をお試しください。
+1. GoogleMapAPIのアクセスキーを取得して、Street View Static API,Places API (New),Time Zone API,Directions APIの権限を設定してください。これをclaude_desktop_config.jsonのenvに設定して再起動します。  
+ここまでで旅行動ログが現実のマップに即します。旅画像も合成されない状態なら出力します。
+2. ディスクの邪魔にならないパスをきめて、claude_desktop_config.jsonのenvのsqlite_pathに設定します。(例: %USERPROFILE%/Desktop/traveler.sqlite $HOME/Documents/traveler.sqlite など)  
+ここまでで旅行動が保存され、Claude Desktopを終了させても旅を継続できます。
+3. python3.7～3.11をインストールし、rembgをcli付きでインストールします。venv等の仮想環境を使うことをお勧めします。
+   ```bash
+   python3 -m venv venv
+   . venv/bin/activate または \venv\Scripts\activate
+   pip install "rembg[cpu,cli]" 
+   ```
+   正常にrembg cliが動作するかサンプルの画像ファイルを使って確認してください。人が写っている画像を入力し、出力ファイルで人が切り出されていればokです。
+   ```bash
+   rembg i 入力ファイル名 出力ファイル名
+   ```
+4. rembg cliがpythonのexeロケーションにインストールされますのでそのパスを取得してください。ファイル位置はOSやpythonのインストール状態によりまちまちですが、venvの場合は設定したディレクトリの上の (仮想環境名)\Scripts\rembg.exe や  
+(仮想環境名)/bin/rembg などです。見つからなければファイル検索ソフトなどでパスを探してください。そのパスをclaude_desktop_config.jsonのenvのrembg_pathに設定します。 (例: )
+5. pixAIまたはStablility.aiのサイトで画像生成APIのキーを取得します。キーをclaude_desktop_config.jsonのenvのpixAi_keyまたはsd_keyに設定します。
+   ここまでで旅画像にアバターが合成されます。
+6. bluesky SNSのアドレス/パスワードを取得し、ハンドル名も取得します。claude_desktop_config.jsonのenvのbs_id,bs_pass,bs_handle にそれぞれ設定します。
+旅用知識プロンプト roleWithSns.txt を取り込むことで旅アクションをSNSに報告します(botとして自動ポストしますので専用にアカウントを割り当てることをお勧めします)
 
-1. @mfukushim/map-traveler-mcpをgithubからcloneしてビルドする。  
-    ```bash
-    git clone https://github.com/mfukushim/map-traveler-mcp.git
-    pnpm install
-    pnpm build
-    ```
-2. claude_desktop_config.json では直接パスを指定する
-```json
-{
-  "mcpServers": {
-    "traveler": {
-      "command": "npx",
-      "args": ["-y", "(cloneしたファイルパス)"]
-    }
-  }
-}
-
-```
