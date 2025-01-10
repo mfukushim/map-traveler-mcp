@@ -11,11 +11,9 @@ import * as Process from "node:process";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const __pwd = __dirname.endsWith('src') ? path.join(__dirname,'..'):path.join(__dirname,'../..')
-const logPath = "/tmp/simpleLog.txt"
-// const logPath = path.join(__pwd,"simpleLog.txt")
+const logPath = path.join(__pwd,"mapTravelerLog.log")
 
-const logLevel = ["log","trace","error","sync"]
-// const logLevel = Process.env.ServerLog ? (Process.env.ServerLog as string).split(','):[]
+const logLevel = Process.env.ServerLog ? (Process.env.ServerLog as string).split(','):[]
 
 export function logSync(message:unknown) {
   if(process.env.VITEST !== 'true' && logLevel.includes('sync')) {
