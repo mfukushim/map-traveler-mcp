@@ -1,8 +1,6 @@
-# @mfukushim/map-traveler-mcp
+# Virtual Traveling bot mini environment package for MCP
 
 [Japanese](./README_jp.md)
-
-### [Note:] Cannot install on Mac OS at this time because the appropriate rembg component cannot be found.
 
 This is an MCP server that creates an environment for an avatar to virtually travel on Google Maps.
 

@@ -1,8 +1,7 @@
-# @mfukushim/map-traveler-mcp
+# 旅botミニ MCP版 仮想旅アバター環境パッケージ 
+
 
 [English](./README.md)
-
-### [注意] 適切なrembgコンポーネントが見つからないため現時点Mac OSではインストールできません。
 
 Google map上を仮想的に旅するアバターの環境を作るMCP serverです。
 
