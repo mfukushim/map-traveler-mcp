@@ -1,41 +1,41 @@
-#name: Node.js Package
-#
-#on:
-#  release:
-#    types: [created]
-#
-#jobs:
-#  build:
-#    runs-on: ubuntu-latest
-#    steps:
-#      - uses: actions/checkout@v4
-#        with:
-#          token: ${{ secrets.PERSONALACCESSTOKEN }}
-#      - name: Install dependencies
-#        uses: ./.github/actions/setup
-#      - run: pnpm build
-#
-#  publish-gpr:
-#    needs: build
-#    runs-on: ubuntu-latest
-#    permissions:
-#      packages: write
-#      contents: read
-#    steps:
-#      - uses: actions/checkout@v4
-#        with:
-#          token: ${{ secrets.PERSONALACCESSTOKEN }}
-#      - name: Install pnpm
-#        uses: pnpm/action-setup@v4
-#      - name: Use Node.js ${{ matrix.node-version }}
-#        uses: actions/setup-node@v4
-#        with:
-#          node-version: 22
-#          registry-url: https://npm.pkg.github.com/
-#          cache: 'pnpm'
-#      - name: Install dependencies
-#        run: pnpm install
-#      - run: pnpm build
-#      - run: pnpm publish --no-git-checks
-#        env:
-#          NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
+name: Node.js Package
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PERSONALACCESSTOKEN }}
+      - name: Install dependencies
+        uses: ./.github/actions/setup
+      - run: pnpm build
+
+  publish-gpr:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PERSONALACCESSTOKEN }}
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://npm.pkg.github.com/
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install
+      - run: pnpm build
+      - run: pnpm publish --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}

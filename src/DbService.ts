@@ -64,6 +64,7 @@ export const env = {
   isPractice: false,
   gmKeyExist: false,
   anyImageAiExist: false,
+  enableRemBg: false,
   pythonExist: false,
   anySnsExist: false,
   personMode: 'third' as PersonMode,
@@ -323,12 +324,15 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         if (Process.env.sd_key || Process.env.pixAi_key) {
           env.anyImageAiExist = true
         }
+        if (Process.env.rembg_path) {
+          env.enableRemBg = true
+        }
         // env.pythonExist = findSystemPython() !== null
         // if ((Process.env.bs_id && Process.env.bs_pass && Process.env.bs_handle)) {
         //   env.anySnsExist = true
         // }
         if (Process.env.no_sns_post) {
-          env.noSnsPost = true
+          env.noSnsPost = true;
         }
         if (Process.env.ServerLog) {
           env.loggingMode = true

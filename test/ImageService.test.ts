@@ -5,11 +5,9 @@ import {runPromise} from "effect/Effect";
 import {FetchHttpClient} from "@effect/platform";
 import * as fs from "node:fs";
 import {DbService, DbServiceLive} from "../src/DbService.js";
-import {NodeCommandExecutor, NodeContext, NodeFileSystem} from "@effect/platform-node"
+import {NodeFileSystem} from "@effect/platform-node"
 // import {transparentBackground} from "transparent-background";
 import {McpLogService, McpLogServiceLive} from "../src/McpLogService.js";
-import {NodeRuntime} from "node:inspector";
-import {PlatformError} from "@effect/platform/Error";
 
 const inGitHubAction = process.env.GITHUB_ACTIONS === 'true';
 
@@ -152,7 +150,7 @@ describe("Image", () => {
       const buffer = fs.readFileSync('tools/test.jpg');
       return yield* ImageService.makeRunnerImageV3(buffer, "depth of field, cinematic composition, masterpiece, best quality,looking at viewer,anime,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut", 'pixAi', false, true)  //
     }).pipe(
-      Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive,NodeContext.layer,NodeCommandExecutor.layer]),
+      Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => {

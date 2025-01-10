@@ -66,7 +66,7 @@ describe("Mcp", () => {
     const res = await Effect.gen(function* () {
       return yield* McpService.getCurrentLocationInfo(false, false, true)
     }).pipe(
-        Effect.provide([McpServiceLive]),
+        Effect.provide([McpServiceLive,NodeFileSystem.layer]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => {
           if (e instanceof AnswerError) {
@@ -85,7 +85,7 @@ describe("Mcp", () => {
     const res = await Effect.gen(function* () {
       return yield* McpService.getCurrentLocationInfo(true, true, true)
     }).pipe(
-        Effect.provide([McpServiceLive]),
+        Effect.provide([McpServiceLive,NodeFileSystem.layer]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => Effect.logError(e.toString())),
         Effect.tap(a => {
@@ -166,7 +166,7 @@ describe("Mcp", () => {
       yield* McpService.startJourney()
       return yield* McpService.getCurrentLocationInfo(true, true, true)
     }).pipe(
-        Effect.provide([McpServiceLive, DbServiceLive, McpLogServiceLive]),
+        Effect.provide([McpServiceLive, DbServiceLive, McpLogServiceLive,NodeFileSystem.layer]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => Effect.logError(e.toString())),
         Effect.tap(a => Effect.log(JSON.stringify(a).slice(0, 200))),

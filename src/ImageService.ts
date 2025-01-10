@@ -2,7 +2,7 @@
 
 import {Effect, Schedule} from "effect";
 import sharp = require("sharp");
-import {FetchHttpClient, HttpClient, HttpClientRequest, FileSystem, Command} from "@effect/platform";
+import {FetchHttpClient, HttpClient, HttpClientRequest, FileSystem} from "@effect/platform";
 import dayjs from "dayjs";
 import FormData from 'form-data';
 // import {transparentBackground} from "transparent-background";
@@ -15,7 +15,9 @@ import {McpLogService, McpLogServiceLive} from "./McpLogService.js";
 import {__pwd, env} from "./DbService.js";
 import WebSocket from 'ws'
 import * as path from "path";
-import { NodeCommandExecutor, NodeFileSystem } from "@effect/platform-node";
+import * as os from "node:os";
+import * as fs from "node:fs";
+import {execSync} from "node:child_process";
 
 export const defaultBaseCharPrompt = 'depth of field, cinematic composition, masterpiece, best quality,looking at viewer,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut'
 
@@ -103,7 +105,10 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       steps?: number,
       cfg_scale?: number
     }) {
-      return Effect.tryPromise(() => sharp(inImage).resize({width: opt?.width || 1024, height: opt?.height || 1024}).png().toBuffer()).pipe(
+      return Effect.tryPromise(() => sharp(inImage).resize({
+        width: opt?.width || 1024,
+        height: opt?.height || 1024
+      }).png().toBuffer()).pipe(
         Effect.andThen(a =>
           Effect.tryPromise({
             try: () => {
@@ -450,7 +455,6 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           return pixAiMakeImage(prompt, inImage, opt)
         default:
           return sdMakeImage(prompt, inImage, opt)
-          // return sdMakeImage(prompt, inImage, opt).pipe(Effect.andThen(a => a.toString('base64')))
       }
     };
 
@@ -483,24 +487,42 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         return {alphaNum, number};
       })
     }
-    
-    const rembg = (sdImage:Buffer) => {
-      return Effect.gen(function *() {
-        const fs = yield* FileSystem.FileSystem
-        const tempIn = yield *fs.makeTempFileScoped()
-        const tempOut = yield *fs.makeTempFileScoped()
-        yield *fs.writeFile(tempIn,sdImage)
-        const cmd = Command.make("rembg","i",tempIn,tempOut)
-        const res = yield *Command.string(cmd);
-        yield *McpLogService.logTrace(`rembg-cli:${res}`)
-        return yield *fs.readFile(tempOut)
-      }).pipe(Effect.andThen(a => Buffer.from(a)))
+
+    const rembg = (sdImage: Buffer) => {
+      return Effect.gen(function* () {
+        //  TODO EffectのCommandをうまく書けなかったのでnodejsの素で
+        const tempPath = os.tmpdir()
+        const tempIn = path.join(tempPath, `tr-${crypto.randomUUID()}.png`)
+        const tempOut = path.join(tempPath, `tr-${crypto.randomUUID()}.png`)
+        fs.writeFileSync(tempIn, sdImage)
+        let rembgPath
+        if (Process.env.rembg_path) {
+          rembgPath = Process.env.rembg_path
+        } else {
+          yield* Effect.fail(new Error('rembg_path not set'))
+        }
+        yield* Effect.addFinalizer(() => McpLogService.logTrace(`rembg finalizer ${tempPath}`).pipe(Effect.andThen(a => {
+          try {
+            fs.unlinkSync(tempIn)
+          } catch (e) {
+          }
+          try {
+            fs.unlinkSync(tempOut)
+          } catch (e) {
+          }
+        })))
+        try {
+          execSync(`${rembgPath} i ${tempIn} ${tempOut}`)
+        } catch (e) {
+          yield* Effect.fail(new Error(`rembg fail ${e}`))
+        }
+        return fs.readFileSync(tempOut);
+      }).pipe(Effect.scoped)
       //  TODO Mac OSでなぜか現在使用不能。。。
       // return Effect.tryPromise({
       //   try: () => transparentBackground(sdImage, "png", {fast: false}),
       //   catch: error => `transparentBackground error:${error}`
       // })
-      // return Effect.succeed(sdImage)
     }
 
     /**
@@ -526,7 +548,20 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     ) {
       return Effect.gen(function* () {
           const fs = yield* FileSystem.FileSystem
-          const outSize = {w: 1600, h: 1000}
+          if (!Process.env.rembg_path) {
+            //  rembg pathがない場合、画像合成しないままの画像を戻す
+            return {
+              buf: yield* Effect.tryPromise(signal => sharp(basePhoto).resize({
+                width: 512,
+                height: 512
+              }).png().toBuffer()),
+              shiftX: 0,
+              shiftY: 0,
+              fit: false,
+              append: ''
+            }
+          }
+          const outSize = {w: 1600, h: 1000};
           const innerSize = {w: 1600, h: 1600}
           const windowSize = {w: 832, h: 1216}
           const cutPos = sideBias ? (Math.random() < 0.5 ? Math.random() * 0.3 : 0.7 + Math.random() * 0.3) : Math.random()
@@ -559,11 +594,17 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             if (retry < fixedThreshold) {
               //  立ち絵
               isFixedBody = true
-              return yield* selectImageGenerator(selectGen, prompt,undefined,{width:windowSize.w,height:windowSize.h})
+              return yield* selectImageGenerator(selectGen, prompt, undefined, {
+                width: windowSize.w,
+                height: windowSize.h
+              })
             } else {
               //  画面i2i
               isFixedBody = false
-              return yield* selectImageGenerator(selectGen, prompt, clopImage,{width:windowSize.w,height:windowSize.h})
+              return yield* selectImageGenerator(selectGen, prompt, clopImage, {
+                width: windowSize.w,
+                height: windowSize.h
+              })
             }
           }).pipe(
             // Effect.andThen(a => Buffer.from(a, 'base64')),
@@ -595,7 +636,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             top: (innerSize.h - outSize.h) / 2,
             width: outSize.w,
             height: outSize.h
-          }).resize({width: 512,height: 512}).toBuffer()))) //  現状のClaude MCPだと512*512以上のbase64はエラーになりそう
+          }).resize({width: 512, height: 512}).png().toBuffer()))) //  現状のClaude MCPだと512*512以上のbase64はエラーになりそう
           recentImage = stayImage
           yield* McpLogService.logTrace(`stayImage:${recentImage?.length}`)
           return {
@@ -625,7 +666,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       generatePrompt,
     }
   }),
-  dependencies: [McpLogServiceLive,NodeCommandExecutor.layer,NodeFileSystem.layer]
+  dependencies: [McpLogServiceLive]
 }) {
 }
 

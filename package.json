@@ -1,6 +1,6 @@
 {
   "name": "@mfukushim/map-traveler-mcp",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "type": "module",
   "bin": {
     "map-traveler-mcp": "build/esm/mapTraveler.js"
@@ -24,8 +24,8 @@
   },
   "scripts": {
     "codegen": "build-utils prepare-v2",
-    "build:pnpm": "pnpm build-esm",
-    "build": "npm run build-esm",
+    "build": "pnpm build-esm",
+    "build:npm": "npm run build-esm",
     "build-esm": "tsc -b tsconfig.build.json",
     "build-annotate": "babel build/esm --plugins annotate-pure-calls --out-dir build/esm --source-maps",
     "build:shx": "pnpm build-esm && shx chmod +x build/esm/*.js",

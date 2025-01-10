@@ -1,6 +1,6 @@
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
 
-import {Effect, Option, Scope} from "effect"
+import {Effect, Option} from "effect"
 import {Server} from "@modelcontextprotocol/sdk/server/index.js";
 import {StdioServerTransport} from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
@@ -24,7 +24,6 @@ import {AtPubNotification, SnsService, SnsServiceLive} from "./SnsService.js";
 import * as Process from "node:process";
 import {FeedViewPost} from "@atproto/api/dist/client/types/app/bsky/feed/defs.js";
 import * as path from "path";
-import {CommandExecutor} from "@effect/platform/CommandExecutor";
 
 //  Toolのcontentの定義だがzodから持ってくると重いのでここで定義
 export interface ToolContentResponse {
@@ -36,7 +35,7 @@ export interface ToolContentResponse {
 }
 
 //  bluesky SNS用固定feed
-const feedTag = "#marble_square"
+const feedTag = "#clear_traveler"
 const feedUri = "at://did:plc:ygcsenazbvhyjmxeltz4fgw4/app.bsky.feed.generator/marble_square25"
 
 const LabelGoogleMap = 'Google Map'
@@ -140,7 +139,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
 
       const getCurrentLocationInfo = (includePhoto: boolean, includeNearbyFacilities: boolean, localDebug = false) => {
         return RunnerService.getCurrentView(includePhoto, includeNearbyFacilities, env.isPractice, localDebug).pipe(
-          Effect.provide([McpLogServiceLive, MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer]),
+          Effect.provide([McpLogServiceLive, MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
         )
       }
 
@@ -218,7 +217,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           Effect.andThen(a => ({
             content: [{type: "text", text: `Current destination is "${a}"`} as ToolContentResponse]
           })),
-          Effect.provide([MapServiceLive, StoryServiceLive, RunnerServiceLive, ImageServiceLive, NodeFileSystem.layer, McpLogServiceLive]),
+          Effect.provide([MapServiceLive, StoryServiceLive, RunnerServiceLive, ImageServiceLive, NodeFileSystem.layer, McpLogServiceLive,DbServiceLive]),
         )
       }
       const setDestinationAddress = (address: string) => {
@@ -527,8 +526,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 text: a
               }]
             })),
-            Effect.provide([StoryServiceLive]),
-            // Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer]),
+            Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer]),
             Effect.runPromise
           ).catch(e => {
             if (e instanceof Error) {
@@ -842,25 +840,35 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               case "stop_traveler_journey":
                 return stopJourney()
               case "call_traveler":
-                return setTravelerExist(true)
+                return setTravelerExist(true).pipe(
+                  Effect.provide([ McpLogServiceLive]))
               case "kick_traveler":
-                return setTravelerExist(false)
+                return setTravelerExist(false).pipe(
+                  Effect.provide([ McpLogServiceLive]))
               case "get_sns_mentions":
-                return getSnsMentions()
+                return getSnsMentions().pipe(
+                  Effect.provide([DbServiceLive, McpLogServiceLive])
+                )
               case "read_sns_reader":
-                return readSnsReader()
+                return readSnsReader().pipe(
+                  Effect.provide([DbServiceLive])
+                )
               case "get_sns_feeds":
-                return getSnsFeeds()
+                return getSnsFeeds().pipe(
+                  Effect.provide([DbServiceLive])
+                )
               case "post_sns_writer":
-                return postSnsWriter(String(request.params.arguments?.message))
+                return postSnsWriter(String(request.params.arguments?.message)).pipe(
+                  Effect.provide([DbServiceLive, McpLogServiceLive,ImageServiceLive])
+                )
               case "reply_sns_writer":
-                return replySnsWriter(String(request.params.arguments?.message), String(request.params.arguments?.id))
+                return replySnsWriter(String(request.params.arguments?.message), String(request.params.arguments?.id)).pipe(
+                  Effect.provide([DbServiceLive, McpLogServiceLive])
+                )
               default:
                 return Effect.fail(new Error("Unknown tool"));
             }
           }
-          
-          const x = toolSwitch()
           return await toolSwitch().pipe(
             Effect.andThen(a => a as { content: ToolContentResponse[] }),
             Effect.catchIf(a => a instanceof AnswerError, e => {
@@ -868,7 +876,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 content: [{
                   type: "text",
                   text: e.message
-                } as ToolContentResponse]
+                }] as ToolContentResponse[]
               })
             }),
             Effect.catchAll(e => {
@@ -879,8 +887,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 } as ToolContentResponse]
               }))
             }),
-            Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive,
-              FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer, McpLogServiceLive,Scope]),
+            Effect.provide([McpLogServiceLive,NodeFileSystem.layer]),
             Effect.runPromise)
         });
 
