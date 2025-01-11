@@ -741,7 +741,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                         description: env.personMode === 'second' ? "address to set" : "address set to traveler"
                       }
                     },
-                    required: ["location"]
+                    required: ["address"]
                   }
                 },
                 {
