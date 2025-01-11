@@ -6,11 +6,11 @@ This is an MCP server that creates an environment for an avatar to virtually tra
 
 From an MCP client such as Claude Desktop, you can give instructions to the avatar and report on the progress of its journey with photos.
 
-<img alt="img.png" src="img.png" width="400"/>
+<img alt="img_5.png" src="img_5.png" width="400"/>
 
 ## Functions
 
-#### MCP server function
+#### MCP server tools function
 
 The following functions can be used as an MCP server. The available functions vary depending on the settings and execution state.
 
