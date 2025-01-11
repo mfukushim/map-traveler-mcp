@@ -8,6 +8,12 @@ From an MCP client such as Claude Desktop, you can give instructions to the avat
 
 ![img.png](img.png)
 
+## supported function
+
+- tip. 
+get information 
+- get_
+
 ## Setting
 
 You will need to obtain and set access keys for multiple APIs, such as for accessing multiple Google maps and generating images.
