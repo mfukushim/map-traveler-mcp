@@ -17,11 +17,6 @@
     "type": "git",
     "url": "https://github.com/mfukushim/map-traveler-mcp.git"
   },
-  "publishConfig": {
-    "access": "public",
-    "registry": "https://npm.pkg.github.com",
-    "@mfukushim:registry": "https://npm.pkg.github.com"
-  },
   "scripts": {
     "codegen": "build-utils prepare-v2",
     "build": "pnpm build-esm",
