@@ -79,10 +79,10 @@ claude_desktop_config.json
             "sqlite_path":"(db保存ファイルのパス 例 %USERPROFILE%/Desktop/traveler.sqlite など)",
             "rembg_path": "(インストールしたrembg cliの絶対パス)",
             "pixAi_key":"(pixAi APIのキー)",
-			"sd_key":"(またはStability.aiのAPIのキー",
-			"bs_id":"(bluesky snsの登録アドレス)",
-			"bs_pass":"(bluesky snsのパスワード)",
-			"bs_handle":"(bluesky snsのハンドル名 例 geo-less-traveler.bsky.social など)"
+            "sd_key":"(またはStability.aiのAPIのキー",
+            "bs_id":"(bluesky snsの登録アドレス)",
+            "bs_pass":"(bluesky snsのパスワード)",
+            "bs_handle":"(bluesky snsのハンドル名 例 geo-less-traveler.bsky.social など)"
       }
     }
   }
@@ -145,7 +145,7 @@ claude_desktop_config.json
 3. python3.7～3.11をインストールし、rembgをcli付きでインストールします。venv等の仮想環境を使うことをお勧めします。
    ```bash
    python3 -m venv venv
-   . venv/bin/activate または \venv\Scripts\activate
+   . venv/bin/activate または .\venv\Scripts\activate
    pip install "rembg[cpu,cli]" 
    ```
    正常にrembg cliが動作するかサンプルの画像ファイルを使って確認してください。人が写っている画像を入力し、出力ファイルで人が切り出されていればokです。

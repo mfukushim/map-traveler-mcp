@@ -399,7 +399,7 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
               Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
               Effect.flatMap(a => a.json),
               Effect.scoped,
-              Effect.tap(a => McpLogService.logTrace(`findStreetViewMeta:${a}`)),
+              Effect.tap(a => McpLogService.logTrace(`findStreetViewMeta:${JSON.stringify(a)}`)),
               Effect.tapError(e => McpLogService.logError(`findStreetViewMeta error:${JSON.stringify(e)}`)),
               Effect.andThen(a => {
                 if ((a as { status: string }).status === 'OK') {

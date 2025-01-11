@@ -77,13 +77,14 @@ claude_desktop_config.json
       "command": "npx",
       "args": ["-y", "@mfukushim/map-traveler-mcp"],
       "env":{
-      	  	"GoogleMapApi_key":"(Google Map APIのキー)",
-            "pixAi_key":"(pixAi APIのキー)",
-			"sd_key":"(またはStability.aiのAPIのキー",
-			"sqlite_path":"(db保存ファイルのパス 例 %USERPROFILE%/Desktop/traveler.sqlite など)",
-			"bs_id":"(bluesky snsの登録アドレス)",
-			"bs_pass":"(bluesky snsのパスワード)",
-			"bs_handle":"(bluesky snsのハンドル名 例 geo-less-traveler.bsky.social など)"
+        "GoogleMapApi_key":"(Google Map APIのキー)",
+        "sqlite_path":"(db保存ファイルのパス 例 %USERPROFILE%/Desktop/traveler.sqlite など)",
+        "rembg_path": "(インストールしたrembg cliの絶対パス)",
+        "pixAi_key":"(pixAi APIのキー)",
+        "sd_key":"(またはStability.aiのAPIのキー",
+        "bs_id":"(bluesky snsの登録アドレス)",
+        "bs_pass":"(bluesky snsのパスワード)",
+        "bs_handle":"(bluesky snsのハンドル名 例 geo-less-traveler.bsky.social など)"
       }
     }
   }
@@ -156,7 +157,7 @@ claude_desktop_config.json
 3. Install python 3.7 to 3.11 and install rembg with cli. We recommend using a virtual environment such as venv.
 ```bash
 python3 -m venv venv
-. venv/bin/activate or \venv\Scripts\activate
+. venv/bin/activate or .\venv\Scripts\activate
 pip install "rembg[cpu,cli]"
 ```
 Check if rembg cli works properly using a sample image file. Input an image with a person in it, and if the person is cut out in the output file, it's OK.

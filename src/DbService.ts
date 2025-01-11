@@ -227,7 +227,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       }).returning()).pipe(
           Effect.andThen(a => a.length === 1 ? Effect.succeed(a[0].id) : Effect.fail(new Error('saveSnsPost'))))
     }
-    
+
     function getAvatarSns(avatarId: number,snsType: SnsType) {
       return stub(db.select().from(avatar_sns).where(and(eq(avatar_sns.assignAvatarId, avatarId), eq(avatar_sns.snsType, snsType)))).pipe(Effect.andThen(takeOne))
     }
@@ -327,10 +327,9 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         if (Process.env.rembg_path) {
           env.enableRemBg = true
         }
-        // env.pythonExist = findSystemPython() !== null
-        // if ((Process.env.bs_id && Process.env.bs_pass && Process.env.bs_handle)) {
-        //   env.anySnsExist = true
-        // }
+        if ((Process.env.bs_id && Process.env.bs_pass && Process.env.bs_handle)) {
+          env.anySnsExist = true
+        }
         if (Process.env.no_sns_post) {
           env.noSnsPost = true;
         }

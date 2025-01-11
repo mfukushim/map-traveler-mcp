@@ -582,7 +582,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           }
 
           /** 画像評価リトライ */
-          let retry = 4 //  5回リトライになってるな 現在初期値7 最小値2(でないと画像できない)
+          let retry = 3 //  5回リトライになってるな 現在初期値7 最小値2(でないと画像できない)
           const fixedThreshold = 2  //  バストショットに切り替える閾値 2,1の2回はバストショット生成を試みる
           let isFixedBody = false
           let appendPrompt: string | undefined
@@ -594,6 +594,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             if (retry < fixedThreshold) {
               //  立ち絵
               isFixedBody = true
+              yield* McpLogService.logTrace(`bast shot:${retry}`)
               return yield* selectImageGenerator(selectGen, prompt, undefined, {
                 width: windowSize.w,
                 height: windowSize.h
@@ -601,6 +602,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             } else {
               //  画面i2i
               isFixedBody = false
+              yield* McpLogService.logTrace(`i2i:${retry}`)
               return yield* selectImageGenerator(selectGen, prompt, clopImage, {
                 width: windowSize.w,
                 height: windowSize.h
