@@ -35,7 +35,7 @@ export interface ToolContentResponse {
 }
 
 //  bluesky SNS用固定feed
-const feedTag = "#clear_traveler"
+const feedTag = "#geo_less_traveler"
 const feedUri = "at://did:plc:ygcsenazbvhyjmxeltz4fgw4/app.bsky.feed.generator/marble_square25"
 
 const LabelGoogleMap = 'Google Map'

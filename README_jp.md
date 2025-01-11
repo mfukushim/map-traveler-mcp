@@ -12,7 +12,7 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 
 ## 機能
 
-#### MCP server function
+#### MCP server tools function
 
 以下の機能がMCP serverとして使用できます。設定や実行状態によって使用可能な機能は異なります。
 関数名を直接指定してもよいですがClaude LLMが自動で認識するので一般語で操作を指定できます。
