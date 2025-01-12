@@ -1,4 +1,5 @@
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
+
 import * as geolib from "geolib";
 import {Effect, Schema, Option, Schedule} from "effect";
 import {FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse} from "@effect/platform";

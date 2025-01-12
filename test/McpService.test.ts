@@ -100,8 +100,6 @@ describe("Mcp", () => {
                   fs.writeFileSync(`tools/test/getCurrentImage${i}.png`, Buffer.from(c.data!, "base64"));
                 }
               })
-
-          return Effect.log(a);
         }),
         runPromise
     )

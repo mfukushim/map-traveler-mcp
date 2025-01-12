@@ -869,6 +869,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 return Effect.fail(new Error("Unknown tool"));
             }
           }
+
           return await toolSwitch().pipe(
             Effect.andThen(a => a as { content: ToolContentResponse[] }),
             Effect.catchIf(a => a instanceof AnswerError, e => {

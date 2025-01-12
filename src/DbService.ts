@@ -1,6 +1,6 @@
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
 
-import {Effect} from "effect";
+import {Effect, Layer} from "effect";
 import {drizzle} from 'drizzle-orm/libsql';
 import {migrate} from 'drizzle-orm/libsql/migrator';
 import {
@@ -18,9 +18,9 @@ import {fileURLToPath} from 'url';
 import {dirname} from 'path';
 import * as path from "node:path";
 import {logSync, McpLogService, McpLogServiceLive} from "./McpLogService.js";
-// import {findSystemPython} from "transparent-background/lib/utils.js";
 import {practiceData} from "./RunnerService.js";
 import {defaultBaseCharPrompt} from "./ImageService.js";
+// import {findSystemPython} from "transparent-background/lib/utils.js";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -35,7 +35,7 @@ function expandPath(envPath: string) {
       .replace(/%([a-zA-Z_][a-zA-Z0-9_]*)%/g, (match, name) => process.env[name] || match);
 }
 
-export function isValidFilePath(filePath:string) {
+export function isValidFilePath(filePath: string) {
   try {
     const normalizedPath = path.normalize(filePath);
     const invalidChars = /[<>"|?*\x00-\x1F]/g;
@@ -228,22 +228,25 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
           Effect.andThen(a => a.length === 1 ? Effect.succeed(a[0].id) : Effect.fail(new Error('saveSnsPost'))))
     }
 
-    function getAvatarSns(avatarId: number,snsType: SnsType) {
+    function getAvatarSns(avatarId: number, snsType: SnsType) {
       return stub(db.select().from(avatar_sns).where(and(eq(avatar_sns.assignAvatarId, avatarId), eq(avatar_sns.snsType, snsType)))).pipe(Effect.andThen(takeOne))
     }
 
     function updateSnsFeedSeenAt(avatarId: number, snsType: SnsType, timeEpoch: number) {
       return stub(db.update(avatar_sns).set({feedSeenAt: timeEpoch})
-        .where(and(eq(avatar_sns.assignAvatarId, avatarId), eq(avatar_sns.snsType, snsType))).returning()).pipe(
-        Effect.andThen(a =>
-          a.length === 1 ? Effect.succeed(a[0].id) : Effect.fail(new Error('updateSnsFeedSeenAt')))
+          .where(and(eq(avatar_sns.assignAvatarId, avatarId), eq(avatar_sns.snsType, snsType))).returning()).pipe(
+          Effect.andThen(a =>
+              a.length === 1 ? Effect.succeed(a[0]) : Effect.fail(new Error('updateSnsFeedSeenAt'))),
+          Effect.tap(a => McpLogService.logTrace(`update feedSeenAt:${a.feedSeenAt}`)),
       )
     }
+
     function updateSnsMentionSeenAt(avatarId: number, snsType: SnsType, timeEpoch: number) {
       return stub(db.update(avatar_sns).set({mentionSeenAt: timeEpoch})
-        .where(and(eq(avatar_sns.assignAvatarId, avatarId), eq(avatar_sns.snsType, snsType))).returning()).pipe(
-        Effect.andThen(a =>
-          a.length === 1 ? Effect.succeed(a[0].id) : Effect.fail(new Error('updateSnsMentionSeenAt')))
+          .where(and(eq(avatar_sns.assignAvatarId, avatarId), eq(avatar_sns.snsType, snsType))).returning()).pipe(
+          Effect.andThen(a =>
+              a.length === 1 ? Effect.succeed(a[0]) : Effect.fail(new Error('updateSnsMentionSeenAt'))),
+          Effect.tap(a => McpLogService.logTrace(`update mentionSeenAt:${a.mentionSeenAt}`)),
       )
     }
 
@@ -373,4 +376,4 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
 }) {
 }
 
-export const DbServiceLive = DbService.Default
+export const DbServiceLive = Layer.merge(DbService.Default,McpLogServiceLive)

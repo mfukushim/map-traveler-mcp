@@ -159,7 +159,7 @@ describe("Image", () => {
         }
       }),
       Effect.catchIf(a => a.toString() === 'Error: no key', e => Effect.succeed({})),
-      Effect.tap(a => Effect.log(a)),
+      // Effect.tap(a => Effect.log(a)),
       runPromise
     )
     expect(typeof res).toBe('object')
@@ -179,7 +179,7 @@ describe("Image", () => {
         }
       }),
       Effect.catchIf(a => a.toString() === 'Error: no key', e => Effect.succeed({})),
-      Effect.tap(a => Effect.log(a)),
+      // Effect.tap(a => Effect.log(a)),
       runPromise
     )
     expect(typeof res).toBe('object')
