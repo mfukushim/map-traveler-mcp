@@ -159,7 +159,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
               Effect.retry(Schedule.recurs(2).pipe(Schedule.intersect(Schedule.spaced("10 seconds")))),
               Effect.tap(a => {
                 const max = a.reduce((p, c) => Math.max(p, dayjs(c.post.indexedAt).unix()), 0)
-                DbService.updateSnsFeedSeenAt(1, 'bs', max)
+                return DbService.updateSnsFeedSeenAt(1, 'bs', max)
               })
           )
         }
@@ -221,7 +221,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
               Effect.tap(a => McpLogService.logTrace(`notification num:${a.notification.data.length}`)),
               Effect.tap(a => {
                 const max = a.notification.data.notifications.reduce((p, c) => Math.max(p, dayjs(c.indexedAt).unix()), 0)
-                DbService.updateSnsMentionSeenAt(1, 'bs', max)
+                return DbService.updateSnsMentionSeenAt(1, 'bs', max)
               }),
               Effect.andThen(a => {
                 //  TODO 現状 followは外す
