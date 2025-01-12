@@ -1,11 +1,13 @@
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
-import {Effect, Option, Schedule} from "effect";
+
+import {Effect, Layer, Option, Schedule} from "effect";
 import dayjs from "dayjs";
 import timezone = require("dayjs/plugin/timezone")
 import {MapDef, MapService} from "./MapService.js";
 import {DbService, env} from "./DbService.js";
 import {McpLogService} from "./McpLogService.js";
 import * as Process from "node:process";
+import {NodeFileSystem} from "@effect/platform-node";
 
 dayjs.extend(timezone)
 
@@ -43,8 +45,8 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
           const addressComponents = d.addressComponents.value
           const country = addressComponents.find(f => f.types[0] === 'country')
           const townName =
-            addressComponents.find(f => f.types[0] === 'sublocality_level_2') ||
-            addressComponents.find(f => f.types[0] === 'locality')
+              addressComponents.find(f => f.types[0] === 'sublocality_level_2') ||
+              addressComponents.find(f => f.types[0] === 'locality')
           return [
             {
               address: Option.fromNullable(d.formattedAddress),
@@ -131,11 +133,11 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
         //  →最初は直近200以内で探索しランドスケープの選択精度を上げる、その後1000,2000へ
         let retry = 2
         return yield* Effect.async<number, Error>((resume) => resume(Effect.succeed(retry--))).pipe(
-          Effect.andThen(a => MapService.getNearly(currentLoc.lat, currentLoc.lng, a === 2 ? 200 : retry === 1 ? 1000 : 2000)),
-          Effect.flatMap(a => a.kind === 'places' ? placesToFacilities(a.places) : Effect.fail(new Error('no nearly'))),
-          Effect.tap(a => McpLogService.logTrace(`getNearbyFacilities:${a}`)),
-          Effect.tapError(e => McpLogService.logTrace(`getNearbyFacilities error:${e}`)),
-          Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
+            Effect.andThen(a => MapService.getNearly(currentLoc.lat, currentLoc.lng, a === 2 ? 200 : retry === 1 ? 1000 : 2000)),
+            Effect.flatMap(a => a.kind === 'places' ? placesToFacilities(a.places) : Effect.fail(new Error('no nearly'))),
+            Effect.tap(a => McpLogService.logTrace(`getNearbyFacilities:${a}`)),
+            Effect.tapError(e => McpLogService.logTrace(`getNearbyFacilities error:${e}`)),
+            Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
         ).pipe(Effect.orElse(() => placesToFacilities([])))
       })
     }
@@ -168,12 +170,12 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
       const imagePathList: string[] = []
       if (env.isPractice) {
         textList.push('Currently in practice mode. You can only go to fixed locations.' +
-          ' To switch to normal mode, you need to obtain and set a Google Map API key.' +
-          ' key for detail: https://developers.google.com/maps/documentation/streetview/get-api-key ' +
-          ' Need Credentials: [Street View Static API],[Places API (New)],[Time Zone API],[Directions API]' +
-          ' Please specify the API key in the configuration file(claude_desktop_config.json).' +
-          ' And restart app. Claude Desktop App. Claude App may shrink into the taskbar, so please quit it completely.\n' +
-          `claude_desktop_config.json\n
+            ' To switch to normal mode, you need to obtain and set a Google Map API key.' +
+            ' key for detail: https://developers.google.com/maps/documentation/streetview/get-api-key ' +
+            ' Need Credentials: [Street View Static API],[Places API (New)],[Time Zone API],[Directions API]' +
+            ' Please specify the API key in the configuration file(claude_desktop_config.json).' +
+            ' And restart app. Claude Desktop App. Claude App may shrink into the taskbar, so please quit it completely.\n' +
+            `claude_desktop_config.json\n
 \`\`\`
 "env":{"GoogleMapApi_key":"xxxxxxx"}
 \`\`\`
@@ -182,8 +184,8 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
       } else {
         if (!env.dbFileExist) {
           textList.push('Since the database is not currently set, the configuration information will be lost when you exit.' +
-            ' Please specify the path of the saved database file in the configuration file(claude_desktop_config.json).' +
-            `claude_desktop_config.json\n
+              ' Please specify the path of the saved database file in the configuration file(claude_desktop_config.json).' +
+              `claude_desktop_config.json\n
 \`\`\`
 "env":{"sqlite_path":"%USERPROFILE%/Desktop/traveler.sqlite"}
 \`\`\`
@@ -192,12 +194,12 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
         } else {
           if (!env.anyImageAiExist) {
             textList.push('If you want to synthesize an avatar image, you will need a key for the image generation AI.' +
-              ' Currently, PixAi and Stability AI\'s SDXL 1.0 API are supported.' +
-              ' Please refer to the website of each company to obtain an API key.' +
-              ' https://platform.stability.ai/docs/getting-started https://platform.stability.ai/account/keys ' +
-              ' https://pixai.art/ https://platform.pixai.art/docs/getting-started/00---quickstart/ ' +
-              ' Please specify the API key in the configuration file(claude_desktop_config.json).' +
-              `claude_desktop_config.json\n
+                ' Currently, PixAi and Stability AI\'s SDXL 1.0 API are supported.' +
+                ' Please refer to the website of each company to obtain an API key.' +
+                ' https://platform.stability.ai/docs/getting-started https://platform.stability.ai/account/keys ' +
+                ' https://pixai.art/ https://platform.pixai.art/docs/getting-started/00---quickstart/ ' +
+                ' Please specify the API key in the configuration file(claude_desktop_config.json).' +
+                `claude_desktop_config.json\n
 \`\`\`
 "env":{"pixAi_key":"xyzxyz"}
 or
@@ -208,7 +210,7 @@ or
           }
           if (!env.pythonExist || !env.enableRemBg) {
             textList.push('In order to synthesize avatar images, your PC must be running Python and install rembg.' +
-              ` Please install Python and rembg on your PC using information from the Internet.\n
+                ` Please install Python and rembg on your PC using information from the Internet.\n
 \`\`\`
 "env":{"rembg_path":"(absolute path to rembg cli)"}
 \`\`\`\n
@@ -219,9 +221,9 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
           const bsEnable = Process.env.bs_id && Process.env.bs_pass && Process.env.bs_handle
           if (!bsEnable) {
             textList.push('Optional: Set up a Bluesky SNS account\n' +
-              'By setting your registered address, password, and handle for Bluesky SNS, you can post travel information on the SNS and obtain and interact with other people\'s travel information.\n' +
-              'Since articles may be posted automatically, we strongly recommend using a dedicated account.\n' +
-              `claude_desktop_config.json\n
+                'By setting your registered address, password, and handle for Bluesky SNS, you can post travel information on the SNS and obtain and interact with other people\'s travel information.\n' +
+                'Since articles may be posted automatically, we strongly recommend using a dedicated account.\n' +
+                `claude_desktop_config.json\n
 \`\`\`
 "env":{
 "bs_id":"xxxx",
@@ -237,10 +239,10 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
       }
 
       return Effect.succeed(
-        {
-          textList,
-          imagePathList
-        }
+          {
+            textList,
+            imagePathList
+          }
       )
     }
 
@@ -248,30 +250,30 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
       return Effect.gen(function* () {
         if (pathname.includes("/roleWithSns.txt")) {
           return 'Please speak to the user frankly in 2 lines or less. Since you are close, please omit honorifics.\n' +
-            'The AI will play the role of a traveler.\n' +
-            '\n' +
-            '1. First, call tips and tell the user the current notifications you have obtained.\n' +
-            'Next, get get_traveler_info to get the traveler\'s settings. The AI should talk to the user reflecting the traveler\'s settings.\n' +
-            'Then get the current location. Then frankly explain the current situation.\n' +
-            'If the current location is unknown, ask the user about the current location and set the current location.\n' +
-            '2. If the user is not traveling, ask the user about the destination.\n' +
-            'Execute the journey to the destination specified by the user.\n' +
-            '\n' +
-            '3. When the user asks about the travel scene, get the current state with get_traveler_location_info.\n' +
-            '4. Based on the obtained location information, surrounding information, and images, imagine what you are doing and create a response.\n' +
-            'Next, organize the content of your response into about 200 characters for posting on SNS as the current travel situation, and post it with post_sns_writer.\n' +
-            'Please do not use offensive words in the content you post.\n' +
-            '\n' +
-            '5. Get mentions from SNS with get_sns_mentions.\n' +
-            'Choose one line from the reply list of the SNS article. The selection criteria should be a line that does not contain inappropriate language and is not an advertisement. If there is no appropriate line, there is no need to output it.\n' +
-            'For the selected line, send a short reply to the person who replied to you on SNS. Considering the content of the reply article and the reply article, write a reply about the current situation of the traveler with reply_sns_writer.\n' +
-            'Choose one line from the like list of the SNS article. The selection criteria should be a line that does not contain inappropriate language and is not an advertisement.\n' +
-            'For the selected line, send a short reply to the person who liked you on SNS. Considering the most recent post of the person who liked you, write a sentence explaining the content of the liked post and write a reply with reply_sns_writer.\n' +
-            'Please do not use offensive language in the post.\n' +
-            '\n' +
-            '6. Get the current SNS post from get_sns_feeds about the status of your friends\' journey. Please choose one article that you think describes your companions\' journey.\n' +
-            'Please exclude articles that you think contain offensive descriptions or advertisements.\n' +
-            'Based on the image and article you obtained, please explain your interpretation of your companions\' journey to the user.'
+              'The AI will play the role of a traveler.\n' +
+              '\n' +
+              '1. First, call tips and tell the user the current notifications you have obtained.\n' +
+              'Next, get get_traveler_info to get the traveler\'s settings. The AI should talk to the user reflecting the traveler\'s settings.\n' +
+              'Then get the current location. Then frankly explain the current situation.\n' +
+              'If the current location is unknown, ask the user about the current location and set the current location.\n' +
+              '2. If the user is not traveling, ask the user about the destination.\n' +
+              'Execute the journey to the destination specified by the user.\n' +
+              '\n' +
+              '3. When the user asks about the travel scene, get the current state with get_traveler_location_info.\n' +
+              '4. Based on the obtained location information, surrounding information, and images, imagine what you are doing and create a response.\n' +
+              'Next, organize the content of your response into about 200 characters for posting on SNS as the current travel situation, and post it with post_sns_writer.\n' +
+              'Please do not use offensive words in the content you post.\n' +
+              '\n' +
+              '5. Get mentions from SNS with get_sns_mentions.\n' +
+              'Choose one line from the reply list of the SNS article. The selection criteria should be a line that does not contain inappropriate language and is not an advertisement. If there is no appropriate line, there is no need to output it.\n' +
+              'For the selected line, send a short reply to the person who replied to you on SNS. Considering the content of the reply article and the reply article, write a reply about the current situation of the traveler with reply_sns_writer.\n' +
+              'Choose one line from the like list of the SNS article. The selection criteria should be a line that does not contain inappropriate language and is not an advertisement.\n' +
+              'For the selected line, send a short reply to the person who liked you on SNS. Considering the most recent post of the person who liked you, write a sentence explaining the content of the liked post and write a reply with reply_sns_writer.\n' +
+              'Please do not use offensive language in the post.\n' +
+              '\n' +
+              '6. Get the current SNS post from get_sns_feeds about the status of your friends\' journey. Please choose one article that you think describes your companions\' journey.\n' +
+              'Please exclude articles that you think contain offensive descriptions or advertisements.\n' +
+              'Based on the image and article you obtained, please explain your interpretation of your companions\' journey to the user.'
           // return 'ユーザを相手にしてフランクに2行以内で語ってください。親しい関係なので相手への敬称は略してください。\n' +
           //     'AIは旅人の役をします。\n' +
           //     '\n' +
@@ -300,23 +302,23 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
           //     '\n'
         } else if (pathname.includes("/role.txt")) {
           return 'Speak frankly to the user in two lines or less. Since you are on friendly terms, please omit honorifics.\n' +
-            'The AI will play the role of a traveler.\n' +
-            '\n' +
-            '1. First, call tips and tell the user the current notifications you have obtained.\n' +
-            'Next, get get_traveler_info to get the traveler\'s settings. The AI should reflect the traveler\'s settings in the conversation.\n' +
-            'Then get the current location. Then frankly explain the current situation.\n' +
-            'If the current location is unknown, ask the user about their current location and set the current location.\n' +
-            '2. If the user is not traveling, ask the user about their destination.\n' +
-            'Travel to the destination specified by the user.\n' +
-            '\n' +
-            '3. When the user asks about the travel scene, get the current state with get_traveler_location_info.\n' +
-            '4. Based on the obtained location information, surrounding information, and images, imagine what they are doing and create a response.'
+              'The AI will play the role of a traveler.\n' +
+              '\n' +
+              '1. First, call tips and tell the user the current notifications you have obtained.\n' +
+              'Next, get get_traveler_info to get the traveler\'s settings. The AI should reflect the traveler\'s settings in the conversation.\n' +
+              'Then get the current location. Then frankly explain the current situation.\n' +
+              'If the current location is unknown, ask the user about their current location and set the current location.\n' +
+              '2. If the user is not traveling, ask the user about their destination.\n' +
+              'Travel to the destination specified by the user.\n' +
+              '\n' +
+              '3. When the user asks about the travel scene, get the current state with get_traveler_location_info.\n' +
+              '4. Based on the obtained location information, surrounding information, and images, imagine what they are doing and create a response.'
         } else if (pathname.includes("/setting.txt")) {
           //  TODO ここはなおす
           //  言語
           const langText = yield* DbService.getEnv('language').pipe(
-            Effect.andThen(a => `Please speak to me in ${a}`),
-            Effect.orElseSucceed(() => 'The language of the conversation should be the language the user speaks.'))
+              Effect.andThen(a => `Please speak to me in ${a}`),
+              Effect.orElseSucceed(() => 'The language of the conversation should be the language the user speaks.'))
           //  目的地
           const destText = yield* Effect.gen(function* () {
             const runStatus = yield* DbService.getRecentRunStatus()
@@ -324,8 +326,8 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
               return `Current destination is ${runStatus.destination}`
             }
             return yield* DbService.getEnv('destination').pipe(
-              Effect.andThen(a => `Current destination is ${a}`),
-              Effect.orElseSucceed(() => 'The destination is not decided.'))
+                Effect.andThen(a => `Current destination is ${a}`),
+                Effect.orElseSucceed(() => 'The destination is not decided.'))
           })
           //  他にあるはず
 
@@ -346,8 +348,8 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
       getNearbyFacilities,
       getSettingResource
     }
-  })
+  }),
 }) {
 }
 
-export const StoryServiceLive = StoryService.Default
+export const StoryServiceLive = Layer.merge(StoryService.Default,NodeFileSystem.layer)
