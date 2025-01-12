@@ -1,6 +1,6 @@
 {
   "name": "@mfukushim/map-traveler-mcp",
-  "version": "0.0.9",
+  "version": "0.0.12",
   "type": "module",
   "bin": {
     "map-traveler-mcp": "build/esm/mapTraveler.js"
@@ -10,6 +10,7 @@
     "assets",
     "drizzle/"
   ],
+  "keywords": ["MCP","GoogleMap","ImageGeneration","Claude","Effect","Traveler","TravelerEmulation","Bluesky"],
   "packageManager": "pnpm@9.10.0",
   "license": "MIT",
   "description": "Virtual traveler library for MCP",

@@ -8,7 +8,7 @@ Google map上を仮想的に旅するアバターの環境を作るMCP serverで
 
 Claude DesktopなどのMCP clientから、アバターに指示をして、移動する旅の様子と写真を報告することができます。
 
-<img alt="img.png" src="img.png" width="400"/>
+<img alt="img.png" src="tools/img.png" width="400"/>
 
 ## 機能
 
@@ -58,8 +58,10 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 Claude Desktopでプロンプトを取り込むと、Claudeが旅人の立場の役をします。  
 SNS対応版では旅会話をしながらSNSの入出力を制御します。
 
-- role.txt Claudeが旅人の立場の役をします。
-- roleWithSns.txt Claudeが旅人の立場の役をします。合わせてSNSへの読み取りとポストを制御します。
+- role.txt  
+Claudeが旅人の立場の役をします。
+- roleWithSns.txt  
+Claudeが旅人の立場の役をします。合わせてSNSへの読み取りとポストを制御します。
 
 ## 設定
 
@@ -128,12 +130,12 @@ claude_desktop_config.json
 2. Claude Desktopを使える状況にします。
 3. claude_desktop_config.jsonに上記のいずれかの設定を反映します。
 4. Claude Desktopを再起動します。設定に少し時間がかかるかもしれません(エラーが出る場合は。再度Claude Desktopを再起動してみてください。上手くいかない場合は下記、注意を参照ください。)。以下のマークが画面右下に出ることを確認します。  
-   <img alt="img_1.png" src="img_1.png" width="150"/>
+   <img alt="img_1.png" src="tools/img_1.png" width="150"/>
 5. 「いまどこにいますか」「旅に出かけてください」と問いかけてください。会話が始まります。API使用時には確認画面が出るのでAllowを選んでください。
-   <img alt="img_4.png" src="img_4.png" width="200"/>
+   <img alt="img_4.png" src="tools/img_4.png" width="200"/>
 6. Attach from MCPを選択し、role.txtを選択してください。
-   <img alt="img_2.png" src="img_2.png" width="200"/>
-   <img alt="img_3.png" src="img_3.png" width="200"/>
+   <img alt="img_2.png" src="tools/img_2.png" width="200"/>
+   <img alt="img_3.png" src="tools/img_3.png" width="200"/>
 7. 旅用のプロンプトが組み込まれたので自由に会話してみてください。
 
 本格的に使う
