@@ -335,7 +335,7 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
 
           return [langText, destText].join('\n')
         } else if (pathname.includes("/credit.txt")) {
-          return 'https://akibakokoubou.jp/ '
+          return `map-traveler.mcp version:${require('./package.json').version} https://akibakokoubou.jp/ `
         } else {
           yield* Effect.fail(new Error(`resource not found`));
         }
