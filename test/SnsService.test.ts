@@ -4,7 +4,7 @@ import {beforeAll, describe, expect, it} from "@effect/vitest"
 import {Effect, Logger, LogLevel} from "effect";
 import {SnsService, SnsServiceLive} from "../src/SnsService.js";
 import {McpLogService, McpLogServiceLive} from "../src/McpLogService.js";
-import {runPromise} from "effect/Effect";
+import {runPromise, runPromiseExit} from "effect/Effect";
 import * as fs from "node:fs";
 import {DbService, DbServiceLive} from "../src/DbService.js";
 
@@ -116,7 +116,7 @@ describe("Sns", () => {
         Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
         Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed({})),
         Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
-        runPromise
+        runPromiseExit
     )
     expect(res).toBeInstanceOf(Object)
   })

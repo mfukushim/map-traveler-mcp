@@ -1,0 +1,68 @@
+name: dev_package
+on:
+  workflow_dispatch: null
+  push:
+    branches:
+      - dev_release
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+permissions: {}
+jobs:
+#  build:
+#    name: Build
+#    runs-on: ubuntu-latest
+#    timeout-minutes: 10
+#    steps:
+#      - uses: actions/checkout@v4
+#        with:
+#          token: ${{ secrets.PERSONALACCESSTOKEN }}
+#      - name: Install dependencies
+#        uses: ./.github/actions/setup
+#      - run: pnpm build
+#  types:
+#    name: Types
+#    runs-on: ubuntu-latest
+#    timeout-minutes: 10
+#    steps:
+#      - uses: actions/checkout@v4
+#        with:
+#          token: ${{ secrets.PERSONALACCESSTOKEN }}
+#      - name: Install dependencies
+#        uses: ./.github/actions/setup
+#      - run: pnpm check
+#  test:
+#    name: Test
+#    runs-on: ubuntu-latest
+#    timeout-minutes: 10
+#    steps:
+#      - uses: actions/checkout@v4
+#        with:
+#          token: ${{ secrets.PERSONALACCESSTOKEN }}
+#      - name: Install dependencies
+#        uses: ./.github/actions/setup
+#      - run: pnpm test
+  publish-gpr-test:
+#    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PERSONALACCESSTOKEN }}
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://npm.pkg.github.com/
+          cache: 'pnpm'
+      - name: Install dependencies
+        run: pnpm install
+      - run: pnpm build
+      - run: pnpm publish --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}

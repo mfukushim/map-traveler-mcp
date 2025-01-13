@@ -47,14 +47,17 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
                 Effect.andThen(() => {
                   isLogin = true
                   return 'true'
-                }));
+                }),
+                Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds"))))
+            );
           })
         }
 
         function uploadBlob(image: Buffer, mime = "image/png") {
           return Effect.tryPromise(() => agent.uploadBlob(image, {encoding: mime,})).pipe(
               Effect.tap(a => !a.success && Effect.fail(new Error(`bs uploadBlob error:${a.headers}`))),
-              Effect.andThen(a => a.data.blob)
+              Effect.andThen(a => a.data.blob),
+              Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds"))))
           )
         }
 
@@ -117,6 +120,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
           return reLogin().pipe(
               Effect.andThen(Effect.tryPromise(() => agent.getProfile({actor: handle}))),
               Effect.tap(a => !a.success && Effect.fail(new Error('getProfile error'))),
+              Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
               Effect.andThen(a => a.data));
         }
 
@@ -219,6 +223,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
               }),
               Effect.tap(a => !a.notification.success && Effect.fail(new Error('getNotification fail'))),
               Effect.tap(a => McpLogService.logTrace(`notification num:${a.notification.data.length}`)),
+              Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
               Effect.tap(a => {
                 const max = a.notification.data.notifications.reduce((p, c) => Math.max(p, dayjs(c.indexedAt).unix()), 0)
                 return DbService.updateSnsMentionSeenAt(1, 'bs', max)

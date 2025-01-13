@@ -4,10 +4,12 @@ import {Effect, Layer, Option, Schedule} from "effect";
 import dayjs from "dayjs";
 import timezone = require("dayjs/plugin/timezone")
 import {MapDef, MapService} from "./MapService.js";
-import {DbService, env} from "./DbService.js";
+import {__pwd, DbService, env} from "./DbService.js";
 import {McpLogService} from "./McpLogService.js";
 import * as Process from "node:process";
 import {NodeFileSystem} from "@effect/platform-node";
+import * as path from "node:path";
+import * as fs from "node:fs";
 
 dayjs.extend(timezone)
 
@@ -208,7 +210,7 @@ or
 `
             )
           }
-          if (!env.pythonExist || !env.enableRemBg) {
+          if (!env.enableRemBg) {
             textList.push('In order to synthesize avatar images, your PC must be running Python and install rembg.' +
                 ` Please install Python and rembg on your PC using information from the Internet.\n
 \`\`\`
@@ -234,8 +236,10 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
 `
             )
           }
+          if (!env.promptChanged) {
+            textList.push('You can change the appearance of your avatar by directly telling the AI what you want it to look like, or by specifying a prompt to show its appearance with set_avatar_prompt.')
+          }
         }
-
       }
 
       return Effect.succeed(
@@ -333,9 +337,15 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
 
           return [langText, destText].join('\n')
         } else if (pathname.includes("/credit.txt")) {
-          return 'https://akibakokoubou.jp/ '
+          try {
+            const packageJsonPath = path.resolve(__pwd, 'package.json');
+            const pkg = JSON.parse(fs.readFileSync(packageJsonPath,{encoding:"utf8"}))
+            return `map-traveler.mcp version:${pkg.version} https://akibakokoubou.jp/ `
+          } catch (e) {
+            return yield *Effect.fail(new Error(`read error`))
+          }
         } else {
-          yield* Effect.fail(new Error(`resource not found`));
+          return yield* Effect.fail(new Error(`resource not found`));
         }
       })
     }

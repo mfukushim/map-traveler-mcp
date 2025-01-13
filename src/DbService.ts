@@ -65,12 +65,12 @@ export const env = {
   gmKeyExist: false,
   anyImageAiExist: false,
   enableRemBg: false,
-  pythonExist: false,
   anySnsExist: false,
   personMode: 'third' as PersonMode,
   promptChanged: false,
   noSnsPost: false,
   loggingMode: false,
+  filterTools: [] as string[],
 }
 
 export class DbService extends Effect.Service<DbService>()("traveler/DbService", {
@@ -300,6 +300,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       //  noChangeBasePrompt: プロンプトを変えたことがない
       //  noSns:いずれかのsnsのアカウントがない
       //  noBlueSky: 対話用bsアカウントがない
+      //  filterTools: 使うツールのフィルタ undefinedなら可能なすべて
       return Effect.gen(function* () {
         //  db有無の確認 dbサービスの初期化によって確認させる とコマンドon/off
         yield* init()
@@ -342,6 +343,10 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         //  デフォルトは三人称モード
         env.personMode = !setting.personMode ? 'third' : setting.personMode as PersonMode;
         yield* saveEnv('personMode', env.personMode as string)
+
+        if (Process.env.filter_tools) {
+          env.filterTools = Process.env.filter_tools.trim().split(',').map(value => value.trim())
+        }
 
         env.promptChanged = !!setting.promptChanged
         yield* saveEnv('promptChanged', env.promptChanged ? '1' : '')
