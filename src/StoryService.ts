@@ -210,7 +210,7 @@ or
 `
             )
           }
-          if (!env.pythonExist || !env.enableRemBg) {
+          if (!env.enableRemBg) {
             textList.push('In order to synthesize avatar images, your PC must be running Python and install rembg.' +
                 ` Please install Python and rembg on your PC using information from the Internet.\n
 \`\`\`
