@@ -84,7 +84,8 @@ claude_desktop_config.json
             "sd_key":"(またはStability.aiのAPIのキー",
             "bs_id":"(bluesky snsの登録アドレス)",
             "bs_pass":"(bluesky snsのパスワード)",
-            "bs_handle":"(bluesky snsのハンドル名 例 geo-less-traveler.bsky.social など)"
+            "bs_handle":"(bluesky snsのハンドル名 例 xxxxx.bsky.social など)",
+            "filter_tools": "(オプション:使うツールを直に絞る 指定しなければ使えるすべて 例 tips,set_traveler_location)"
       }
     }
   }

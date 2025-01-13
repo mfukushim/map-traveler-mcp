@@ -234,8 +234,10 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
 `
             )
           }
+          if (!env.promptChanged) {
+            textList.push('You can change the appearance of your avatar by directly telling the AI what you want it to look like, or by specifying a prompt to show its appearance with set_avatar_prompt.')
+          }
         }
-
       }
 
       return Effect.succeed(

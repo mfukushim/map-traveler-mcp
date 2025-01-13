@@ -133,7 +133,11 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                   type: "text",
                   text: `Set traveller prompt to: "${a}"`
                 } as ToolContentResponse]
-              }))
+              })),
+              Effect.tap(() => {
+                env.promptChanged = true
+                return DbService.saveEnv('promptChanged', '1');
+              })
           )
         }
 
@@ -718,16 +722,14 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             },
           ]
 
-          server.setRequestHandler(ListToolsRequestSchema, async () => {
-            return await Effect.gen(function* () {
+          const makeToolsDef = () => {
+            const def = () => {
               if (env.isPractice) {
-                return {
-                  tools: [
-                    ...GET_LOCATION_COMMAND,
-                    ...SETTING_COMMANDS,
-                    ...START_STOP_COMMAND
-                  ]
-                }
+                return [
+                  ...GET_LOCATION_COMMAND,
+                  ...SETTING_COMMANDS,
+                  ...START_STOP_COMMAND
+                ]
               } else {
                 const basicToolsCommand: Tool[] = [
                   {
@@ -796,10 +798,17 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                       },
                   )
                 }
-                return {tools: cmd}
+                return cmd
               }
+            }
+            return Effect.succeed(def()).pipe(
+                Effect.andThen(a =>
+                    ({tools: env.filterTools.length > 0 ? a.filter(b => env.filterTools.includes(b.name)) : a}))
+            )
+          }
 
-            }).pipe(Effect.runPromise)
+          server.setRequestHandler(ListToolsRequestSchema, async () => {
+            return await makeToolsDef().pipe(Effect.runPromise)
           });
 
           server.setRequestHandler(CallToolRequestSchema, async (request) => {
@@ -853,7 +862,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             }
 
             return await toolSwitch().pipe(
-                Effect.provide([DbServiceLive,ImageServiceLive]),
+                Effect.provide([DbServiceLive, ImageServiceLive]),
                 Effect.andThen(a => a as { content: ToolContentResponse[] }),
                 Effect.catchIf(a => a instanceof AnswerError, e => {
                   return Effect.succeed({

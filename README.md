@@ -86,7 +86,8 @@ claude_desktop_config.json
         "sd_key":"(or Stability.ai image generation API key",
         "bs_id":"(Bluesky sns registration address)",
         "bs_pass":"(bluesky sns password)",
-        "bs_handle":"(bluesky sns handle name: e.g. geo-less-traveler.bsky.social )"
+        "bs_handle":"(bluesky sns handle name: e.g. xxxxxxxx.bsky.social )",
+        "filter_tools": "(Optional: Directly filter the tools to be used. All are available if not specified. e.g. tips,set_traveler_location)"
       }
     }
   }
@@ -102,7 +103,7 @@ https://developers.google.com/maps/documentation/streetview/get-api-key
 
 If you want to use the image generation AI, set either pixAi_key or sd_key. You also need to have python3.7~3.11 installed on your PC and rembg cli installed (virtual environment recommended).
 
-https://platform.pixai.art/docs
+https://platform.pixai.art/docs  
 https://platform.stability.ai/docs/api-reference#tag/SDXL-1.0-and-SD1.6/operation/textToImage
 
 The bluesky SNS address/password are optional. It is recommended that you create a dedicated account as it will post automatically.
