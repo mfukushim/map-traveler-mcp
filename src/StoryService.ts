@@ -8,6 +8,8 @@ import {DbService, env} from "./DbService.js";
 import {McpLogService} from "./McpLogService.js";
 import * as Process from "node:process";
 import {NodeFileSystem} from "@effect/platform-node";
+import * as path from "node:path";
+import * as fs from "node:fs";
 
 dayjs.extend(timezone)
 
@@ -335,9 +337,16 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
 
           return [langText, destText].join('\n')
         } else if (pathname.includes("/credit.txt")) {
-          return `map-traveler.mcp version:${require('./package.json').version} https://akibakokoubou.jp/ `
+          try {
+            const pwd = __dirname.endsWith('src') ? path.join(__dirname, '..') : path.join(__dirname, '../..')
+            const packageJsonPath = path.resolve(pwd, 'package.json');
+            const pkg = JSON.parse(fs.readFileSync(packageJsonPath,{encoding:"utf8"}))
+            return `map-traveler.mcp version:${pkg.version} https://akibakokoubou.jp/ `
+          } catch (e) {
+            return yield *Effect.fail(new Error(`read error`))
+          }
         } else {
-          yield* Effect.fail(new Error(`resource not found`));
+          return yield* Effect.fail(new Error(`resource not found`));
         }
       })
     }
