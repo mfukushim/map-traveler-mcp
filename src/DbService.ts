@@ -65,7 +65,6 @@ export const env = {
   gmKeyExist: false,
   anyImageAiExist: false,
   enableRemBg: false,
-  pythonExist: false,
   anySnsExist: false,
   personMode: 'third' as PersonMode,
   promptChanged: false,
