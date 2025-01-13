@@ -4,7 +4,7 @@ import {Effect, Layer, Option, Schedule} from "effect";
 import dayjs from "dayjs";
 import timezone = require("dayjs/plugin/timezone")
 import {MapDef, MapService} from "./MapService.js";
-import {DbService, env} from "./DbService.js";
+import {__pwd, DbService, env} from "./DbService.js";
 import {McpLogService} from "./McpLogService.js";
 import * as Process from "node:process";
 import {NodeFileSystem} from "@effect/platform-node";
@@ -338,8 +338,7 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
           return [langText, destText].join('\n')
         } else if (pathname.includes("/credit.txt")) {
           try {
-            const pwd = __dirname.endsWith('src') ? path.join(__dirname, '..') : path.join(__dirname, '../..')
-            const packageJsonPath = path.resolve(pwd, 'package.json');
+            const packageJsonPath = path.resolve(__pwd, 'package.json');
             const pkg = JSON.parse(fs.readFileSync(packageJsonPath,{encoding:"utf8"}))
             return `map-traveler.mcp version:${pkg.version} https://akibakokoubou.jp/ `
           } catch (e) {
