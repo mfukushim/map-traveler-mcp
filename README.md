@@ -84,6 +84,7 @@ claude_desktop_config.json
         "rembg_path": "(absolute path of the installed rembg cli)",
         "pixAi_key":"(pixAi API key)",
         "sd_key":"(or Stability.ai image generation API key",
+        "pixAi_modelId": "(Optional: pixAi ModelId, if not set use default model 1648918127446573124 ",
         "bs_id":"(Bluesky sns registration address)",
         "bs_pass":"(bluesky sns password)",
         "bs_handle":"(bluesky sns handle name: e.g. xxxxxxxx.bsky.social )",

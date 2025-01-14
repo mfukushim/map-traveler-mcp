@@ -40,7 +40,6 @@ const feedUri = "at://did:plc:ygcsenazbvhyjmxeltz4fgw4/app.bsky.feed.generator/m
 
 const LabelGoogleMap = 'Google Map'
 const LabelClaude = 'Claude'
-let recentUseLabels: string[] = []
 const labelImage = (aiGen: string) => {
   return aiGen === 'pixAi' ? 'PixAi' : aiGen === 'sd' ? 'Stability.ai' : ''
 }
@@ -188,6 +187,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               tripId: 0,
               tilEndEpoch: 0, //  旅開始していない
               startTime: new Date(0),  //  旅開始していない
+              endTime: new Date(0), //  開始位置再設定の場合は0にする
               startCountry: address.value.country,
               endCountry: address.value.country,
               startTz: timeZoneId,
@@ -238,10 +238,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         const startJourney = () => {
           return RunnerService.startJourney(env.isPractice).pipe(
               Effect.andThen(a => {
-                recentUseLabels = [LabelClaude]
-                if (useAiImageGen) {
-                  recentUseLabels.push(labelImage(useAiImageGen))
-                }
                 return {
                   content: [{type: "text", text: a.text}, {
                     type: "image",
@@ -254,10 +250,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           )
         }
         const stopJourney = () => {
-          recentUseLabels = [LabelClaude, LabelGoogleMap]
-          if (useAiImageGen) {
-            recentUseLabels.push(labelImage(useAiImageGen))
-          }
           return RunnerService.stopJourney(env.isPractice).pipe(
               Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer, McpLogServiceLive]),
           )
@@ -413,7 +405,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         }
 
         const replySnsWriter = (message: string, id: string) => {
-          const appendLicence = 'powered ' + LabelClaude  //  追加ライセンスの文字列をclient LLMに制御させることは信頼できないので、直近の生成行為に対する文字列を強制付加する
           //  TODO 固定フィルタ
           return Effect.gen(function* () {
             if (env.noSnsPost) {
@@ -435,7 +426,9 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             if (!id2) {
               return yield* Effect.fail(new AnswerError('id is invalid'))
             }
-            return yield* SnsService.snsReply(message, `${appendLicence} ${feedTag} `, id2).pipe(
+            const appendLicence = 'powered ' + LabelClaude  //  追加ライセンスの文字列をclient LLMに制御させることは信頼できないので、直近の生成行為に対する文字列を強制付加する
+            //  @メンションは今は表示名に対して付けているので邪魔にはなっていない ただ除去したほうが無難な可能性がある
+            return yield* SnsService.snsReply(message.replaceAll("@",""), `${appendLicence} ${feedTag} `, id2).pipe(
                 Effect.andThen(() => ({
                   content: [
                     {
@@ -451,7 +444,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
 
         const postSnsWriter = (message: string) => {
           //  特定タグを強制付加する 長すぎは強制的に切る 特定ライセンス記述を強制付加する その他固定フィルタ機能を置く
-          const appendLicence = 'powered ' + recentUseLabels.join(',')  //  追加ライセンスの文字列をclient LLMに制御させることは信頼できないので、直近の生成行為に対する文字列を強制付加する
           //  TODO 固定フィルタ
           return Effect.gen(function* () {
             if (env.noSnsPost) {
@@ -463,18 +455,17 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                   }
                 ] as ToolContentResponse[]
               };
-              if (env.loggingMode) {
-                return yield* McpLogService.log(message).pipe(Effect.andThen(() => noMes))
-              }
-              return yield* Effect.succeed(noMes)
+              return yield* Effect.succeed(noMes).pipe(Effect.tap(() => env.loggingMode && McpLogService.logTrace(message)))
             }
-            const img = yield* ImageService.getRecentImageAndClear()
-            yield* McpLogService.logTrace(`sns image:${img !== undefined}`)
-            const imageData = img ? {
-              buf: img,
-              mime: "image/png"
-            } : undefined
-            return yield* SnsService.snsPost(message, `${appendLicence} ${feedTag} `, imageData).pipe(
+            const img = yield* ImageService.getRecentImageAndClear().pipe(Effect.tap(a => McpLogService.logTrace(`sns image:${a !== undefined}`)))
+            //  TODO 汎化の検討は必要
+            const recentUseLabels = [LabelClaude]
+            if (useAiImageGen) {
+              recentUseLabels.push(LabelGoogleMap,labelImage(useAiImageGen))
+            }
+            const appendLicence = 'powered ' + recentUseLabels.join(',')  //  追加ライセンスの文字列をclient LLMに制御させることは信頼できないので、直近の生成行為に対する文字列を強制付加する
+            //  @メンションは今は表示名に対して付けているので邪魔にはなっていない ただ除去したほうが表示的に邪魔にならないだろう
+            return yield* SnsService.snsPost(message.replaceAll("@",""), `${appendLicence} ${feedTag} `, img ? {buf: img, mime: "image/png"} : undefined).pipe(
                 Effect.andThen(() => ({
                   content: [
                     {
@@ -485,7 +476,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 })),
                 Effect.provide(SnsServiceLive)
             );
-
           })
         }
 

@@ -1,15 +1,14 @@
-import {beforeAll, describe, expect, it} from "@effect/vitest"
+import {describe, expect, it,beforeAll} from "@effect/vitest"
 import {Effect, Logger, LogLevel} from "effect";
 import {runPromise} from "effect/Effect";
 import {DbService, DbServiceLive, isValidFilePath} from "../src/DbService.js";
 import dayjs from "dayjs";
-import {McpLogServiceLive} from "../src/McpLogService.js";
 
 
 describe("Db", () => {
   beforeAll(async () => {
     return await DbService.initSystemMode().pipe(
-        Effect.provide([DbServiceLive,McpLogServiceLive]),
+        Effect.provide([DbServiceLive]),
         Effect.runPromise
     )
   });

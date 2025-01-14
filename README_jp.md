@@ -82,6 +82,7 @@ claude_desktop_config.json
             "rembg_path": "(インストールしたrembg cliの絶対パス)",
             "pixAi_key":"(pixAi APIのキー)",
             "sd_key":"(またはStability.aiのAPIのキー",
+            "pixAi_modelId": "(オプション: pixAiの場合の使用ModelId. 未設定の場合とりあえず 1648918127446573124 を使う",
             "bs_id":"(bluesky snsの登録アドレス)",
             "bs_pass":"(bluesky snsのパスワード)",
             "bs_handle":"(bluesky snsのハンドル名 例 xxxxx.bsky.social など)",

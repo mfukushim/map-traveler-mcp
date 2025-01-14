@@ -1,21 +1,21 @@
 // @vitest-environment node
 
-import {beforeAll, describe, expect, it} from "@effect/vitest"
+import {describe, expect, it} from "@effect/vitest"
 import {Effect, Logger, LogLevel} from "effect";
 import {SnsService, SnsServiceLive} from "../src/SnsService.js";
 import {McpLogService, McpLogServiceLive} from "../src/McpLogService.js";
 import {runPromise, runPromiseExit} from "effect/Effect";
 import * as fs from "node:fs";
-import {DbService, DbServiceLive} from "../src/DbService.js";
+import {DbServiceLive} from "../src/DbService.js";
 
 
 describe("Sns", () => {
-  beforeAll(async () => {
-    return await DbService.initSystemMode().pipe(
-      Effect.provide([DbServiceLive, McpLogServiceLive]),
-      Effect.runPromise
-    )
-  });
+  // beforeAll(async () => {
+  //   return await DbService.initSystemMode().pipe(
+  //     Effect.provide([DbServiceLive, McpLogServiceLive]),
+  //     Effect.runPromise
+  //   )
+  // });
   it("bsPost単純ポスト", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {

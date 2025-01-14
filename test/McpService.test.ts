@@ -1,13 +1,13 @@
 // @vitest-environment node
 
-import {describe, expect, it, beforeAll} from "@effect/vitest"
+import {describe, expect, it} from "@effect/vitest"
 import {Effect, Logger, LogLevel} from "effect";
 import {McpService, McpServiceLive} from "../src/McpService.js";
 import {FetchHttpClient} from "@effect/platform";
 import {runPromise} from "effect/Effect";
 import * as fs from "node:fs";
 import {McpLogService, McpLogServiceLive} from "../src/McpLogService.js";
-import {DbService, DbServiceLive} from "../src/DbService.js";
+import {DbServiceLive} from "../src/DbService.js";
 import {StoryServiceLive} from "../src/StoryService.js";
 import {AnswerError} from "../src/mapTraveler.js";
 import {SnsServiceLive} from "../src/SnsService.js";
@@ -16,12 +16,12 @@ import {NodeFileSystem} from "@effect/platform-node";
 const inGitHubAction = process.env.GITHUB_ACTIONS === 'true';
 
 describe("Mcp", () => {
-  beforeAll(async () => {
-    return await DbService.initSystemMode().pipe(
-        Effect.provide([DbServiceLive, McpLogServiceLive]),
-        Effect.runPromise
-    )
-  });
+  // beforeAll(async () => {
+  //   return await DbService.initSystemMode().pipe(
+  //       Effect.provide([DbServiceLive, McpLogServiceLive]),
+  //       Effect.runPromise
+  //   )
+  // });
 
   it("run", async () => {
     //  vitest --run --testNamePattern=run McpService.test.ts
