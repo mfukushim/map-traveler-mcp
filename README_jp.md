@@ -2,7 +2,7 @@
 ### 仮想 旅アバター環境パッケージ 
 
 
-[English](./README.md)
+Japanese / [English](./README.md)
 
 Google map上を仮想的に旅するアバターの環境を作るMCP serverです。
 
@@ -162,4 +162,12 @@ claude_desktop_config.json
    ここまでで旅画像にアバターが合成されます。
 6. bluesky SNSのアドレス/パスワードを取得し、ハンドル名も取得します。claude_desktop_config.jsonのenvのbs_id,bs_pass,bs_handle にそれぞれ設定します。
 旅用知識プロンプト roleWithSns.txt を取り込むことで旅アクションをSNSに報告します(botとして自動ポストしますので専用にアカウントを割り当てることをお勧めします)
+
+### 設定ガイド
+
+1. 紹介&練習設定編
+   https://note.com/marble_walkers/n/n7a8f79e4fb30
+2. dbとGoogle APIと画像API設定編
+   https://note.com/marble_walkers/n/n765257c27f3b
+3. アバター、SNS設定 (準備中)
 
