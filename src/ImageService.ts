@@ -507,11 +507,10 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         withAbort = false,
         localDebug = false,
         bodyAreaRatio = 0.042,
-        bodyHWRatio = 2.3,
+        bodyHWRatio = 1.5, // 画像AIの精度が上がっているので2.3から少し減らす
         sideBias = false
     ) {
       return Effect.gen(function* () {
-            const fs = yield* FileSystem.FileSystem
             if (!Process.env.rembg_path) {
               //  rembg pathがない場合、画像合成しないままの画像を戻す
               return {
@@ -542,7 +541,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               height: windowSize.h
             }).toBuffer())
             if (localDebug) {
-              yield* fs.writeFile('tools/test/testOutInClop.png', clopImage, {flag: "w"})
+              fs.writeFileSync('tools/test/testOutInClop.png', clopImage)
             }
 
             /** 画像評価リトライ */
@@ -574,18 +573,19 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               }
             }).pipe(
                 // Effect.andThen(a => Buffer.from(a, 'base64')),
-                Effect.tap(sdImage => localDebug && fs.writeFile('tools/test/testOutGen.png', sdImage, {flag: "w"})),
+                Effect.tap(sdImage => localDebug && fs.writeFileSync('tools/test/testOutGen.png', sdImage)),
                 Effect.andThen(sdImage => rembg(sdImage)),
-                Effect.tap(avatarImage => localDebug && fs.writeFile('tools/test/testOutRmBg.png', avatarImage, {flag: "w"})),
+                Effect.tap(avatarImage => localDebug && fs.writeFileSync('tools/test/testOutRmBg.png', avatarImage)),
                 Effect.tap(avatarImage => {
                   if (Process.env.ServerLog && Process.env.ServerLog.includes('trace')) {
-                    fs.writeFile(path.join(os.tmpdir(), `trd-${crypto.randomUUID()}.png`), avatarImage, {flag: "w"});
+                    fs.writeFileSync(path.join(os.tmpdir(), `trd-${crypto.randomUUID()}.png`), avatarImage, {flag: "w"});
                   }
                 }),
                 Effect.tap(avatarImage => {
                   //  非透明度判定 0.02以上
                   return checkPersonImage(avatarImage, windowSize).pipe(
-                      Effect.tap(a => McpLogService.logTrace(`'check runner image:${retry},${JSON.stringify(a)},${a.alphaNum.rect.h / a.alphaNum.rect.w}`)),  //, retry, number, alphaNum.rect.w, alphaNum.rect.h\
+                      Effect.tap(a => McpLogService.logTrace(
+                        `check runner image:${retry},${JSON.stringify(a)},${a.number}<>${bodyAreaRatio},${a.alphaNum.rect.h / a.alphaNum.rect.w}<>${bodyHWRatio}`)),  //, retry, number, alphaNum.rect.w, alphaNum.rect.h\
                       Effect.andThen(a => {
                         //  非透明度が0.02以上かつ範囲の縦と横の比率が3:1以上なら完了 counterfeit V3=0.015, counterfeit LX 0.03 にしてみる
                         //  比率値を3から2.5にしてみる。ダメ映像が増えたらまた調整する。。非透明率を0.015にしてみる

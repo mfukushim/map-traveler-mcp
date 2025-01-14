@@ -7,6 +7,7 @@ import * as geolib from "geolib";
 import dayjs = require("dayjs");
 import utc = require("dayjs/plugin/utc");
 import duration = require("dayjs/plugin/duration");
+import relativeTime = require("dayjs/plugin/relativeTime");
 import {ImageService} from "./ImageService.js";
 import * as Process from "node:process";
 import {FacilityInfo, StoryService} from "./StoryService.js";
@@ -24,6 +25,7 @@ import sharp = require("sharp");
 
 dayjs.extend(utc)
 dayjs.extend(duration)
+dayjs.extend(relativeTime)
 
 export const useAiImageGen = (Process.env.pixAi_key ? 'pixAi' : Process.env.sd_key ? 'sd' : '')
 
@@ -80,7 +82,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         Effect.orElseSucceed(() => 'depth of field, cinematic composition, masterpiece, best quality,looking at viewer,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut'))
 
     const isShips = (maneuver?: string) => ['ferry', 'airplane'].includes(maneuver || '')
-    const maneuverIsShip = (step: typeof MapDef.DirectionStepSchema.Type) => isShips(step.maneuver)
+    const maneuverIsShip = (step: typeof MapDef.GmStepSchema.Type) => isShips(step.maneuver)
 
     const getFacilitiesPractice = (runStatus: RunStatus, includePhoto: boolean) => {
       return Effect.gen(function* () {
@@ -144,7 +146,16 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       return Effect.gen(function* () {
         const runStatus = yield* getRunStatusAndUpdateEnd();
         const loc = yield* calcCurrentLoc(runStatus, dayjs()); //  これは計算位置情報
-        const status = practice ? runStatus.status : loc.status
+        let status: any;
+        if (practice) {
+          status = runStatus.status;
+        } else {
+          status = loc.status;
+          //  ただし前回旅が存在し、それが終了していても、そのendTimeから1時間以内ならその場所にいるものとして表示する
+          if(dayjs().isBefore(dayjs(runStatus.endTime || 0).add(1,"hour"))) {
+            status = 'running'
+          }
+        }
 
         const basePrompt = yield* getBasePrompt(defaultAvatarId);
         switch (status) {
@@ -244,7 +255,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
      * 船と飛行機はMap通りの時間、通常の移動は自転車相当としてそのdurationScale2倍する
      * @param step
      */
-    const calcStepTime = (step: typeof MapDef.DirectionStepSchema.Type) => {
+    const calcStepTime = (step: typeof MapDef.GmStepSchema.Type) => {
       return maneuverIsShip(step) ? step.duration.value : step.duration.value * durationScale2
     }
     /**
@@ -347,6 +358,9 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           Effect.orElseFail(() => new AnswerError("The destination has not yet been decided")))
     }
 
+    const sumDurationSec = (destList:typeof MapDef.RouteArraySchema.Type) => destList.flatMap(v => v.leg).flatMap(a => a.steps)
+      .map(a => calcStepTime(a)).reduce((p, c) => p + c, 0)
+    
     function setDestinationAddress(address: string) {
       return Effect.gen(function* () {
         const location = yield* MapService.getMapLocation(address);
@@ -363,9 +377,9 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         if (destList.length === 0) {
           return yield* Effect.fail(new AnswerError("I can't find a route to my destination."))
         }
-        const durationSec = destList.flatMap(v => v.leg).map(a => a.duration.value).reduce((p, c) => p + c, 0)
-        if (durationSec > 24 * 60 * 60) {
-          return yield* Effect.fail(new AnswerError("It will take 24 hours to reach your destination. That's too long."))
+        const durationSec = sumDurationSec(destList)
+        if (durationSec > 3 * 24 * 60 * 60) {
+          return yield* Effect.fail(new AnswerError("It will take 3 days to reach your destination. That's too long."))
         }
         //  連結した複数の中間位置のリスト
         yield* saveCurrentRunnerRoute(defaultAvatarId, destList);
@@ -375,7 +389,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         yield* DbService.saveEnv('destTimezoneId', timeZoneId)
         const mesList = [
           `The traveler's destination was set as follows: ${address}`,
-          `The journey takes approximately ${dayjs.duration(durationSec, "seconds").format()}.`
+          `The journey takes approximately ${dayjs.duration(durationSec, "seconds").humanize()}.`
         ]
         const listElement = destList[destList.length - 1];
         return {
@@ -386,9 +400,10 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       })
     }
 
-    const resetRunStatus = (recent: RunStatus, to: string, lat: number, lng: number, country: string | null, timeZone: string | null) => {
+    const resetRunStatus = (recent: RunStatus, to: string,endTime:Date, lat: number, lng: number, country: string | null, timeZone: string | null) => {
       recent.status = "stop"
       recent.startTime = new Date(0)
+      recent.endTime = endTime
       recent.to = to
       recent.endLat = lat
       recent.endLng = lng
@@ -406,9 +421,10 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       return Effect.gen(function* () {
         const recent = yield* DbService.getRecentRunStatus().pipe(Effect.orElseFail(() =>
             new AnswerError(`current location not set. Please set the current location address`)))
-        if (dayjs().isAfter(dayjs.unix(recent.tilEndEpoch))) {
+        const endTime = dayjs.unix(recent.tilEndEpoch)
+        if (dayjs().isAfter(endTime)) {
           //  旅は終了している 終点画像を撮るタイミングがないな。。ここで入れるか? 今の取得で作れるのは作れるが。。
-          resetRunStatus(recent, recent.to, recent.endLat, recent.endLng, recent.endCountry, recent.endTz)
+          resetRunStatus(recent, recent.to,endTime.toDate(), recent.endLat, recent.endLng, recent.endCountry, recent.endTz)
           yield* DbService.saveRunStatus(recent)
         }
         return recent
@@ -434,6 +450,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           //  旅開始する
           runStatus.status = "running"
           runStatus.startTime = now.toDate()
+          runStatus.endTime = dayjs.unix(destInfo.tilEndSec).toDate()
           runStatus.destination = ""
           runStatus.from = runStatus.to
           runStatus.to = dest
@@ -478,7 +495,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
             bearing: currentInfo.bearing
           })
 
-          resetRunStatus(runStatus, Option.getOrElse(nears.address, () => runStatus.to),
+          resetRunStatus(runStatus, Option.getOrElse(nears.address, () => runStatus.to),dayjs().toDate(),
               currentInfo.lat, currentInfo.lng, Option.getOrElse(nears.country, () => runStatus.endCountry), currentInfo.timeZoneId)
 
           const {nearFacilities, image, locText} = yield* getFacilities(currentInfo, true, false)
@@ -528,6 +545,8 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       setDestinationAddress,
       startJourney,
       stopJourney,
+      sumDurationSec,
+      routesToDirectionStep,
     }
   }),
   dependencies: [DbServiceLive]
