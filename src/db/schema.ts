@@ -64,6 +64,7 @@ export const run_status = sqliteTable("run_status", {
   durationSec: integer("durationSec").notNull(),
   distanceM: integer("distanceM").notNull(),
   startTime: integer("startTime", {mode: "timestamp"}).notNull(),
+  endTime: integer("endTime", {mode: "timestamp"}),
   startCountry: text("startCountry", {length: 4}).default('NULL'),
   endCountry: text("endCountry", {length: 4}).default('NULL'),
   startTz: text("startTz").default('NULL'),
