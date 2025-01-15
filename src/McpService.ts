@@ -348,44 +348,44 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       const getSnsFeeds = () => {
         //  特定タグを含むものしか読み取れない。現在から一定期間しか読み取れない。最大件数がある。その他固定フィルタ機能を置く
         //  自身は除去する
-        return SnsService.getFeed(feedUri, 4).pipe(
-          Effect.andThen(a => {
-            const detectFeeds = a.filter(v => v.post.author.handle !== Process.env.bs_handle)
-              .reduce((p, c) => {
-                //  同一ハンドルの直近1件のみ
-                if (!p.find(v => v.post.author.handle === c.post.author.handle)) {
-                  p.push(c)
-                }
-                return p
-              }, [] as FeedViewPost[])
-            const select = detectFeeds.map(v => {
-              const im = (v.post.embed as any)?.images as any[]
-              return ({
-                authorHandle: v.post.author.displayName, //  LLMには可読名を返す。id管理は面倒なので正しくなくても可読名で記事の対応を取る
-                body: (v.post.record as any).text || '',
-                imageUri: im ? im[0].thumb as string : undefined
-              });
-            })
-            const out = select.map(v => `author: ${v.authorHandle}\nbody: ${v.body}`).join('\n-----\n')
-            const images = select.flatMap(v => v.imageUri ? [{uri: v.imageUri, handle: v.authorHandle}] : [])
-            const imageOut = images.map(v => {
-              return {
-                type: "resource",
-                resource: {
-                  uri: v.uri,
-                  mimeType: "image/jpeg",
-                  text: `image of ${v.handle}`
-                }
+        return Effect.gen(function *() {
+          const posts = yield *SnsService.getFeed(feedUri, 4)
+          const detectFeeds = posts.filter(v => v.post.author.handle !== Process.env.bs_handle)
+            .reduce((p, c) => {
+              //  同一ハンドルの直近1件のみ
+              if (!p.find(v => v.post.author.handle === c.post.author.handle)) {
+                p.push(c)
               }
-            })
-            const c: ToolContentResponse[] = [{
-              type: 'text',
-              text: `I got the following article:\n${out}\n-----\n`
-            }]
-            c.push(...imageOut)
-            return Effect.succeed(c)
-          }),
-          Effect.provide(SnsServiceLive))
+              return p
+            }, [] as FeedViewPost[])
+          const select = detectFeeds.map(v => {
+            const im = (v.post.embed as any)?.images as any[]
+            return ({
+              id: v.post.uri+'-'+v.post.cid,
+              authorHandle: v.post.author.displayName || v.post.author.handle, //  LLMには可読名を返す。id管理は面倒なので正しくなくても可読名で記事の対応を取る
+              body: (v.post.record as any).text || '',
+              imageUri: im ? im[0].thumb as string : undefined
+            });
+          })
+          const out = select.map(v => `id: ${v.id} \nauthor: ${v.authorHandle}\nbody: ${v.body}`).join('\n-----\n')
+          const images = select.flatMap(v => v.imageUri ? [{uri: v.imageUri, handle: v.authorHandle}] : [])
+          const imageOut = images.map(v => {
+            return {
+              type: "resource",
+              resource: {
+                uri: v.uri,
+                mimeType: "image/jpeg",
+                text: `image of ${v.handle}`
+              }
+            }
+          })
+          const c: ToolContentResponse[] = [{
+            type: 'text',
+            text: `I got the following article:\n-----\n${out}\n-----\n`
+          }]
+          c.push(...imageOut)
+          return c
+        }).pipe(Effect.provide(SnsServiceLive))
       }
 
       const addLike = (id: string) => {
