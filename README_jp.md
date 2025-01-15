@@ -2,7 +2,7 @@
 ### 仮想 旅アバター環境パッケージ 
 
 
-[English](./README.md)
+Japanese / [English](./README.md)
 
 Google map上を仮想的に旅するアバターの環境を作るMCP serverです。
 
@@ -43,6 +43,8 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 旅人の属性を取得します。旅人の性格付けを取得します。
 - set_avatar_prompt(prompt:string)
 旅アバターの画像生成時のプロンプトを設定します。デフォルトはアニメ風女性です。フェイク画像抑制の目的でアニメ風を強制しています。
+- reset_avatar_prompt
+  アバターの生成プロンプトをデフォルトにリセットする
 - post_sns_writer(message:string)
 設定したハンドルでBluesky snsへ記事をポストします。旅botが生成したポストと判定できるように特定のタグを設定します。
 - get_sns_feeds
@@ -77,16 +79,17 @@ claude_desktop_config.json
       "command": "npx",
       "args": ["-y", "@mfukushim/map-traveler-mcp"],
       "env":{
-      	  	"GoogleMapApi_key":"(Google Map APIのキー)",
-            "sqlite_path":"(db保存ファイルのパス 例 %USERPROFILE%/Desktop/traveler.sqlite など)",
-            "rembg_path": "(インストールしたrembg cliの絶対パス)",
-            "pixAi_key":"(pixAi APIのキー)",
-            "sd_key":"(またはStability.aiのAPIのキー",
-            "pixAi_modelId": "(オプション: pixAiの場合の使用ModelId. 未設定の場合とりあえず 1648918127446573124 を使う",
-            "bs_id":"(bluesky snsの登録アドレス)",
-            "bs_pass":"(bluesky snsのパスワード)",
-            "bs_handle":"(bluesky snsのハンドル名 例 xxxxx.bsky.social など)",
-            "filter_tools": "(オプション:使うツールを直に絞る 指定しなければ使えるすべて 例 tips,set_traveler_location)"
+        "GoogleMapApi_key":"(Google Map APIのキー)",
+        "sqlite_path":"(db保存ファイルのパス 例 %USERPROFILE%/Desktop/traveler.sqlite など)",
+        "rembg_path": "(インストールしたrembg cliの絶対パス)",
+        "pixAi_key":"(pixAi APIのキー)",
+        "sd_key":"(またはStability.aiのAPIのキー",
+        "pixAi_modelId": "(オプション: pixAiの場合の使用ModelId. 未設定の場合とりあえず 1648918127446573124 を使う",
+        "fixed_model_prompt": "(オプション: 固定でアバターの姿指定プロンプトを設定する。会話でアバター姿を変更できなくなる。)",
+        "bs_id":"(bluesky snsの登録アドレス)",
+        "bs_pass":"(bluesky snsのパスワード)",
+        "bs_handle":"(bluesky snsのハンドル名 例 xxxxx.bsky.social など)",
+        "filter_tools": "(オプション:使うツールを直に絞る 指定しなければ使えるすべて 例 tips,set_traveler_location)"
       }
     }
   }
@@ -162,4 +165,12 @@ claude_desktop_config.json
    ここまでで旅画像にアバターが合成されます。
 6. bluesky SNSのアドレス/パスワードを取得し、ハンドル名も取得します。claude_desktop_config.jsonのenvのbs_id,bs_pass,bs_handle にそれぞれ設定します。
 旅用知識プロンプト roleWithSns.txt を取り込むことで旅アクションをSNSに報告します(botとして自動ポストしますので専用にアカウントを割り当てることをお勧めします)
+
+### 設定ガイド
+
+1. 紹介&練習設定編
+   https://note.com/marble_walkers/n/n7a8f79e4fb30
+2. dbとGoogle APIと画像API設定編
+   https://note.com/marble_walkers/n/n765257c27f3b
+3. アバター、SNS設定 (準備中)
 

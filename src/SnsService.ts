@@ -111,6 +111,19 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
           Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds"))))
         )
       }
+      
+      function addBsLike(uri: string, cid: string) {
+        return reLogin().pipe(
+          Effect.andThen(() => {
+            return Effect.tryPromise({
+              try: () => agent.like(uri, cid),
+              catch: error => new Error(`${error}`)
+            })
+          }),
+          Effect.tapError(e => McpLogService.logError(`addBsLike ${e}`)),
+          Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds"))))
+        )
+      }
 
       function getOwnProfile() {
         return Process.env.bs_handle ? getProfile(Process.env.bs_handle!) : Effect.fail(new Error('no bs handle'));
@@ -154,7 +167,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
           })).pipe(
             Effect.tap(a => !a.success && Effect.fail(new Error('getFeed error'))),
             Effect.andThen(a => {
-              return a.data.feed.filter(v => dayjs(v.post.indexedAt).unix() > snsInfo.feedSeenAt)
+              return a.data.feed.filter(v => (dayjs(v.post.indexedAt).unix() > snsInfo.feedSeenAt) && v.post.author.handle !== Process.env.bs_handle)
             }),
             Effect.retry(Schedule.recurs(2).pipe(Schedule.intersect(Schedule.spaced("10 seconds"))))
           )
@@ -208,6 +221,11 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
           return postIds
         })
       }
+      
+      function addLike(id:string) {
+        const split = id.split('-');
+        return addBsLike(split[0],split[1]).pipe(Effect.andThen(a =>  DbService.saveSnsPost(JSON.stringify(a), Process.env.bs_handle!)))
+      }
 
       function getNotification(seenAtEpoch?: number) {
         return Effect.gen(function* () {
@@ -223,7 +241,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
 
           const seedEpoch = seenAtEpoch || snsInfo.mentionSeenAt
           //  TODO 現状 followは外す
-          return notification.data.notifications.filter(v => dayjs(v.indexedAt).unix() > seedEpoch && v.reason !== "follow").map(value => {
+          return notification.data.notifications.filter(v => (dayjs(v.indexedAt).unix() > seedEpoch && v.reason !== "follow") && v.author.handle !== Process.env.bs_handle).map(value => {
             if (value.reason === "reply") {
               return {
                 uri: value.uri, //  reply記事そのもの
@@ -263,7 +281,8 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
         getNotification,
         getFeed,
         getPost,
-        snsReply
+        snsReply,
+        addLike
       }
     }
   )

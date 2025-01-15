@@ -1,6 +1,6 @@
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
 
-import {Effect, Layer} from "effect";
+import {Effect, Layer, Option} from "effect";
 import {drizzle} from 'drizzle-orm/libsql';
 import {migrate} from 'drizzle-orm/libsql/migrator';
 import {
@@ -67,6 +67,7 @@ export const env = {
   enableRemBg: false,
   anySnsExist: false,
   personMode: 'third' as PersonMode,
+  fixedModelPrompt: false,
   promptChanged: false,
   noSnsPost: false,
   loggingMode: false,
@@ -136,6 +137,34 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
             }),
             Effect.andThen(a => McpLogService.logTrace(`init0:${JSON.stringify(a)}`))
         )
+        yield *stub(db.select().from(run_status)).pipe(Effect.tap(a => {
+          if (a.length === 0) {
+            return saveRunStatus({
+              id: 1,  // 1レコードにする
+              status: 'stop',
+              from: '',
+              to: '',
+              destination: null,
+              startLat: 0,
+              startLng: 0,
+              endLat: 0,  //  最後のrunStatusが現在位置
+              endLng: 0,
+              durationSec: 0,
+              distanceM: 0,
+              avatarId: 1,
+              tripId: 0,
+              tilEndEpoch: 0, //  旅開始していない
+              startTime: new Date(0),  //  旅開始していない
+              endTime: new Date(0), //  開始位置再設定の場合は0にする
+              startCountry: '',
+              endCountry: '',
+              startTz: '',
+              endTz: '',
+              currentPathNo: -1,
+              currentStepNo: -1,
+            })
+          }
+        }))
       })
     }
 
@@ -145,8 +174,15 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
 
     function getEnv(key: string) {
       return stub(db.select().from(env_kv).where(eq(env_kv.key, key))).pipe(
-          Effect.andThen(takeOne),
-          Effect.andThen(a => a.value))
+        Effect.andThen(takeOne),
+        Effect.andThen(a => a.value))
+    }
+    
+    function getEnvOption(key: string) {
+      return stub(db.select().from(env_kv).where(eq(env_kv.key, key))).pipe(
+        Effect.map(a => a.length === 1 && a[0].value ? Option.some(a[0].value) : Option.none()),
+        Effect.orElseSucceed(() => Option.none<string>()),
+        )
     }
 
     function saveEnv(key: string, value: string) {
@@ -176,7 +212,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
     const takeOne = <T>(list: T[]) => {
       return list.length === 1 ? Effect.succeed(list[0]) : Effect.fail(new Error(`no element`))
     }
-
+    
     function saveRunStatus(runStatus: RunStatusI) {
       const save = {
         ...runStatus,
@@ -351,8 +387,12 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         env.promptChanged = !!setting.promptChanged
         yield* saveEnv('promptChanged', env.promptChanged ? '1' : '')
 
+        if (Process.env.fixed_model_prompt) {
+          env.fixedModelPrompt = true
+        }
+
         if (env.isPractice) {
-          yield* practiceRunStatus()
+          yield* practiceRunStatus();
         }
         yield* McpLogService.logTrace(`initSystemMode end:${JSON.stringify(env)}`)
       })
@@ -374,6 +414,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       updateSnsMentionSeenAt,
       updateBasePrompt,
       getEnv,
+      getEnvOption,
       saveEnv,
     }
   }),

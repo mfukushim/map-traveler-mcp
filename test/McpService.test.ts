@@ -1,13 +1,13 @@
 // @vitest-environment node
 
-import {describe, expect, it} from "@effect/vitest"
+import {beforeAll, describe, expect, it} from "@effect/vitest"
 import {Effect, Logger, LogLevel} from "effect";
 import {McpService, McpServiceLive} from "../src/McpService.js";
 import {FetchHttpClient} from "@effect/platform";
 import {runPromise} from "effect/Effect";
 import * as fs from "node:fs";
 import {McpLogService, McpLogServiceLive} from "../src/McpLogService.js";
-import {DbServiceLive} from "../src/DbService.js";
+import {DbService, DbServiceLive} from "../src/DbService.js";
 import {StoryServiceLive} from "../src/StoryService.js";
 import {AnswerError} from "../src/mapTraveler.js";
 import {SnsServiceLive} from "../src/SnsService.js";
@@ -16,12 +16,12 @@ import {NodeFileSystem} from "@effect/platform-node";
 const inGitHubAction = process.env.GITHUB_ACTIONS === 'true';
 
 describe("Mcp", () => {
-  // beforeAll(async () => {
-  //   return await DbService.initSystemMode().pipe(
-  //       Effect.provide([DbServiceLive, McpLogServiceLive]),
-  //       Effect.runPromise
-  //   )
-  // });
+  beforeAll(async () => {
+    return await DbService.initSystemMode().pipe(
+        Effect.provide([DbServiceLive]),
+        Effect.runPromise
+    )
+  });
 
   it("run", async () => {
     //  vitest --run --testNamePattern=run McpService.test.ts
@@ -45,7 +45,7 @@ describe("Mcp", () => {
         Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
         runPromise
     )
-    expect(res.content).toBeInstanceOf(Array)
+    expect(res).toBeInstanceOf(Array)
   })
   it("setTravelerInfo/getTravelerInfo", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
@@ -59,7 +59,7 @@ describe("Mcp", () => {
         Effect.tap(a => Effect.log(a)),
         runPromise
     )
-    expect(res.content).toBeInstanceOf(Array)
+    expect(res).toBeInstanceOf(Array)
   })
   it("getCurrentLocationInfo追加なし", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
@@ -78,7 +78,7 @@ describe("Mcp", () => {
         runPromise
     )
     console.log(res)
-    expect(res.content).toBeInstanceOf(Array)
+    expect(res).toBeInstanceOf(Array)
   })
   it("getCurrentLocationInfoすべて", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
@@ -89,10 +89,10 @@ describe("Mcp", () => {
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => Effect.logError(e.toString())),
         Effect.tap(a => {
-          a.content.filter(b => b.type === 'text')
+          a.filter(b => b.type === 'text')
               .forEach((c, i) =>
                   Effect.logTrace(c.text))
-          a.content.filter(b => b.type === 'image')
+          a.filter(b => b.type === 'image')
               .forEach((c, i) => {
                 if (inGitHubAction) {
                   Effect.logTrace(c.data?.slice(0, 5))
@@ -103,7 +103,7 @@ describe("Mcp", () => {
         }),
         runPromise
     )
-    expect(res.content).toBeInstanceOf(Array)
+    expect(res).toBeInstanceOf(Array)
   })
   it("setCurrentLocation", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
@@ -116,20 +116,22 @@ describe("Mcp", () => {
         Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
         runPromise
     )
-    expect(res.content).toBeInstanceOf(Array)
+    expect(res).toBeInstanceOf(Array)
   })
   it("getDestinationAddress", async () => {
-    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
-    const res = await Effect.gen(function* () {
+    //  vitest --run --testNamePattern=getDestinationAddress McpService.test.ts
+    await Effect.gen(function* () {
       return yield* McpService.getDestinationAddress()
     }).pipe(
         Effect.provide([McpServiceLive, DbServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => Effect.logError(e.toString())),
-        Effect.tap(a => Effect.log(a)),
+        Effect.catchIf(a => a instanceof AnswerError, e => {
+          expect(e.message).toBe('The destination has not yet been decided')
+          return Effect.succeed([]);
+        }),
         runPromise
     )
-    expect(res.content).toBeInstanceOf(Array)
   })
   it("setDestinationAddress", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
@@ -142,7 +144,7 @@ describe("Mcp", () => {
         Effect.tap(a => Effect.log(a)),
         runPromise
     )
-    expect(res.content).toBeInstanceOf(Array)
+    expect(res).toBeInstanceOf(Array)
   })
   it("getTravelerInfo", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
@@ -155,7 +157,7 @@ describe("Mcp", () => {
       Effect.tap(a => Effect.log(a)),
       runPromise
     )
-    expect(res.content).toBeInstanceOf(Array)
+    expect(res).toBeInstanceOf(Array)
   })
 
   it("startJourneyPractice", async () => {
@@ -170,7 +172,7 @@ describe("Mcp", () => {
         Effect.tap(a => Effect.log(JSON.stringify(a).slice(0, 200))),
         runPromise
     )
-    expect(res.content).toBeInstanceOf(Array)
+    expect(res).toBeInstanceOf(Array)
   })
   it("stopJourneyPractice", async () => {
     //  vitest --run --testNamePattern=startJourneyPractice McpService.test.ts
@@ -184,7 +186,7 @@ describe("Mcp", () => {
         Effect.tap(a => Effect.log(JSON.stringify(a).slice(0, 200))),
         runPromise
     )
-    expect(res.content).toBeInstanceOf(Array)
+    expect(res).toBeInstanceOf(Array)
   })
   it("startJourney", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
@@ -194,7 +196,7 @@ describe("Mcp", () => {
         Effect.provide([McpServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => Effect.logError(e.toString())),
-        Effect.tap(a => Effect.log(a.content.map(b => {
+        Effect.tap(a => Effect.log(a.map(b => {
               if (b.data) {
                 return {
                   ...b,
@@ -206,7 +208,7 @@ describe("Mcp", () => {
         ),
         runPromise
     )
-    expect(res.content).toBeInstanceOf(Array)
+    expect(res).toBeInstanceOf(Array)
   })
   it("stopJourney", async () => {
     //  vitest --run --testNamePattern=stopJourney McpService.test.ts
@@ -217,7 +219,7 @@ describe("Mcp", () => {
         Effect.provide([McpServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => Effect.logError(e.toString())),
-        Effect.tap(a => Effect.log(a.content.map(b => {
+        Effect.tap(a => Effect.log(a.map(b => {
           return {
             type: b.type,
             text: b.text,
@@ -226,7 +228,7 @@ describe("Mcp", () => {
         }))),
         runPromise
     )
-    expect(res.content).toBeInstanceOf(Array)
+    expect(res).toBeInstanceOf(Array)
   })
   it("snsFeedの加工", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
@@ -236,11 +238,11 @@ describe("Mcp", () => {
         Effect.provide([McpServiceLive,DbServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => Effect.logError(e.toString())),
-        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed({content: []})),
+        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed([])),
         Effect.tap(a => Effect.log(a)),
         runPromise
     )
-    expect(res.content).toBeInstanceOf(Array)
+    expect(res).toBeInstanceOf(Array)
   })
   it("getSnsMentions", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
@@ -250,11 +252,11 @@ describe("Mcp", () => {
         Effect.provide([McpServiceLive, SnsServiceLive, McpLogServiceLive,DbServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => Effect.logError(e.toString())),
-        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed({content: []})),
+        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed([])),
         Effect.tap(a => Effect.log(a)),
         runPromise
     )
-    expect(res.content).toBeInstanceOf(Array)
+    expect(res).toBeInstanceOf(Array)
   })
   it("replySnsWriter", async () => {
     //  vitest --run --testNamePattern=replySnsWriter McpService.test.ts
@@ -264,11 +266,11 @@ describe("Mcp", () => {
         Effect.provide([McpServiceLive, SnsServiceLive, McpLogServiceLive, DbServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => Effect.logError(e.toString())),
-        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed({content: []})),
+        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed([])),
         Effect.tap(a => Effect.log(a)),
         runPromise
     )
-    expect(res.content).toBeInstanceOf(Array)
+    expect(res).toBeInstanceOf(Array)
   })
 
 })

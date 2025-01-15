@@ -22,9 +22,9 @@ describe("Image", () => {
   it("makeHotelPictPixAi", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* ImageService.makeHotelPict("depth of field, cinematic composition, masterpiece, best quality,looking at viewer,anime,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut", "PixAi", 12)  //
+      return yield* ImageService.makeHotelPict("PixAi", 12)  //
     }).pipe(
-      Effect.provide([ImageService.Default, FetchHttpClient.layer, McpLogServiceLive, NodeFileSystem.layer]),
+      Effect.provide([DbServiceLive,ImageService.Default, FetchHttpClient.layer, McpLogServiceLive, NodeFileSystem.layer]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
       Effect.tap(a => McpLogService.log(a.length).pipe(Effect.provide(McpLogServiceLive))),
@@ -40,9 +40,9 @@ describe("Image", () => {
   it("makeHotelPictSd", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* ImageService.makeHotelPict("depth of field, cinematic composition, masterpiece, best quality,looking at viewer,anime,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut", "sd", 12)  //
+      return yield* ImageService.makeHotelPict("sd", 12)  //
     }).pipe(
-      Effect.provide([ImageService.Default, FetchHttpClient.layer, McpLogServiceLive, NodeFileSystem.layer]),
+      Effect.provide([DbServiceLive, ImageService.Default, FetchHttpClient.layer, McpLogServiceLive, NodeFileSystem.layer]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
       Effect.tap(a => McpLogService.log(a.length).pipe(Effect.provide(McpLogServiceLive))),
@@ -148,7 +148,7 @@ describe("Image", () => {
     //  vitest --run --testNamePattern=makeRunnerImageV3_i2i ImageService.test.ts
     const res = await Effect.gen(function* () {
       const buffer = fs.readFileSync('tools/test.jpg');
-      return yield* ImageService.makeRunnerImageV3(buffer, "depth of field, cinematic composition, masterpiece, best quality,looking at viewer,anime,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut", 'pixAi', false, true)  //
+      return yield* ImageService.makeRunnerImageV3(buffer, 'pixAi', false, true)  //
     }).pipe(
       Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
@@ -168,7 +168,7 @@ describe("Image", () => {
     //  vitest --run --testNamePattern=makeRunnerImageV3_i2i ImageService.test.ts
     const res = await Effect.gen(function* () {
       const buffer = fs.readFileSync('tools/test.jpg');
-      return yield* ImageService.makeRunnerImageV3(buffer, "depth of field, cinematic composition, masterpiece, best quality,looking at viewer,anime,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut",'sd', false, true)  //
+      return yield* ImageService.makeRunnerImageV3(buffer, 'sd', false, true)  //
     }).pipe(
       Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]), //  layer
       Logger.withMinimumLogLevel(LogLevel.Trace),
