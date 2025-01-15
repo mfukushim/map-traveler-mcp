@@ -16,7 +16,7 @@ import {MapService, MapServiceLive} from "./MapService.js";
 import {__pwd, DbService, DbServiceLive, env, PersonMode} from "./DbService.js";
 import {StoryService, StoryServiceLive} from "./StoryService.js";
 import {FetchHttpClient, FileSystem} from "@effect/platform";
-import {ImageService, ImageServiceLive} from "./ImageService.js";
+import {defaultBaseCharPrompt, ImageService, ImageServiceLive} from "./ImageService.js";
 import {NodeFileSystem} from "@effect/platform-node";
 import {McpLogService, McpLogServiceLive} from "./McpLogService.js";
 import {AnswerError} from "./mapTraveler.js";
@@ -69,14 +69,12 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       const tips = () => {
         return Effect.gen(function* () {
             const res = yield* StoryService.tips()
-            const out = {
-              content: [{type: "text", text: res.textList.join('\n-------\n')} as ToolContentResponse]
-            };
+            const content = [{type: "text", text: res.textList.join('\n-------\n')} as ToolContentResponse]
             if (res.imagePathList.length > 0) {
               const fs = yield* FileSystem.FileSystem
               yield* Effect.forEach(res.imagePathList, a => {
                 return fs.readFile(path.join(__pwd, a)).pipe(Effect.andThen(b => {
-                  out.content.push({
+                  content.push({
                     type: "image",
                     data: Buffer.from(b).toString('base64'),
                     mimeType: 'image/png'
@@ -84,70 +82,72 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 }))
               })
             }
-            return out
+            return content
           }
-        )
+        ).pipe(Effect.provide(StoryServiceLive))
       }
       const setPersonMode = (person: string) => {
         const mode: PersonMode = person === 'second_person' ? 'second' : 'third'
         env.personMode = mode
         return DbService.saveEnv('personMode', mode).pipe(
           Effect.tap(() => sendToolListChanged()),
-          Effect.andThen(a => ({
-            content: [{type: "text", text: `Person mode set as follows: ${a.value}`} as ToolContentResponse]
-          }))
+          Effect.andThen(a => [{type: "text", text: `Person mode set as follows: ${a.value}`} as ToolContentResponse])
         )
       }
       const getTravelerInfo = () => {
         return DbService.getEnv('aiEnv').pipe(
-          Effect.andThen(a => ({
-            content: [{
+          Effect.andThen(a => [{
               type: "text",
               text: `The traveller's information is as follows: ${a}`
             } as ToolContentResponse]
-          })),
-          Effect.orElseSucceed(() => ({
-            content: [{
+          ),
+          Effect.orElseSucceed(() => [{
               type: "text",
               text: `There is no traveler information.`
             } as ToolContentResponse]
-          }))
+          )
         )
       }
 
       const setTravelerInfo = (info: string) => {
         return DbService.saveEnv('aiEnv', info).pipe(
-          Effect.andThen(a => ({
-            content: [{
+          Effect.andThen(a => [{
               type: "text",
               text: `The traveller information is as follows: ${a.value}`
             } as ToolContentResponse]
-          }))
+          )
         )
       }
-      const setAvatarPrompt = (prompt: string) => {
-        return DbService.updateBasePrompt(defaultAvatarId, prompt).pipe(
-          Effect.andThen(a => ({
-            content: [{
-              type: "text",
-              text: `Set traveller prompt to: "${a}"`
-            } as ToolContentResponse]
-          })),
-          Effect.tap(() => {
-            env.promptChanged = true
-            return DbService.saveEnv('promptChanged', '1');
-          })
-        )
-      }
+    const setAvatarPrompt = (prompt: string) => {
+      return DbService.updateBasePrompt(defaultAvatarId, prompt).pipe(
+        Effect.andThen(a => [{
+            type: "text",
+            text: `Set traveller prompt to: "${a}"`
+          } as ToolContentResponse]
+        ),
+        Effect.tap(() => {
+          env.promptChanged = true
+          return DbService.saveEnv('promptChanged', '1');
+        })
+      )
+    }
+    const resetAvatarPrompt = () => {
+      return DbService.updateBasePrompt(defaultAvatarId, defaultBaseCharPrompt).pipe(
+        Effect.andThen(() => [{
+            type: "text",
+            text: `reset traveller prompt to default.`
+          } as ToolContentResponse]
+        ),
+      )
+    }
 
       const getCurrentLocationInfo = (includePhoto: boolean, includeNearbyFacilities: boolean, localDebug = false) => {
         return RunnerService.getCurrentView(includePhoto, includeNearbyFacilities, env.isPractice, localDebug).pipe(
-          Effect.provide([McpLogServiceLive, MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
+          Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
         )
       }
 
-      const practiceNotUsableMessage = Effect.succeed({
-        content: [
+      const practiceNotUsableMessage = Effect.succeed([
           {
             type: "text",
             text: 'Sorry,this feature not usable in practice mode. ' +
@@ -155,7 +155,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               'For more information, please see the resource "SettingInfo"'
           } as ToolContentResponse
         ]
-      })
+      )
 
       const setCurrentLocation = (location: string) => {
         if (env.isPractice) {
@@ -205,23 +205,19 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             Effect.andThen(a => setMessage.push(a.message)),
             Effect.orElse(() => Effect.succeed(true))
           );
-          return {
-            content: [{
+          return [{
               type: "text",
               text: setMessage.join('\n')
             } as ToolContentResponse]
-          }
-        }).pipe(Effect.provide([MapServiceLive, DbServiceLive, McpLogServiceLive, RunnerServiceLive]))
+        }).pipe(Effect.provide([MapServiceLive, DbServiceLive, RunnerServiceLive]))
       }
       const getDestinationAddress = () => {
         if (env.isPractice) {
           return practiceNotUsableMessage
         }
         return RunnerService.getDestinationAddress().pipe(
-          Effect.andThen(a => ({
-            content: [{type: "text", text: `Current destination is "${a}"`} as ToolContentResponse]
-          })),
-          Effect.provide([MapServiceLive, StoryServiceLive, RunnerServiceLive, ImageServiceLive, NodeFileSystem.layer, McpLogServiceLive, DbServiceLive]),
+          Effect.andThen(a => [{type: "text", text: `Current destination is "${a}"`} as ToolContentResponse]),
+          Effect.provide([MapServiceLive, StoryServiceLive, RunnerServiceLive, ImageServiceLive, NodeFileSystem.layer, DbServiceLive]),
         )
       }
       const setDestinationAddress = (address: string) => {
@@ -229,29 +225,25 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           return practiceNotUsableMessage
         }
         return RunnerService.setDestinationAddress(address).pipe(
-          Effect.andThen(a => ({
-            content: [{type: "text", text: a.message} as ToolContentResponse]
-          })),
-          Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, ImageServiceLive, NodeFileSystem.layer, McpLogServiceLive]),
+          Effect.andThen(a => [{type: "text", text: a.message} as ToolContentResponse]),
+          Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, ImageServiceLive, NodeFileSystem.layer]),
         )
       }
       const startJourney = () => {
         return RunnerService.startJourney(env.isPractice).pipe(
           Effect.andThen(a => {
-            return {
-              content: [{type: "text", text: a.text}, {
+            return [{type: "text", text: a.text}, {
                 type: "image",
                 data: a.image.toString("base64"),
                 mimeType: 'image/png'
               }] as ToolContentResponse[]
-            };
           }),
-          Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer, McpLogServiceLive]),
+          Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer]),
         )
       }
       const stopJourney = () => {
         return RunnerService.stopJourney(env.isPractice).pipe(
-          Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer, McpLogServiceLive]),
+          Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer]),
         )
       }
 
@@ -260,12 +252,10 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         return McpLogService.log(`enter setTravelerExist:${callKick}`).pipe(
           Effect.tap(() => sendToolListChanged()),
           Effect.andThen(() => {
-            return ({
-              content: [{
+            return [{
                 type: "text",
                 text: (callKick ? "traveler called" : "traveler kicked")
               } as ToolContentResponse]
-            })
           })
         )
       }
@@ -347,17 +337,13 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               text: likeText
             })
           }
-          return {
-            content: content
-          };
+          return content
         }).pipe(Effect.provide(SnsServiceLive))
       }
 
       const readSnsReader = () => {
         //  TODO 特定タグを含むものしか読み取れない。現在から一定期間しか読み取れない。最大件数がある。その他固定フィルタ機能を置く
-        return Effect.succeed({
-          content: [] as ToolContentResponse[]
-        })
+        return Effect.succeed([] as ToolContentResponse[])
       }
       const getSnsFeeds = () => {
         //  特定タグを含むものしか読み取れない。現在から一定期間しか読み取れない。最大件数がある。その他固定フィルタ機能を置く
@@ -397,9 +383,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               text: `I got the following article:\n${out}\n-----\n`
             }]
             c.push(...imageOut)
-            return Effect.succeed({
-              content: c
-            })
+            return Effect.succeed(c)
           }),
           Effect.provide(SnsServiceLive))
       }
@@ -408,14 +392,12 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         //  TODO 固定フィルタ
         return Effect.gen(function* () {
           if (env.noSnsPost) {
-            const noMes = {
-              content: [
+            const noMes = [
                 {
                   type: "text",
                   text: env.loggingMode ? "like to log." : "Like to SNS is stopped by env settings."
                 }
               ] as ToolContentResponse[]
-            };
             if (env.loggingMode) {
               return yield* McpLogService.logTrace(`log like:${id}`).pipe(Effect.andThen(() => noMes))
             }
@@ -428,14 +410,13 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           }
           //  @メンションは今は表示名に対して付けているので邪魔にはなっていない ただ除去したほうが無難な可能性がある
           return yield* SnsService.addLike(id2).pipe(
-            Effect.andThen(() => ({
-              content: [
+            Effect.andThen(() => [
                 {
                   type: "text",
                   text: "Liked"
                 }
               ] as ToolContentResponse[]
-            })),
+            ),
             Effect.provide(SnsServiceLive)
           );
         })
@@ -445,14 +426,12 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         //  TODO 固定フィルタ
         return Effect.gen(function* () {
           if (env.noSnsPost) {
-            const noMes = {
-              content: [
+            const noMes = [
                 {
                   type: "text",
                   text: env.loggingMode ? "posted to log." : "Posting to SNS is stopped by env settings."
                 }
               ] as ToolContentResponse[]
-            };
             if (env.loggingMode) {
               return yield* McpLogService.log(message).pipe(Effect.andThen(() => noMes))
             }
@@ -466,14 +445,13 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           const appendLicence = 'powered ' + LabelClaude  //  追加ライセンスの文字列をclient LLMに制御させることは信頼できないので、直近の生成行為に対する文字列を強制付加する
           //  @メンションは今は表示名に対して付けているので邪魔にはなっていない ただ除去したほうが無難な可能性がある
           return yield* SnsService.snsReply(message.replaceAll("@", ""), `${appendLicence} ${feedTag} `, id2).pipe(
-            Effect.andThen(() => ({
-              content: [
+            Effect.andThen(() => [
                 {
                   type: "text",
                   text: "posted"
                 }
               ] as ToolContentResponse[]
-            })),
+            ),
             Effect.provide(SnsServiceLive)
           );
         })
@@ -484,14 +462,12 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         //  TODO 固定フィルタ
         return Effect.gen(function* () {
           if (env.noSnsPost) {
-            const noMes = {
-              content: [
+            const noMes = [
                 {
                   type: "text",
                   text: env.loggingMode ? "posted to log." : "Posting to SNS is stopped by env settings."
                 }
               ] as ToolContentResponse[]
-            };
             return yield* Effect.succeed(noMes).pipe(Effect.tap(() => env.loggingMode && McpLogService.logTrace(message)))
           }
           const img = yield* ImageService.getRecentImageAndClear().pipe(Effect.tap(a => McpLogService.logTrace(`sns image:${a !== undefined}`)))
@@ -506,14 +482,13 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             buf: img,
             mime: "image/png"
           } : undefined).pipe(
-            Effect.andThen(() => ({
-              content: [
+            Effect.andThen(() => [
                 {
                   type: "text",
                   text: "posted"
                 }
               ] as ToolContentResponse[]
-            })),
+            ),
             Effect.provide(SnsServiceLive)
           );
         })
@@ -646,8 +621,10 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               required: ["settings"]
             }
           },
+          ]
+        const AVATAR_PROMPT_COMMANDS: Tool[] = [
           {
-            name: "set_avatar_prompt",  //  環境情報はリソースに反映する できれば更新イベントを出す
+            name: "set_avatar_prompt",
             description: "set a traveler's avatar prompt. A prompt for AI image generation to specify the appearance of a traveler's avatar",
             inputSchema: {
               type: "object",
@@ -658,6 +635,15 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 },
               },
               required: ["prompt"]
+            }
+          },
+          {
+            name: "reset_avatar_prompt",  //  環境情報はリソースに反映する できれば更新イベントを出す
+            description: "reset to default traveler's avatar prompt.",
+            inputSchema: {
+              type: "object",
+              properties: {
+              },
             }
           },
         ]
@@ -831,6 +817,9 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 if (env.anySnsExist) {
                   cmd.push(...SNS_COMMAND)
                 }
+                if (!env.fixedModelPrompt) {
+                  cmd.push(...AVATAR_PROMPT_COMMANDS)
+                }
               } else {
                 cmd.push({
                     name: "call_traveler",  //  pythonがあったらよいとか、db設定がよいとか、tipsを取得する。tipsの取得を行うのはproject側スクリプトとか、script batchとか
@@ -859,7 +848,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           const toolSwitch = () => {
             switch (request.params.name) {
               case "tips":
-                return tips().pipe(Effect.provide(StoryServiceLive))
+                return tips()
               // case "set_person_mode":
               //   return setPersonMode(String(request.params.arguments?.person)).pipe(Effect.provide([DbServiceLive,McpLogServiceLive]))
               case "get_traveler_info":
@@ -868,6 +857,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 return setTravelerInfo(String(request.params.arguments?.settings))
               case "set_avatar_prompt":
                 return setAvatarPrompt(String(request.params.arguments?.prompt))
+              case "reset_avatar_prompt":
+                return resetAvatarPrompt()
               case "get_current_location_info":
               case "get_traveler_location_info":
                 return getCurrentLocationInfo(request.params.arguments?.includePhoto as boolean, request.params.arguments?.includeNearbyFacilities as boolean)
@@ -906,10 +897,9 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 return Effect.fail(new Error("Unknown tool"));
             }
           }
-
           return await toolSwitch().pipe(
             Effect.provide([DbServiceLive, ImageServiceLive]),
-            Effect.andThen(a => a as { content: ToolContentResponse[] }),
+            Effect.andThen(a => ({content:a}) ),
             Effect.catchIf(a => a instanceof AnswerError, e => {
               return Effect.succeed({
                 content: [{

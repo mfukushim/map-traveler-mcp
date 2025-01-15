@@ -43,6 +43,8 @@ Sets the current travel avatar's location.
 - set_avatar_prompt(prompt:string)  
   Set the prompt when generating the travel avatar image. The default is an anime-style woman. The anime style is enforced to prevent fake images.
   - prompt
+- reset_avatar_prompt
+  Reset avatar generation prompts to default.
 - get_sns_feeds  
   Gets Bluesky SNS articles for the specified custom feed (feeds containing a specific tag).
 - get_sns_mentions  
@@ -92,6 +94,7 @@ claude_desktop_config.json
         "pixAi_key":"(pixAi API key)",
         "sd_key":"(or Stability.ai image generation API key",
         "pixAi_modelId": "(Optional: pixAi ModelId, if not set use default model 1648918127446573124 ",
+        "fixed_model_prompt": "(Optional: Fixed avatar generation prompt. You will no longer be able to change your avatar during conversations.)",
         "bs_id":"(Bluesky sns registration address)",
         "bs_pass":"(bluesky sns password)",
         "bs_handle":"(bluesky sns handle name: e.g. xxxxxxxx.bsky.social )",

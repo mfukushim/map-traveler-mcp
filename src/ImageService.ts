@@ -12,12 +12,13 @@ import {type MediaBaseFragment, TaskBaseFragment} from "@pixai-art/client/types/
 import * as Process from "node:process";
 import 'dotenv/config'
 import {McpLogService, McpLogServiceLive} from "./McpLogService.js";
-import {__pwd, env} from "./DbService.js";
+import {__pwd, DbService, env} from "./DbService.js";
 import WebSocket from 'ws'
 import * as path from "path";
 import * as os from "node:os";
 import * as fs from "node:fs";
 import {execSync} from "node:child_process";
+import {defaultAvatarId} from "./RunnerService.js";
 
 export const defaultBaseCharPrompt = 'depth of field, cinematic composition, masterpiece, best quality,looking at viewer,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut'
 
@@ -34,6 +35,15 @@ const pixAiClient = new PixAIClient({
 export class ImageService extends Effect.Service<ImageService>()("traveler/ImageService", {
   accessors: true,
   effect: Effect.gen(function* () {
+
+    const getBasePrompt = (avatarId: number) => {
+      if (env.fixedModelPrompt) {
+        return Effect.succeed(Process.env.fixed_model_prompt!!)
+      }
+      return DbService.getAvatarModel(avatarId).pipe(
+        Effect.andThen(a => a.baseCharPrompt + ',anime'),
+        Effect.orElseSucceed(() => defaultBaseCharPrompt));
+    }
 
     function sdMakeTextToImage(prompt: string, opt?: {
       width?: number,
@@ -83,7 +93,6 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               if (a.artifacts.some(b => b.finishReason !== 'SUCCESS') || a.artifacts.length === 0) {
                 return Effect.fail(new Error(`fail sd`))
               }
-              // return Effect.succeed(Buffer.from(a.artifacts[0].base64, 'base64'))
               return Effect.tryPromise(() => sharp(Buffer.from(a.artifacts[0].base64, 'base64')).resize({
                 width: 512,
                 height: 512
@@ -236,20 +245,20 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
 
     /**
      * ホテル画像
-     * @param baseCharPrompt
      * @param selectGen
      * @param hour
      * @param append
      * @param localDebug
      */
-    function makeHotelPict(baseCharPrompt: string, selectGen: string, hour: number, append ?: string, localDebug = false) {
+    function makeHotelPict(selectGen: string, hour: number, append ?: string, localDebug = false) {
       return Effect.gen(function* () {
         if (!env.anyImageAiExist || env.isPractice) {
           //  画像生成AIがなければ固定ホテル画像を使う
           const fs = yield* FileSystem.FileSystem
           return yield* fs.readFile(path.join(__pwd, 'assets/hotelPict.png')).pipe(Effect.andThen(a => Buffer.from(a)))
         }
-        let prompt = (baseCharPrompt || defaultBaseCharPrompt) + ',';
+        const baseCharPrompt = yield *getBasePrompt(defaultAvatarId)
+        let prompt = baseCharPrompt + ',';
         if (hour < 6 || hour >= 19) {
           prompt += 'hotel room,desk,drink,laptop computer,talking to computer,sitting,window,night,(pyjamas:1.3)'
         } else if (hour < 11) {
@@ -280,14 +289,13 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
 
     /**
      * 船等の特殊ロケーション
-     * @param basePrompt
      * @param selectGen
      * @param vehiclePrompt
      * @param timeZoneId
      * @param localDebug
      * @private
      */
-    function makeEtcTripImage(basePrompt: string, selectGen: string, vehiclePrompt: string, timeZoneId: string, localDebug = false) {
+    function makeEtcTripImage(selectGen: string, vehiclePrompt: string, timeZoneId: string, localDebug = false) {
       //  乗り物の旅行画像生成
       //  画像保存
       //  乗り物と緯度経度での日記生成
@@ -311,7 +319,8 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           appendPrompts.push('evening')
         }
         const appendPrompt = appendPrompts.join(',')
-        const prompt = `${basePrompt},${appendPrompt}`
+        const baseCharPrompt = yield *getBasePrompt(defaultAvatarId)
+        const prompt = `${baseCharPrompt},${appendPrompt}`
         return yield* selectImageGenerator(selectGen, prompt).pipe(
             Effect.tap(a => {
               // const data = Buffer.from(a, "base64");
@@ -492,7 +501,6 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     /**
      * 旅画像生成処理V3
      * @param basePhoto
-     * @param baseCharPrompt
      * @param selectGen
      * @param withAbort
      * @param localDebug
@@ -502,7 +510,6 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
      */
     function makeRunnerImageV3(
         basePhoto: Buffer,
-        baseCharPrompt: string,
         selectGen: string,
         withAbort = false,
         localDebug = false,
@@ -551,7 +558,8 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             let appendPrompt: string | undefined
 
             const avatarImage = yield* Effect.gen(function* () {
-              const {prompt, append} = yield* generatePrompt(baseCharPrompt, retry < fixedThreshold, withAbort)
+              const baseCharPrompt = yield *getBasePrompt(defaultAvatarId)
+                const {prompt, append} = yield* generatePrompt(baseCharPrompt, retry < fixedThreshold, withAbort)
               appendPrompt = append
               retry--
               if (retry < fixedThreshold) {
@@ -635,6 +643,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       makeRunnerImageV3,
       selectImageGenerator,
       generatePrompt,
+      getBasePrompt,
     }
   }),
   dependencies: [McpLogServiceLive]
