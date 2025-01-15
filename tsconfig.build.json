@@ -6,6 +6,7 @@
     "outDir": "build/esm",
     "declarationDir": "build/dts",
     "stripInternal": true,
-    "removeComments": true
+    "removeComments": true,
+    "sourceMap": false
   }
 }

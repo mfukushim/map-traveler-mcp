@@ -25,11 +25,11 @@ describe("Runner", () => {
         NodeFileSystem.layer, FetchHttpClient.layer, McpLogServiceLive]), //  layer
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(a => Effect.logError(a)),
-      Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed({content: []})),
+      Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed([])),
       Effect.tap(a => Effect.log(a)),
       runPromise
     )
-    expect(res.content).toBeInstanceOf(Array)
+    expect(res).toBeInstanceOf(Array)
   })
   it("setCurrentLocation", async () => {
     const res = await Effect.gen(function* () {
@@ -39,11 +39,11 @@ describe("Runner", () => {
         NodeFileSystem.layer, FetchHttpClient.layer, McpLogServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(Effect.logError),
-      Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed({content: []})),
+      Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed([])),
       Effect.tap(a => Effect.log(a)),
       runPromise
     )
-    expect(res.content).toBeInstanceOf(Array)
+    expect(res).toBeInstanceOf(Array)
   })
   it("sumDurationSec", async () => {
     const s = fs.readFileSync('tools/test/routeSample.json', {encoding: 'utf-8'});

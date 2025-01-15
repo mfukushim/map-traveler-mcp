@@ -111,6 +111,19 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
           Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds"))))
         )
       }
+      
+      function addBsLike(uri: string, cid: string) {
+        return reLogin().pipe(
+          Effect.andThen(a => {
+            return Effect.tryPromise({
+              try: () => agent.like(uri, cid),
+              catch: error => new Error(`${error}`)
+            })
+          }),
+          Effect.tapError(e => McpLogService.logError(`addBsLike ${e}`)),
+          Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds"))))
+        )
+      }
 
       function getOwnProfile() {
         return Process.env.bs_handle ? getProfile(Process.env.bs_handle!) : Effect.fail(new Error('no bs handle'));
@@ -208,6 +221,11 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
           return postIds
         })
       }
+      
+      function addLike(id:string) {
+        const split = id.split('-');
+        return addBsLike(split[0],split[1]).pipe(Effect.andThen(a =>  DbService.saveSnsPost(JSON.stringify(a), Process.env.bs_handle!)))
+      }
 
       function getNotification(seenAtEpoch?: number) {
         return Effect.gen(function* () {
@@ -263,7 +281,8 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
         getNotification,
         getFeed,
         getPost,
-        snsReply
+        snsReply,
+        addLike
       }
     }
   )

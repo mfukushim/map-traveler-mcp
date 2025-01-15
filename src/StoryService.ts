@@ -236,7 +236,7 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
 `
             )
           }
-          if (!env.promptChanged) {
+          if (!env.promptChanged && !env.fixedModelPrompt) {
             textList.push('You can change the appearance of your avatar by directly telling the AI what you want it to look like, or by specifying a prompt to show its appearance with set_avatar_prompt.')
           }
         }
@@ -277,7 +277,8 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
               '\n' +
               '6. Get the current SNS post from get_sns_feeds about the status of your friends\' journey. Please choose one article that you think describes your companions\' journey.\n' +
               'Please exclude articles that you think contain offensive descriptions or advertisements.\n' +
-              'Based on the image and article you obtained, please explain your interpretation of your companions\' journey to the user.'
+              'Based on the image and article you obtained, please explain your interpretation of your companions\' journey to the user.\n'+
+              'Please like the article ID with add_like.'
           // return 'ユーザを相手にしてフランクに2行以内で語ってください。親しい関係なので相手への敬称は略してください。\n' +
           //     'AIは旅人の役をします。\n' +
           //     '\n' +
