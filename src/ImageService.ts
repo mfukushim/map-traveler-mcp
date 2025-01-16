@@ -649,6 +649,57 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       return image
     }
 
+    function comfyApiMakeImage(prompt: string, inImage?: Buffer, opt?: {
+      width?: number,
+      height?: number,
+      sampler?: string,
+      samples?: number,
+      steps?: number,
+      cfg_scale?: number,
+    }) {
+      return Effect.gen(function *() {
+        if (inImage) {
+          {
+            //  TODO comfyの場合のファイルアップロード。。
+            return Effect.tryPromise(() => sharp(inImage).resize({
+              width: opt?.width || 1024,
+              height: opt?.height || 1024
+            }).png().toBuffer()).pipe(
+              Effect.andThen(a =>
+                Effect.tryPromise({
+                  try: () => {
+                    const formData = new FormData()
+                    formData.append('image', a)
+                    return fetch(
+                      `${Process.env.comfy_url}/upload/image`,
+                      {
+                        method: 'POST',
+                        headers: {
+                          ...formData.getHeaders(),
+                          Accept: 'application/json',
+                          // Authorization: `Bearer ${key}`,
+                        },
+                        body: formData.getBuffer(),
+                      }
+                    )
+                  },
+                  catch: error => new Error(`${error}`)
+                })),
+              Effect.andThen(a => a.json()),
+              Effect.andThen(a => a as { artifacts: { base64: string, finishReason: string, seed: number }[] }),
+              Effect.flatMap(a => {
+                if (!a.artifacts || a.artifacts.some(b => b.finishReason !== 'SUCCESS') || a.artifacts.length === 0) {
+                  return Effect.fail(new Error(`fail sd`))
+                }
+                return Effect.succeed(Buffer.from(a.artifacts[0].base64, 'base64'))
+              }),
+            )
+          }
+        }
+      })
+      
+    }
+
 
     return {
       getRecentImageAndClear,
@@ -658,6 +709,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       selectImageGenerator,
       generatePrompt,
       getBasePrompt,
+      comfyApiMakeImage,
     }
   }),
   dependencies: [McpLogServiceLive]
