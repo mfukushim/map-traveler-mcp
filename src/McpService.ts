@@ -15,15 +15,16 @@ import {defaultAvatarId, RunnerService, RunnerServiceLive, useAiImageGen} from "
 import {MapService, MapServiceLive} from "./MapService.js";
 import {__pwd, DbService, DbServiceLive, env, PersonMode} from "./DbService.js";
 import {StoryService, StoryServiceLive} from "./StoryService.js";
-import {FetchHttpClient, FileSystem} from "@effect/platform";
+import {FetchHttpClient, HttpClient} from "@effect/platform";
 import {defaultBaseCharPrompt, ImageService, ImageServiceLive} from "./ImageService.js";
-import {NodeFileSystem} from "@effect/platform-node";
 import {McpLogService, McpLogServiceLive} from "./McpLogService.js";
 import {AnswerError} from "./mapTraveler.js";
 import {AtPubNotification, SnsService, SnsServiceLive} from "./SnsService.js";
 import * as Process from "node:process";
 import {FeedViewPost} from "@atproto/api/dist/client/types/app/bsky/feed/defs.js";
 import * as path from "path";
+import * as fs from "node:fs";
+import {NodeFileSystem} from "@effect/platform-node";
 
 //  Toolのcontentの定義だがzodから持ってくると重いのでここで定義
 export interface ToolContentResponse {
@@ -71,9 +72,14 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             const res = yield* StoryService.tips()
             const content = [{type: "text", text: res.textList.join('\n-------\n')} as ToolContentResponse]
             if (res.imagePathList.length > 0) {
-              const fs = yield* FileSystem.FileSystem
+              // const fs = yield* FileSystem.FileSystem
               yield* Effect.forEach(res.imagePathList, a => {
-                return fs.readFile(path.join(__pwd, a)).pipe(Effect.andThen(b => {
+                return Effect.async<Buffer,Error>((resume) => fs.readFile(path.join(__pwd, a),(err, data) => {
+                  if (err) {
+                    resume(Effect.fail(err))
+                  }
+                  resume(Effect.succeed(data));
+                })).pipe(Effect.andThen(b => {
                   content.push({
                     type: "image",
                     data: Buffer.from(b).toString('base64'),
@@ -277,8 +283,13 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
 
           const visitorName = notification.name || notification.handle || '誰か'
           yield* McpLogService.logTrace(`avatarName:${visitorName}`)
-          const visitorPost = visitorPosts && visitorPosts.feed.length > 0 ? Option.some(visitorPosts.feed[0].post) : Option.none()
-          const visitorPostText = visitorPost.pipe(Option.andThen(a => (a.record as any).text as string))
+          let visitorPostText = ''
+          let visitorPostId = ''
+          if (visitorPosts && visitorPosts.feed.length > 0) {
+            const p = visitorPosts.feed[0].post;
+            visitorPostText =(p.record as any).text as string
+            visitorPostId = p.uri+'-'+p.cid
+          }
           yield* McpLogService.logTrace(`mentionPostText:${mentionPostText}`)
           yield* McpLogService.logTrace(`repliedPostText:${repliedPostText}`)
           yield* McpLogService.logTrace(`visitorPostText:${visitorPostText}`)
@@ -288,7 +299,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             visitorProf: visitorProf.description,
             mentionPost: mentionPostText,
             repliedPost: repliedPostText,
-            target: notification.uri + '-' + notification.cid //  bsの場合はuri+cid
+            target: notification.mentionType === 'reply' ? notification.uri + '-' + notification.cid: visitorPostId //  bsの場合はuri+cid replyの場合はreplyそのものにアクションする、likeの場合は相手の最新のpostにアクションする
           }
         })
       }
@@ -315,7 +326,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           const likeText = `Our SNS post received the following likes.\n` +
             `|id|Name of the person who liked the post|Content of the article with the like|recent article by the person who liked this|Profile of the person who liked|\n` +
             likeMes.map((a) =>
-              `|"${a.target}"|${a.visitorName}|${Option.getOrElse(a.mentionPost, () => '')}|${Option.getOrElse(a.recentVisitorPost, () => '')}|${a.visitorProf}|`).join('\n') +
+              `|"${a.target}"|${a.visitorName}|${Option.getOrElse(a.mentionPost, () => '')}|${a.recentVisitorPost}|${a.visitorProf}|`).join('\n') +
             '\n'
 
           const replyText = `We received the following reply to our SNS post:\n` +
@@ -369,15 +380,16 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           })
           const out = select.map(v => `id: ${v.id} \nauthor: ${v.authorHandle}\nbody: ${v.body}`).join('\n-----\n')
           const images = select.flatMap(v => v.imageUri ? [{uri: v.imageUri, handle: v.authorHandle}] : [])
-          const imageOut = images.map(v => {
-            return {
-              type: "resource",
-              resource: {
-                uri: v.uri,
-                mimeType: "image/jpeg",
-                text: `image of ${v.handle}`
-              }
-            }
+          const imageOut = yield *Effect.forEach(images,(a) => {
+            return HttpClient.get(a.uri).pipe(
+              Effect.andThen((response) => response.arrayBuffer),
+              Effect.scoped,
+              Effect.provide(FetchHttpClient.layer)
+            ).pipe(Effect.andThen(a1 => ({
+              type:"image",
+              data:Buffer.from(a1).toString("base64"),
+              mimeType:"image/jpeg"
+            } as ToolContentResponse)))
           })
           const c: ToolContentResponse[] = [{
             type: 'text',
@@ -665,12 +677,12 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             }
           },
         ]
-        const GET_LOCATION_COMMAND: Tool[] = [
+        const GET_VIEW_COMMAND: Tool[] = [
           {
-            name: env.personMode === 'second' ? "get_current_location_info" : "get_traveler_location_info",
+            name: env.personMode === 'second' ? "get_current_view_info" : "get_traveler_view_info",
             description: env.personMode === 'second' ?
-              "get a address of current my location and information on nearby facilities,view snapshot" :
-              "get a address of current traveler's location and information on nearby facilities,view snapshot",
+              "Get the address of the current location and information on nearby facilities,view snapshot" :
+              "Get the address of the current traveler's location and information on nearby facilities,view snapshot",
             inputSchema: {
               type: "object",
               properties: {
@@ -756,14 +768,14 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           const def = () => {
             if (env.isPractice) {
               return [
-                ...GET_LOCATION_COMMAND,
+                ...GET_VIEW_COMMAND,
                 ...SETTING_COMMANDS,
                 ...START_STOP_COMMAND
               ]
             } else {
               const basicToolsCommand: Tool[] = [
                 {
-                  name: env.personMode === 'second' ? "set_current_location" : "set_traveler_location",
+                  name: env.personMode === 'second' ? "set_current_view" : "set_traveler_view",
                   description: env.personMode === 'second' ? "Set my current address" : "Set the traveler's current address",
                   inputSchema: {
                     type: "object",
@@ -811,7 +823,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                   //   }
                   // },
                   ...basicToolsCommand,
-                  ...GET_LOCATION_COMMAND,
+                  ...GET_VIEW_COMMAND,
                   ...SETTING_COMMANDS,
                   ...START_STOP_COMMAND)
                 if (env.anySnsExist) {
@@ -859,8 +871,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 return setAvatarPrompt(String(request.params.arguments?.prompt))
               case "reset_avatar_prompt":
                 return resetAvatarPrompt()
-              case "get_current_location_info":
-              case "get_traveler_location_info":
+              case "get_current_view_info":
+              case "get_traveler_view_info":
                 return getCurrentLocationInfo(request.params.arguments?.includePhoto as boolean, request.params.arguments?.includeNearbyFacilities as boolean)
               case "set_current_location":
               case "set_traveler_location":
