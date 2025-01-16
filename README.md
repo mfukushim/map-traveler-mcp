@@ -1,4 +1,4 @@
-# Virtual Traveling mini bot environment package for MCP
+# Virtual Traveling bot environment for MCP
 
 English / [Japanese](./README_jp.md)
 
@@ -19,12 +19,12 @@ You can specify the function name directly, but Claude LLM will automatically re
 Example:
 "Where are you now?" "Let's leave for Tokyo Station."
 
-- get_traveler_location_info(includePhoto:boolean,includeNearbyFacilities:boolean)  
-Gets information about the current travel avatar's location.  
+- get_traveler_view_info(includePhoto:boolean,includeNearbyFacilities:boolean)  
+  Gets information about the current travel avatar's location.  
   - includePhoto: Gets nearby Google Street View photos. If you have set up an image generation AI, it will synthesize the avatar.
   - includeNearbyFacilities: Gets information about nearby facilities.
 - set_traveler_location(address: string)  
-Sets the current travel avatar's location.
+  Sets the current travel avatar's location.
   - address: Address information (exact address, or general name that Google Maps or Claude can recognize, etc.)
 - get_traveler_destination_address  
   Get the destination of the travel avatar you set
@@ -95,6 +95,8 @@ claude_desktop_config.json
         "sd_key":"(or Stability.ai image generation API key",
         "pixAi_modelId": "(Optional: pixAi ModelId, if not set use default model 1648918127446573124 ",
         "fixed_model_prompt": "(Optional: Fixed avatar generation prompt. You will no longer be able to change your avatar during conversations.)",
+        "bodyAreaRatio": "(Optional: Acceptable avatar image area ratio. default 0.042)",
+        "bodyHWRatio": "(Optional: Acceptable avatar image aspect ratios. default 1.5~2.3)",
         "bs_id":"(Bluesky sns registration address)",
         "bs_pass":"(bluesky sns password)",
         "bs_handle":"(bluesky sns handle name: e.g. xxxxxxxx.bsky.social )",
@@ -178,14 +180,14 @@ claude_desktop_config.json
   ```bash
   rembg i source_image_file dest_image_file
   ```
-4. rembg cli will be installed in the python exe location, so get the path. The file location varies depending on the OS and python installation status, but in the case of venv, it is (virtual environment name)\Scripts\rembg.exe or (virtual environment name)/bin/rembg above the directory you set. If you can't find it, search for the path with a file search software. Set that path to rembg_path of env in claude_desktop_config.json. (Example: )
+4. rembg cli will be installed in the python exe location, so get the path. The file location varies depending on the OS and python installation status, but in the case of venv, it is (virtual environment name)\Scripts\rembg.exe or (virtual environment name)/bin/rembg above the directory you set. If you can't find it, search for the path with a file search software. Set that path to rembg_path of env in claude_desktop_config.json. (Example: "rembg_path": "C:\\Users\\xxxx\\Documents\\rembg_venv\\venv\\Scripts\\rembg.exe")
 5. Get an image generation API key from the pixAI or Stability.ai site. Set the key to pixAi_key or sd_key in env of claude_desktop_config.json.
    The avatar will now be overlaid on the travel image.
 6. Get the bluesky SNS address/password and handle name. Set these in bs_id, bs_pass, and bs_handle in env of claude_desktop_config.json, respectively.
    Import the travel knowledge prompt roleWithSns.txt to report travel actions to SNS (it will automatically post as a bot, so we recommend allocating a dedicated account)
 
 
-### Install guide (Japanese only, but lots of photos)
+### Install guide (Japanese, but lots of photos)
 
 1. introduction and Practice mode
    https://note.com/marble_walkers/n/n7a8f79e4fb30
