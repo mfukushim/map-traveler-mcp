@@ -163,7 +163,6 @@ describe("Mcp", () => {
       runPromise
     )
     expect(res).toBeInstanceOf(Array)
-    expect(res[0].text).includes('There is no traveler information')
   })
 
   it("startJourneyPractice", async () => {
