@@ -125,11 +125,11 @@ describe("Sns", () => {
     const res = await Effect.gen(function* () {
       return yield* SnsService.getNotification()
     }).pipe(
-        Effect.provide([SnsServiceLive, McpLogServiceLive,DbServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
-        Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
+        Effect.tapError(e => McpLogService.logError(e.toString())),
         Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed([])),
-        Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
+        Effect.tap(a => McpLogService.log(a)),
+      Effect.provide([SnsServiceLive, DbServiceLive]),
         runPromise
     )
     expect(res).toBeInstanceOf(Array)
@@ -139,7 +139,7 @@ describe("Sns", () => {
     const res = await Effect.gen(function* () {
       return yield* SnsService.snsReply("リプライテスト"," test","at://did:plc:ygcsenazbvhyjmxeltz4fgw4/app.bsky.feed.post/3letmqctays2a-bafyreigqfjn2spwkuqziieuh5xijimyyld7dpbnpajxc7ax5bkokyyxjna")
     }).pipe(
-      Effect.provide([SnsServiceLive, McpLogServiceLive,DbServiceLive]),
+      Effect.provide([SnsServiceLive, DbServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
       Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed([])),

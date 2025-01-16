@@ -2,7 +2,7 @@
 
 import {Effect, Schedule} from "effect";
 import sharp = require("sharp");
-import {FetchHttpClient, HttpClient, HttpClientRequest, FileSystem} from "@effect/platform";
+import {FetchHttpClient, HttpClient, HttpClientRequest} from "@effect/platform";
 import dayjs from "dayjs";
 import FormData from 'form-data';
 // import {transparentBackground} from "transparent-background";
@@ -254,8 +254,12 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       return Effect.gen(function* () {
         if (!env.anyImageAiExist || env.isPractice) {
           //  画像生成AIがなければ固定ホテル画像を使う
-          const fs = yield* FileSystem.FileSystem
-          return yield* fs.readFile(path.join(__pwd, 'assets/hotelPict.png')).pipe(Effect.andThen(a => Buffer.from(a)))
+          return yield* Effect.async<Buffer,Error>((resume) => fs.readFile(path.join(__pwd, 'assets/hotelPict.png'),(err, data) => {
+            if (err) {
+              resume(Effect.fail(err))
+            }
+            resume(Effect.succeed(data));
+          })).pipe(Effect.andThen(a => Buffer.from(a)))
         }
         const baseCharPrompt = yield *getBasePrompt(defaultAvatarId)
         let prompt = baseCharPrompt + ',';
@@ -276,7 +280,12 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               // const data = Buffer.from(a, "base64");
               recentImage = a
               if (localDebug) {
-                return FileSystem.FileSystem.pipe(Effect.andThen(fs => fs.writeFile('tools/test/hotelPict.png', a, {flag: "w"})))
+                return Effect.async<void,Error>((resume) => fs.writeFile('tools/test/hotelPict.png', a,err => {
+                  if (err) {
+                    resume(Effect.fail(err))
+                  }
+                  resume(Effect.void)
+                }))
               }
             }),
             Effect.andThen(a => Effect.tryPromise(() => sharp(a).resize({
@@ -326,7 +335,12 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               // const data = Buffer.from(a, "base64");
               recentImage = a
               if (localDebug) {
-                return FileSystem.FileSystem.pipe(Effect.andThen(fs => fs.writeFile('tools/test/hotelPict.png', a, {flag: "w"})))
+                return Effect.async<void,Error>((resume) => fs.writeFile('tools/test/etcPict.png', a,err => {
+                  if (err) {
+                    resume(Effect.fail(err))
+                  }
+                  resume(Effect.void)
+                }))
               }
             }),
             Effect.andThen(a => Effect.tryPromise(() => sharp(a).resize({

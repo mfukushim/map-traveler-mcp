@@ -12,15 +12,14 @@ import {ImageService} from "./ImageService.js";
 import * as Process from "node:process";
 import {FacilityInfo, StoryService} from "./StoryService.js";
 import {TripStatus} from "./db/schema.js";
-import {HttpClientError} from "@effect/platform/HttpClientError";
 import 'dotenv/config'
 import {McpLogService} from "./McpLogService.js";
-import {FileSystem} from "@effect/platform";
 import {NodeFileSystem} from "@effect/platform-node";
 import {AnswerError} from "./mapTraveler.js";
 import * as path from "path";
 import {ToolContentResponse} from "./McpService.js";
 import sharp = require("sharp");
+import * as fs from "node:fs";
 
 
 dayjs.extend(utc)
@@ -76,20 +75,31 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
   effect: Effect.gen(function* () {
     //  走行時間スケール 2で時速40kmくらい 4くらいにするか 20km/hくらい
     const durationScale2 = 4
-    
+
     const isShips = (maneuver?: string) => ['ferry', 'airplane'].includes(maneuver || '')
     const maneuverIsShip = (step: typeof MapDef.GmStepSchema.Type) => isShips(step.maneuver)
 
     const getFacilitiesPractice = (runStatus: RunStatus, includePhoto: boolean) => {
       return Effect.gen(function* () {
         const practiceInfo = practiceData.find(value => value.address === runStatus.to) || practiceData[0]
-        const fs = yield* FileSystem.FileSystem
-        const nearFacilities = yield* fs.readFile(path.join(__pwd, practiceInfo.placesPath)).pipe(
-            Effect.andThen(a => Schema.decode(Schema.parseJson(MapDef.GmPlacesSchema))((Buffer.from(a).toString('utf-8')))),
-            Effect.andThen(a => StoryService.placesToFacilities(a)))
-        const image = includePhoto ? (yield* fs.readFile(path.join(__pwd, practiceInfo.sampleImagePath)).pipe(
-            Effect.andThen(a => Buffer.from(a)),
-            Effect.orElseSucceed(() => undefined))) : undefined
+        const nearFacilities = yield* Effect.async<Buffer, Error>((resume) =>
+          fs.readFile(path.join(__pwd, practiceInfo.placesPath), (err, data) => {
+            if (err) {
+              resume(Effect.fail(err))
+            }
+            resume(Effect.succeed(data));
+          })).pipe(
+          Effect.andThen(a => Schema.decode(Schema.parseJson(MapDef.GmPlacesSchema))((Buffer.from(a).toString('utf-8')))),
+          Effect.andThen(a => StoryService.placesToFacilities(a)))
+        const image = includePhoto ? (yield* Effect.async<Buffer, Error>((resume) =>
+          fs.readFile(path.join(__pwd, practiceInfo.sampleImagePath), (err, data) => {
+            if (err) {
+              resume(Effect.fail(err))
+            }
+            resume(Effect.succeed(data));
+          })).pipe(
+          Effect.andThen(a => Buffer.from(a)),
+          Effect.orElseSucceed(() => undefined))) : undefined
         return {nearFacilities, image, locText: ''}
       })
     }
@@ -102,9 +112,9 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           bearing: 0
         })
         const image = includePhoto && env.anyImageAiExist ? (yield* getStreetImage(loc, abort, localDebug).pipe(
-                Effect.andThen(a => a.buf),
-                Effect.orElseSucceed(() => undefined))) :
-            includePhoto ? (yield* getStreetImageOnly(loc)) : undefined
+            Effect.andThen(a => a.buf),
+            Effect.orElseSucceed(() => undefined))) :
+          includePhoto ? (yield* getStreetImageOnly(loc)) : undefined
         return {
           nearFacilities,
           image,
@@ -117,9 +127,9 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
     const runningReport = (nearFacilities: FacilityInfo, locText: string, includeNearbyFacilities: boolean, useImage: boolean, image?: Buffer, abort = false) => {
       return Effect.gen(function* () {
         const facilityText = nearFacilities.facilities.length !== 0 ?
-            `The following facilities are nearby:\n` + nearFacilities.facilities.map(value =>
-                value.name + (value.types.length > 0 ? ' (kinds:' + value.types.join(',') + ')' : '')).join('\n') + '\n' :
-            "There don't appear to be any buildings nearby.";
+          `The following facilities are nearby:\n` + nearFacilities.facilities.map(value =>
+            value.name + (value.types.length > 0 ? ' (kinds:' + value.types.join(',') + ')' : '')).join('\n') + '\n' :
+          "There don't appear to be any buildings nearby.";
 
         const abortText = abort ? `I have received a message to discontinue my trip. This time, I will discontinue my trip.\n` : ''
         const posText = Option.isSome(nearFacilities.townName) ? `Town name is ${nearFacilities.townName.value}\n` : 'Town name is unknown.\n'
@@ -148,7 +158,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         } else {
           status = loc.status;
           //  ただし前回旅が存在し、それが終了していても、そのendTimeから1時間以内ならその場所にいるものとして表示する
-          if(dayjs().isBefore(dayjs(runStatus.endTime || 0).add(1,"hour"))) {
+          if (dayjs().isBefore(dayjs(runStatus.endTime || 0).add(1, "hour"))) {
             status = 'running'
           }
         }
@@ -158,7 +168,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
             //  乗り物
             const maneuver = loc.maneuver;
             const vehiclePrompt = maneuver?.includes('ferry') ? '(on ship deck:1.3),(ferry:1.2),sea,handrails' :
-                maneuver?.includes('airplane') ? '(airplane cabin:1.3),reclining seat,sitting' : ''
+              maneuver?.includes('airplane') ? '(airplane cabin:1.3),reclining seat,sitting' : ''
             const image = includePhoto && env.anyImageAiExist && (yield* ImageService.makeEtcTripImage(useAiImageGen, vehiclePrompt, loc.timeZoneId, localDebug))
             const out: ToolContentResponse[] = [
               {
@@ -204,7 +214,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           return Effect.fail(e)
         }
         return McpLogService.logError(`getCurrentView catch:${e},${JSON.stringify(e)}`).pipe(Effect.andThen(() =>
-            Effect.fail(new AnswerError("Sorry,I don't know where you are right now. Please wait a moment and ask again."))));
+          Effect.fail(new AnswerError("Sorry,I don't know where you are right now. Please wait a moment and ask again."))));
       }))
     }
 
@@ -225,10 +235,10 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
      */
     function loadCurrentRunnerRoute(avatarId: number) {
       return DbService.getAvatar(avatarId).pipe(
-          Effect.andThen(a => a.currentRoute ? Effect.succeed(a.currentRoute) :
-              Effect.fail(new AnswerError('The route to the destination has not yet been determined.'))),
-          Effect.andThen(a => Schema.decodeUnknownSync(Schema.parseJson(MapDef.RouteArraySchema))(a)),
-          Effect.tapError(cause => McpLogService.logError(`loadCurrentRunnerRoute ${cause}`)),
+        Effect.andThen(a => a.currentRoute ? Effect.succeed(a.currentRoute) :
+          Effect.fail(new AnswerError('The route to the destination has not yet been determined.'))),
+        Effect.andThen(a => Schema.decodeUnknownSync(Schema.parseJson(MapDef.RouteArraySchema))(a)),
+        Effect.tapError(cause => McpLogService.logError(`loadCurrentRunnerRoute ${cause}`)),
       )
     }
 
@@ -296,15 +306,14 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
      * @param runStatus
      * @param now
      */
-    function calcCurrentLoc(runStatus: RunStatus, now: dayjs.Dayjs)
-        : Effect.Effect<LocationDetail, Error | HttpClientError, DbService | MapService | McpLogService> {
+    function calcCurrentLoc(runStatus: RunStatus, now: dayjs.Dayjs) {
       return Effect.gen(function* () {
         const runAllSec = now.diff(runStatus.startTime, "seconds");  //  実時間でのstep0を0とした旅行実行秒数
         const currentStepOption = yield* loadCurrentRunnerRoute(runStatus.avatarId).pipe(
-            Effect.andThen(a => {
-              const allSteps = routesToDirectionStep(a)
-              return Effect.succeed(calcCurrentStep(allSteps, runAllSec))  //  次到達ステップ(現在のステップ位置でもある)
-            }), Effect.orElseSucceed(() => Option.none()));
+          Effect.andThen(a => {
+            const allSteps = routesToDirectionStep(a)
+            return Effect.succeed(calcCurrentStep(allSteps, runAllSec))  //  次到達ステップ(現在のステップ位置でもある)
+          }), Effect.orElseSucceed(() => Option.none()));
 
         if (Option.isNone(currentStepOption)) {
           //  すでに到着済み または不定
@@ -332,10 +341,10 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           lat: lat,
           lng: lng,
           bearing: geolib.getRhumbLineBearing({
-                lat: currentStep.start_location.lat,
-                lng: currentStep.start_location.lng
-              },
-              {lat: currentStep.end_location.lat, lng: currentStep.end_location.lng}),  //  step始点終点を使った向き想定
+              lat: currentStep.start_location.lat,
+              lng: currentStep.start_location.lng
+            },
+            {lat: currentStep.end_location.lat, lng: currentStep.end_location.lng}),  //  step始点終点を使った向き想定
           maneuver: currentStep.maneuver,
           timeZoneId: yield* MapService.getTimezoneByLatLng(lat, lng),
           //  remainSecInPathはフェリーとかの特殊移動での残時間計算しか使っていない。そしてここの倍数は4倍になっているはずだが、//  フェリーや飛行機などの特殊な乗り物の場合は想定時間そのまま、通常のコースなら時間を4倍する で4倍しているから問題が起きていないのかも?
@@ -349,8 +358,8 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
 
     function getDestinationAddress() {
       //  プラン中の行き先を確認し、中がなければrunStatusを確認し、走行中であるならばtoの値を取る なければ未設定
-      return Effect.gen(function *() {
-        const dest = yield*DbService.getEnvOption('destination')
+      return Effect.gen(function* () {
+        const dest = yield* DbService.getEnvOption('destination')
         if (Option.isSome(dest)) {
           return dest.value;
         }
@@ -358,13 +367,13 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         if (runStatus.status === 'running' && runStatus.to) {
           return runStatus.to
         }
-        return yield *Effect.fail(new AnswerError("The destination has not yet been decided"))
+        return yield* Effect.fail(new AnswerError("The destination has not yet been decided"))
       })
     }
 
-    const sumDurationSec = (destList:typeof MapDef.RouteArraySchema.Type) => destList.flatMap(v => v.leg).flatMap(a => a.steps)
+    const sumDurationSec = (destList: typeof MapDef.RouteArraySchema.Type) => destList.flatMap(v => v.leg).flatMap(a => a.steps)
       .map(a => calcStepTime(a)).reduce((p, c) => p + c, 0)
-    
+
     function setDestinationAddress(address: string) {
       return Effect.gen(function* () {
         const location = yield* MapService.getMapLocation(address);
@@ -404,7 +413,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       })
     }
 
-    const resetRunStatus = (recent: RunStatus, to: string,endTime:Date, lat: number, lng: number, country: string | null, timeZone: string | null) => {
+    const resetRunStatus = (recent: RunStatus, to: string, endTime: Date, lat: number, lng: number, country: string | null, timeZone: string | null) => {
       recent.status = "stop"
       recent.startTime = new Date(0)
       recent.endTime = endTime
@@ -424,15 +433,15 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
     const getRunStatusAndUpdateEnd = () => {
       return Effect.gen(function* () {
         const recent = yield* DbService.getRecentRunStatus().pipe(Effect.orElseFail(() =>
-            new AnswerError(`current location not set. Please set the current location address`)))
+          new AnswerError(`current location not set. Please set the current location address`)))
         if (recent.status === "stop" && !recent.to) {
           //  停止している場合は直近の行き先のtoが現在地
-          return yield *Effect.fail(new AnswerError(`current location not set. Please set the current location address`))
+          return yield* Effect.fail(new AnswerError(`current location not set. Please set the current location address`))
         }
         const endTime = dayjs.unix(recent.tilEndEpoch);
         if (dayjs().isAfter(endTime)) {
           //  旅は終了している 終点画像を撮るタイミングがないな。。ここで入れるか? 今の取得で作れるのは作れるが。。
-          resetRunStatus(recent, recent.to,endTime.toDate(), recent.endLat, recent.endLng, recent.endCountry, recent.endTz)
+          resetRunStatus(recent, recent.to, endTime.toDate(), recent.endLat, recent.endLng, recent.endCountry, recent.endTz)
           yield* DbService.saveRunStatus(recent)
         }
         return recent
@@ -503,8 +512,8 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
             bearing: currentInfo.bearing
           })
 
-          resetRunStatus(runStatus, Option.getOrElse(nears.address, () => runStatus.to),dayjs().toDate(),
-              currentInfo.lat, currentInfo.lng, Option.getOrElse(nears.country, () => runStatus.endCountry), currentInfo.timeZoneId)
+          resetRunStatus(runStatus, Option.getOrElse(nears.address, () => runStatus.to), dayjs().toDate(),
+            currentInfo.lat, currentInfo.lng, Option.getOrElse(nears.country, () => runStatus.endCountry), currentInfo.timeZoneId)
 
           const {nearFacilities, image, locText} = yield* getFacilities(currentInfo, true, false)
           res = yield* runningReport(nearFacilities, locText, false, true, image, true)
@@ -517,10 +526,12 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
     }
 
     function getStreetImage(loc: any, abort = false, localDebug = false) {
-      return Effect.gen(function *() {
+      return Effect.gen(function* () {
         const okLoc = yield* MapService.findStreetViewMeta(loc.lat, loc.lng, loc.bearing, 640, 640)
-        const baseImage = yield*MapService.getStreetViewImage(okLoc.lat, okLoc.lng, loc.bearing, 640, 640)
-        return yield *ImageService.makeRunnerImageV3(baseImage, useAiImageGen, abort, localDebug).pipe(
+        const baseImage = yield* MapService.getStreetViewImage(okLoc.lat, okLoc.lng, loc.bearing, 640, 640)
+        const bodyAreaRatio = Process.env.bodyAreaRatio ? Number.parseFloat(Process.env.bodyAreaRatio):undefined
+        const bodyHWRatio = Process.env.bodyHWRatio ? Number.parseFloat(Process.env.bodyHWRatio):undefined
+        return yield* ImageService.makeRunnerImageV3(baseImage, useAiImageGen, abort, localDebug, bodyAreaRatio, bodyHWRatio).pipe(
           //  合成画像を失敗したらStreetViewだけでも出す
           Effect.orElse(() => Effect.tryPromise(() => sharp(baseImage).resize({
             width: 512,
@@ -537,11 +548,11 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
 
     function getStreetImageOnly(loc: any) {
       return MapService.findStreetViewMeta(loc.lat, loc.lng, loc.bearing, 640, 640).pipe(
-          Effect.andThen(okLoc => MapService.getStreetViewImage(okLoc.lat, okLoc.lng, loc.bearing, 640, 640)),
-          Effect.andThen(baseImage => Effect.tryPromise(() => sharp(baseImage).resize({
-            width: 512,
-            height: 512
-          }).png().toBuffer())),
+        Effect.andThen(okLoc => MapService.getStreetViewImage(okLoc.lat, okLoc.lng, loc.bearing, 640, 640)),
+        Effect.andThen(baseImage => Effect.tryPromise(() => sharp(baseImage).resize({
+          width: 512,
+          height: 512
+        }).png().toBuffer())),
       )
     }
 

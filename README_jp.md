@@ -20,7 +20,7 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 例:
 「いまどこにいますか?」「東京駅へ出発しましょう」
 
-- get_traveler_location_info(includePhoto:boolean,includeNearbyFacilities:boolean)  
+- get_traveler_view_info(includePhoto:boolean,includeNearbyFacilities:boolean)  
 現在の旅アバターのいる場所についての情報を取得します。  
   includePhoto: 付近のGoogle Street Viewの写真を取得します。画像生成AIを設定していればアバターを合成します。
   includeNearbyFacilities: 付近の施設情報を取得します。
@@ -86,6 +86,8 @@ claude_desktop_config.json
         "sd_key":"(またはStability.aiのAPIのキー",
         "pixAi_modelId": "(オプション: pixAiの場合の使用ModelId. 未設定の場合とりあえず 1648918127446573124 を使う",
         "fixed_model_prompt": "(オプション: 固定でアバターの姿指定プロンプトを設定する。会話でアバター姿を変更できなくなる。)",
+        "bodyAreaRatio": "(オプション: 許容されるアバター面積比. default 0.042)",
+        "bodyHWRatio": "(オプション: 許容されるアバター縦横比. default 1.5~2.3)",
         "bs_id":"(bluesky snsの登録アドレス)",
         "bs_pass":"(bluesky snsのパスワード)",
         "bs_handle":"(bluesky snsのハンドル名 例 xxxxx.bsky.social など)",
@@ -160,7 +162,7 @@ claude_desktop_config.json
    rembg i 入力ファイル名 出力ファイル名
    ```
 4. rembg cliがpythonのexeロケーションにインストールされますのでそのパスを取得してください。ファイル位置はOSやpythonのインストール状態によりまちまちですが、venvの場合は設定したディレクトリの上の (仮想環境名)\Scripts\rembg.exe や  
-(仮想環境名)/bin/rembg などです。見つからなければファイル検索ソフトなどでパスを探してください。そのパスをclaude_desktop_config.jsonのenvのrembg_pathに設定します。 (例: )
+(仮想環境名)/bin/rembg などです。見つからなければファイル検索ソフトなどでパスを探してください。そのパスをclaude_desktop_config.jsonのenvのrembg_pathに設定します。 (例: "rembg_path": "C:\\Users\\xxxx\\Documents\\rembg_venv\\venv\\Scripts\\rembg.exe")
 5. pixAIまたはStability.aiのサイトで画像生成APIのキーを取得します。キーをclaude_desktop_config.jsonのenvのpixAi_keyまたはsd_keyに設定します。
    ここまでで旅画像にアバターが合成されます。
 6. bluesky SNSのアドレス/パスワードを取得し、ハンドル名も取得します。claude_desktop_config.jsonのenvのbs_id,bs_pass,bs_handle にそれぞれ設定します。
