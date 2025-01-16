@@ -15,7 +15,7 @@ import {defaultAvatarId, RunnerService, RunnerServiceLive, useAiImageGen} from "
 import {MapService, MapServiceLive} from "./MapService.js";
 import {__pwd, DbService, DbServiceLive, env, PersonMode} from "./DbService.js";
 import {StoryService, StoryServiceLive} from "./StoryService.js";
-import {FetchHttpClient} from "@effect/platform";
+import {FetchHttpClient, HttpClient} from "@effect/platform";
 import {defaultBaseCharPrompt, ImageService, ImageServiceLive} from "./ImageService.js";
 import {McpLogService, McpLogServiceLive} from "./McpLogService.js";
 import {AnswerError} from "./mapTraveler.js";
@@ -380,15 +380,16 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           })
           const out = select.map(v => `id: ${v.id} \nauthor: ${v.authorHandle}\nbody: ${v.body}`).join('\n-----\n')
           const images = select.flatMap(v => v.imageUri ? [{uri: v.imageUri, handle: v.authorHandle}] : [])
-          const imageOut = images.map(v => {
-            return {
-              type: "resource",
-              resource: {
-                uri: v.uri,
-                mimeType: "image/jpeg",
-                text: `image of ${v.handle}`
-              }
-            }
+          const imageOut = yield *Effect.forEach(images,(a) => {
+            return HttpClient.get(a.uri).pipe(
+              Effect.andThen((response) => response.arrayBuffer),
+              Effect.scoped,
+              Effect.provide(FetchHttpClient.layer)
+            ).pipe(Effect.andThen(a1 => ({
+              type:"image",
+              data:Buffer.from(a1).toString("base64"),
+              mimeType:"image/jpeg"
+            } as ToolContentResponse)))
           })
           const c: ToolContentResponse[] = [{
             type: 'text',
