@@ -283,8 +283,13 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
 
           const visitorName = notification.name || notification.handle || '誰か'
           yield* McpLogService.logTrace(`avatarName:${visitorName}`)
-          const visitorPost = visitorPosts && visitorPosts.feed.length > 0 ? Option.some(visitorPosts.feed[0].post) : Option.none()
-          const visitorPostText = visitorPost.pipe(Option.andThen(a => (a.record as any).text as string))
+          let visitorPostText = ''
+          let visitorPostId = ''
+          if (visitorPosts && visitorPosts.feed.length > 0) {
+            const p = visitorPosts.feed[0].post;
+            visitorPostText =(p.record as any).text as string
+            visitorPostId = p.uri+'-'+p.cid
+          }
           yield* McpLogService.logTrace(`mentionPostText:${mentionPostText}`)
           yield* McpLogService.logTrace(`repliedPostText:${repliedPostText}`)
           yield* McpLogService.logTrace(`visitorPostText:${visitorPostText}`)
@@ -294,7 +299,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             visitorProf: visitorProf.description,
             mentionPost: mentionPostText,
             repliedPost: repliedPostText,
-            target: notification.uri + '-' + notification.cid //  bsの場合はuri+cid
+            target: notification.mentionType === 'reply' ? notification.uri + '-' + notification.cid: visitorPostId //  bsの場合はuri+cid replyの場合はreplyそのものにアクションする、likeの場合は相手の最新のpostにアクションする
           }
         })
       }
@@ -321,7 +326,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           const likeText = `Our SNS post received the following likes.\n` +
             `|id|Name of the person who liked the post|Content of the article with the like|recent article by the person who liked this|Profile of the person who liked|\n` +
             likeMes.map((a) =>
-              `|"${a.target}"|${a.visitorName}|${Option.getOrElse(a.mentionPost, () => '')}|${Option.getOrElse(a.recentVisitorPost, () => '')}|${a.visitorProf}|`).join('\n') +
+              `|"${a.target}"|${a.visitorName}|${Option.getOrElse(a.mentionPost, () => '')}|${a.recentVisitorPost}|${a.visitorProf}|`).join('\n') +
             '\n'
 
           const replyText = `We received the following reply to our SNS post:\n` +
