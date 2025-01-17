@@ -308,6 +308,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
      */
     function calcCurrentLoc(runStatus: RunStatus, now: dayjs.Dayjs) {
       return Effect.gen(function* () {
+        yield* McpLogService.logTrace(`calcCurrentLoc: time=${now.toISOString()}`)
         const runAllSec = now.diff(runStatus.startTime, "seconds");  //  実時間でのstep0を0とした旅行実行秒数
         const currentStepOption = yield* loadCurrentRunnerRoute(runStatus.avatarId).pipe(
           Effect.andThen(a => {
@@ -317,6 +318,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
 
         if (Option.isNone(currentStepOption)) {
           //  すでに到着済み または不定
+          yield* McpLogService.logTrace(`calcCurrentLoc: end`)
           return {
             status: "stop",
             lat: runStatus.endLat,
@@ -331,10 +333,11 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         }
         //  現在の位置で報告+次の停泊地までの時間
         const currentStep = currentStepOption.value;
-        const rat = Math.min(runAllSec - currentStep.start, 1) / (currentStep.end - currentStep.start); //  step内の進行割合
+        const rat = Math.min((runAllSec - currentStep.start) / (currentStep.end - currentStep.start), 1); //  step内の進行割合
 
         const lat = (currentStep.end_location.lat - currentStep.start_location.lat) * rat + currentStep.start_location.lat;
         const lng = (currentStep.end_location.lng - currentStep.start_location.lng) * rat + currentStep.start_location.lng;
+        yield* McpLogService.logTrace(`calcCurrentLoc: step=${currentStep.pathNo},${currentStep.stepNo},${currentStep.start},${currentStep.end},${runAllSec},${rat},${lat},${lng},${currentStep.maneuver}`)
 
         return {
           status: isShips(currentStep.maneuver) ? "vehicle" : "running",
@@ -529,8 +532,8 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       return Effect.gen(function* () {
         const okLoc = yield* MapService.findStreetViewMeta(loc.lat, loc.lng, loc.bearing, 640, 640)
         const baseImage = yield* MapService.getStreetViewImage(okLoc.lat, okLoc.lng, loc.bearing, 640, 640)
-        const bodyAreaRatio = Process.env.bodyAreaRatio ? Number.parseFloat(Process.env.bodyAreaRatio):undefined
-        const bodyHWRatio = Process.env.bodyHWRatio ? Number.parseFloat(Process.env.bodyHWRatio):undefined
+        const bodyAreaRatio = Process.env.bodyAreaRatio ? Number.parseFloat(Process.env.bodyAreaRatio) : undefined
+        const bodyHWRatio = Process.env.bodyHWRatio ? Number.parseFloat(Process.env.bodyHWRatio) : undefined
         return yield* ImageService.makeRunnerImageV3(baseImage, useAiImageGen, abort, localDebug, bodyAreaRatio, bodyHWRatio).pipe(
           //  合成画像を失敗したらStreetViewだけでも出す
           Effect.orElse(() => Effect.tryPromise(() => sharp(baseImage).resize({

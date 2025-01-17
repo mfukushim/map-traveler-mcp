@@ -176,7 +176,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             return yield* Effect.fail(new AnswerError("I don't know where you're talking about. location not found"))
           }
           const timeZoneId = yield* MapService.getTimezoneByLatLng(address.value.lat, address.value.lng)
-          yield* Effect.logTrace(address.value)
+          yield* McpLogService.logTrace(address.value)
           yield* DbService.saveRunStatus({
             id: 1,  // 1レコードにする
             status: 'stop',
@@ -906,7 +906,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               case "add_like":
                 return addLike(String(request.params.arguments?.id))
               default:
-                return Effect.fail(new Error("Unknown tool"));
+                return Effect.fail(new Error(`Unknown tool:${request.params.name}`));
             }
           }
           return await toolSwitch().pipe(

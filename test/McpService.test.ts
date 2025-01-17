@@ -93,11 +93,11 @@ describe("Mcp", () => {
       Effect.tap(a => {
         a.filter(b => b.type === 'text')
           .forEach((c, i) =>
-            Effect.logTrace(c.text))
+            McpLogService.logTrace(c.text))
         a.filter(b => b.type === 'image')
           .forEach((c, i) => {
             if (inGitHubAction) {
-              Effect.logTrace(c.data?.slice(0, 5))
+              McpLogService.logTrace(c.data?.slice(0, 5))
             } else {
               fs.writeFileSync(`tools/test/getCurrentImage${i}.png`, Buffer.from(c.data!, "base64"));
             }
