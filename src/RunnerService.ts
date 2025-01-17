@@ -124,18 +124,19 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
 
     }
 
-    const runningReport = (nearFacilities: FacilityInfo, locText: string, includeNearbyFacilities: boolean, useImage: boolean, image?: Buffer, abort = false) => {
+    const runningReport = (nearFacilities: FacilityInfo, locText: string, includeNearbyFacilities: boolean, useImage: boolean, image?: Buffer, abort = false, justArrive = false) => {
       return Effect.gen(function* () {
         const facilityText = nearFacilities.facilities.length !== 0 ?
           `The following facilities are nearby:\n` + nearFacilities.facilities.map(value =>
             value.name + (value.types.length > 0 ? ' (kinds:' + value.types.join(',') + ')' : '')).join('\n') + '\n' :
           "There don't appear to be any buildings nearby.";
 
-        const abortText = abort ? `I have received a message to discontinue my trip. This time, I will discontinue my trip.\n` : ''
+        const infoText = abort ? `I have received a message to discontinue my trip. This time, I will discontinue my trip.\n` :
+          justArrive ? `We have arrived at our destination.` : ''
         const posText = Option.isSome(nearFacilities.townName) ? `Town name is ${nearFacilities.townName.value}\n` : 'Town name is unknown.\n'
         const content: ToolContentResponse[] = [{
           type: "text",
-          text: abortText + locText + posText + (includeNearbyFacilities ? facilityText : '') + `${useImage ? (image ? '' : `\nSorry,I'm busy traveling so I couldn't take a photo.`) : ''}`
+          text: infoText + locText + posText + (includeNearbyFacilities ? facilityText : '') + `${useImage ? (image ? '' : `\nSorry,I'm busy traveling so I couldn't take a photo.`) : ''}`
         }];
         if (image) {
           content.push({
@@ -150,7 +151,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
 
     function getCurrentView(includePhoto: boolean, includeNearbyFacilities: boolean, practice = false, localDebug = false) {
       return Effect.gen(function* () {
-        const runStatus = yield* getRunStatusAndUpdateEnd();
+        const {runStatus, justArrive} = yield* getRunStatusAndUpdateEnd();
         const loc = yield* calcCurrentLoc(runStatus, dayjs()); //  これは計算位置情報
         let status: any;
         if (practice) {
@@ -189,7 +190,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
               image,
               locText
             } = yield* (practice ? getFacilitiesPractice(runStatus, includePhoto) : getFacilities(loc, includePhoto, false, localDebug))
-            return yield* runningReport(nearFacilities, locText, includeNearbyFacilities, includePhoto, image, false).pipe(Effect.andThen(a => a.out))
+            return yield* runningReport(nearFacilities, locText, includeNearbyFacilities, includePhoto, image, false, justArrive).pipe(Effect.andThen(a => a.out))
           }
           case 'stop': {
             //  ホテル画像
@@ -308,6 +309,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
      */
     function calcCurrentLoc(runStatus: RunStatus, now: dayjs.Dayjs) {
       return Effect.gen(function* () {
+        yield* McpLogService.logTrace(`calcCurrentLoc: time=${now.toISOString()}`)
         const runAllSec = now.diff(runStatus.startTime, "seconds");  //  実時間でのstep0を0とした旅行実行秒数
         const currentStepOption = yield* loadCurrentRunnerRoute(runStatus.avatarId).pipe(
           Effect.andThen(a => {
@@ -317,6 +319,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
 
         if (Option.isNone(currentStepOption)) {
           //  すでに到着済み または不定
+          yield* McpLogService.logTrace(`calcCurrentLoc: end`)
           return {
             status: "stop",
             lat: runStatus.endLat,
@@ -331,10 +334,11 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         }
         //  現在の位置で報告+次の停泊地までの時間
         const currentStep = currentStepOption.value;
-        const rat = Math.min(runAllSec - currentStep.start, 1) / (currentStep.end - currentStep.start); //  step内の進行割合
+        const rat = Math.min((runAllSec - currentStep.start) / (currentStep.end - currentStep.start), 1); //  step内の進行割合
 
         const lat = (currentStep.end_location.lat - currentStep.start_location.lat) * rat + currentStep.start_location.lat;
         const lng = (currentStep.end_location.lng - currentStep.start_location.lng) * rat + currentStep.start_location.lng;
+        yield* McpLogService.logTrace(`calcCurrentLoc: step=${currentStep.pathNo},${currentStep.stepNo},${currentStep.start},${currentStep.end},${runAllSec},${rat},${lat},${lng},${currentStep.maneuver}`)
 
         return {
           status: isShips(currentStep.maneuver) ? "vehicle" : "running",
@@ -380,7 +384,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         if (Option.isNone(location)) {
           return yield* Effect.fail(new AnswerError("I don't know where you're talking about. destination location not found"))
         }
-        const runStatus = yield* getRunStatusAndUpdateEnd();
+        const {runStatus} = yield* getRunStatusAndUpdateEnd();
         //  目的地が設定されたときにコース計算と行程時間を報告する必要がある そしてコースをrunStatusに設定する必要がある。saveEnvでもいいかも。
         const destList = yield* MapService.calcMultiPathRoute({
           lat: runStatus.endLat, lng: runStatus.endLng, country: runStatus.endCountry || location.value.country
@@ -432,31 +436,35 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
 
     const getRunStatusAndUpdateEnd = () => {
       return Effect.gen(function* () {
-        const recent = yield* DbService.getRecentRunStatus().pipe(Effect.orElseFail(() =>
+        const status = yield* DbService.getRecentRunStatus().pipe(Effect.orElseFail(() =>
           new AnswerError(`current location not set. Please set the current location address`)))
-        if (recent.status === "stop" && !recent.to) {
+        if (status.status === "stop" && !status.to) {
           //  停止している場合は直近の行き先のtoが現在地
           return yield* Effect.fail(new AnswerError(`current location not set. Please set the current location address`))
         }
-        const endTime = dayjs.unix(recent.tilEndEpoch);
+        const endTime = dayjs.unix(status.tilEndEpoch);
+        let justArrive = false
         if (dayjs().isAfter(endTime)) {
           //  旅は終了している 終点画像を撮るタイミングがないな。。ここで入れるか? 今の取得で作れるのは作れるが。。
-          resetRunStatus(recent, recent.to, endTime.toDate(), recent.endLat, recent.endLng, recent.endCountry, recent.endTz)
-          yield* DbService.saveRunStatus(recent)
+          if (status.status !== "running") {
+            justArrive = true
+          }
+          resetRunStatus(status, status.to, endTime.toDate(), status.endLat, status.endLng, status.endCountry, status.endTz);
+          yield* DbService.saveRunStatus(status)
         }
-        return recent
+        return {runStatus: status, justArrive}
       })
     }
 
     function startJourney(practice = false) {
       return Effect.gen(function* () {
         const now = dayjs();
-        let runStatus: RunStatus
+        let rs: RunStatus
         if (practice) {
-          runStatus = yield* DbService.practiceRunStatus(true)
+          rs = yield* DbService.practiceRunStatus(true)
         } else {
-          runStatus = yield* getRunStatusAndUpdateEnd().pipe(Effect.tap(a => {
-            if ((["running", "vehicle"] as TripStatus[]).includes(a.status as TripStatus)) {
+          const {runStatus} = yield* getRunStatusAndUpdateEnd().pipe(Effect.tap(a => {
+            if ((["running", "vehicle"] as TripStatus[]).includes(a.runStatus.status as TripStatus)) {
               //  旅は継続しているので旅中で報告する
               return Effect.fail(new AnswerError(`already start journey.You may stop or continue the journey`));
             }
@@ -478,16 +486,17 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           runStatus.endLng = destInfo.destination.lng
           runStatus.tilEndEpoch = destInfo.tilEndSec + now.unix()
           runStatus.endTz = yield* DbService.getEnv("destTimezoneId").pipe(Effect.orElseSucceed(() => runStatus.startTz));
+          rs = runStatus
         }
         //  旅開始ホテル画像、旅開始挨拶
-        const hour = now.tz(runStatus.startTz!).hour()
+        const hour = now.tz(rs.startTz!).hour()
         const image1 = yield* ImageService.makeHotelPict(useAiImageGen, hour);
         yield* DbService.saveEnv("destination", "")
         yield* DbService.saveEnv("destTimezoneId", "")
-        yield* DbService.saveRunStatus(runStatus)
+        yield* DbService.saveRunStatus(rs)
 
         return {
-          text: `We set out on a journey. The departure point is "${runStatus.from}". I'm heading to "${runStatus.to}".`,
+          text: `We set out on a journey. The departure point is "${rs.from}". I'm heading to "${rs.to}".`,
           image: image1
         }
       })
@@ -495,15 +504,13 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
 
     function stopJourney(practice: boolean) {
       return Effect.gen(function* () {
-        const runStatus = yield* getRunStatusAndUpdateEnd()
+        const {runStatus} = yield* getRunStatusAndUpdateEnd()
         if (runStatus.status === "stop") {
           return yield* Effect.fail(new AnswerError(`The journey has already arrived in "${runStatus.to}".`));
         }
         let res
         if (practice) {
-          const {nearFacilities, image, locText} = yield* getFacilitiesPractice(runStatus, true)
-          res = yield* runningReport(nearFacilities, locText, false, true, image, true)
-
+          res = yield* getFacilitiesPractice(runStatus, true).pipe(Effect.andThen(a => runningReport(a.nearFacilities, a.locText, false, true, a.image, true)))
         } else {
           const currentInfo = yield* calcCurrentLoc(runStatus, dayjs()); //  これは計算位置情報
           const nears = yield* StoryService.getNearbyFacilities({
@@ -515,8 +522,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           resetRunStatus(runStatus, Option.getOrElse(nears.address, () => runStatus.to), dayjs().toDate(),
             currentInfo.lat, currentInfo.lng, Option.getOrElse(nears.country, () => runStatus.endCountry), currentInfo.timeZoneId)
 
-          const {nearFacilities, image, locText} = yield* getFacilities(currentInfo, true, false)
-          res = yield* runningReport(nearFacilities, locText, false, true, image, true)
+          res = yield* getFacilities(currentInfo, true, false).pipe(Effect.andThen(a => runningReport(a.nearFacilities, a.locText, false, true, a.image, true)))
         }
 
         runStatus.to = Option.getOrElse(res.address, () => runStatus.from)
@@ -529,8 +535,8 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       return Effect.gen(function* () {
         const okLoc = yield* MapService.findStreetViewMeta(loc.lat, loc.lng, loc.bearing, 640, 640)
         const baseImage = yield* MapService.getStreetViewImage(okLoc.lat, okLoc.lng, loc.bearing, 640, 640)
-        const bodyAreaRatio = Process.env.bodyAreaRatio ? Number.parseFloat(Process.env.bodyAreaRatio):undefined
-        const bodyHWRatio = Process.env.bodyHWRatio ? Number.parseFloat(Process.env.bodyHWRatio):undefined
+        const bodyAreaRatio = Process.env.bodyAreaRatio ? Number.parseFloat(Process.env.bodyAreaRatio) : undefined
+        const bodyHWRatio = Process.env.bodyHWRatio ? Number.parseFloat(Process.env.bodyHWRatio) : undefined
         return yield* ImageService.makeRunnerImageV3(baseImage, useAiImageGen, abort, localDebug, bodyAreaRatio, bodyHWRatio).pipe(
           //  合成画像を失敗したらStreetViewだけでも出す
           Effect.orElse(() => Effect.tryPromise(() => sharp(baseImage).resize({
