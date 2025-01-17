@@ -123,6 +123,19 @@ describe("Mcp", () => {
     )
     expect(res).toBeInstanceOf(Array)
   })
+  it("setCurrentLocation存在する", async () => {
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    const res = await Effect.gen(function* () {
+      return yield* McpService.setCurrentLocation("Yokohama Station") //東京都千代田区丸の内1丁目9-1
+    }).pipe(
+      Effect.provide([McpServiceLive]),
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
+      Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
+      runPromise
+    )
+    expect(res).toBeInstanceOf(Array)
+  })
   it("getDestinationAddress", async () => {
     //  vitest --run --testNamePattern=getDestinationAddress McpService.test.ts
     await Effect.gen(function* () {
@@ -138,10 +151,23 @@ describe("Mcp", () => {
       runPromise
     )
   })
-  it("setDestinationAddress", async () => {
+  it("setDestinationAddress存在しない", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
       return yield* McpService.setDestinationAddress("456 Random Street, Lost City")  //川崎駅
+    }).pipe(
+      Effect.provide([McpServiceLive]),
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.tapError(e => Effect.logError(e.toString())),
+      Effect.tap(a => Effect.log(a)),
+      runPromise
+    )
+    expect(res).toBeInstanceOf(Array)
+  })
+  it("setDestinationAddress存在する", async () => {
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    const res = await Effect.gen(function* () {
+      return yield* McpService.setDestinationAddress("Tokyo station")  //川崎駅
     }).pipe(
       Effect.provide([McpServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
