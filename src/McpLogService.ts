@@ -8,6 +8,7 @@ import {dirname} from "path";
 import * as path from "node:path"
 import * as Process from "node:process";
 import {NodeFileSystem} from "@effect/platform-node";
+import dayjs from "dayjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -18,7 +19,7 @@ const logLevel = Process.env.ServerLog ? (Process.env.ServerLog as string).split
 
 export function logSync(message:unknown) {
   if(process.env.VITEST !== 'true' && logLevel.includes('sync')) {
-    fs.writeFileSync(logPath,"s:"+(message as any).toString()+"\n",{flag:"a"})
+    fs.writeFileSync(logPath,`${dayjs().toISOString()}:s:`+(message as any).toString()+"\n",{flag:"a"})
   }
 }
 
@@ -34,7 +35,7 @@ export class McpLogService extends Effect.Service<McpLogService>()("traveler/Mcp
       if (process.env.VITEST === 'true') {
         return Effect.log(message)
       } else if(logLevel.includes('info')) {
-        fs.writeFileSync(logPath,"I:"+(message as any).toString()+"\n",{flag:"a"})
+        fs.writeFileSync(logPath,`${dayjs().toISOString()}:I:`+(message as any).toString()+"\n",{flag:"a"})
         return Effect.succeed(true)
       }
       return Effect.succeed(false)
@@ -43,7 +44,7 @@ export class McpLogService extends Effect.Service<McpLogService>()("traveler/Mcp
       if (process.env.VITEST === 'true') {
         return Effect.logError(message)
       } else if(logLevel.includes('error')) {
-        fs.writeFileSync(logPath,"E:"+(message as any).toString()+"\n",{flag:"a"})
+        fs.writeFileSync(logPath,`${dayjs().toISOString()}:E:`+(message as any).toString()+"\n",{flag:"a"})
         return Effect.succeed(true)
       }
       return Effect.succeed(false)
@@ -52,7 +53,7 @@ export class McpLogService extends Effect.Service<McpLogService>()("traveler/Mcp
       if (process.env.VITEST === 'true') {
         return Effect.logTrace(message)
       } else if(logLevel.includes('trace')) {
-        fs.writeFileSync(logPath,"T:"+(message as any).toString()+"\n",{flag:"a"})
+        fs.writeFileSync(logPath,`${dayjs().toISOString()}:T:`+(message as any).toString()+"\n",{flag:"a"})
         return Effect.succeed(true)
       }
       return Effect.succeed(false)
