@@ -111,7 +111,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
           Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds"))))
         )
       }
-      
+
       function addBsLike(uri: string, cid: string) {
         return reLogin().pipe(
           Effect.andThen(() => {
@@ -161,11 +161,13 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
         return Effect.gen(function* () {
           yield* reLogin()
           const snsInfo = yield* DbService.getAvatarSns(1, 'bs')
+          yield* McpLogService.logTrace(`getFeed:feedSeenAt:${dayjs.unix(snsInfo.feedSeenAt).toISOString()}`)
           const feedData = yield* Effect.tryPromise(() => agent.app.bsky.feed.getFeed({
             feed: feed,
             limit: length || 10
           })).pipe(
             Effect.tap(a => !a.success && Effect.fail(new Error('getFeed error'))),
+            Effect.tap(a => a.data.feed.map(v => McpLogService.logTrace(`getFeed post:${dayjs(v.post.indexedAt).toISOString()}`))),
             Effect.andThen(a => {
               return a.data.feed.filter(v => (dayjs(v.post.indexedAt).unix() > snsInfo.feedSeenAt) && v.post.author.handle !== Process.env.bs_handle)
             }),
@@ -221,7 +223,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
           return postIds
         })
       }
-      
+
       function addLike(id:string) {
         const split = id.split('-');
         return addBsLike(split[0],split[1]).pipe(Effect.andThen(a =>  DbService.saveSnsPost(JSON.stringify(a), Process.env.bs_handle!)))
