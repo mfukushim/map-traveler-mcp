@@ -290,8 +290,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             visitorPostText =(p.record as any).text as string
             visitorPostId = p.uri+'-'+p.cid
           }
-          yield* McpLogService.logTrace(`mentionPostText:${mentionPostText}`)
-          yield* McpLogService.logTrace(`repliedPostText:${repliedPostText}`)
+          yield* McpLogService.logTrace(`mentionPostText:${Option.getOrUndefined(mentionPostText)}`)
+          yield* McpLogService.logTrace(`repliedPostText:${Option.getOrUndefined(repliedPostText)}`)
           yield* McpLogService.logTrace(`visitorPostText:${visitorPostText}`)
           return {
             visitorName,
@@ -324,15 +324,15 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
 
           //  replyがあればreplyを優先にしてlikeは処理しないことにするか。多くをまとめて処理できることを確認してからより多くの返答を行う
           const likeText = `Our SNS post received the following likes.\n` +
-            `|id|Name of the person who liked the post|Content of the article with the like|recent article by the person who liked this|Profile of the person who liked|\n` +
+            `|id|Name of the person who liked the post|recent article by the person who liked this|Profile of the person who liked|\n` +
             likeMes.map((a) =>
-              `|"${a.target}"|${a.visitorName}|${Option.getOrElse(a.mentionPost, () => '')}|${a.recentVisitorPost}|${a.visitorProf}|`).join('\n') +
+              `|"${a.target}"|${a.visitorName}|${a.recentVisitorPost}|${a.visitorProf}|`).join('\n') +
             '\n'
 
           const replyText = `We received the following reply to our SNS post:\n` +
-            `|id|The name of the person who replied|Content of the article with the reply|Content of the reply article|Profile of the person who replied|\n` +
+            `|id|The name of the person who replied|Content of the reply article|Profile of the person who replied|\n` +
             replyMes.map((a) =>
-              `|"${a.target}"|${a.visitorName}|${Option.getOrElse(a.repliedPost, () => '')}|${Option.getOrElse(a.mentionPost, () => '')}|${a.visitorProf || ''}|`).join('\n') +
+              `|"${a.target}"|${a.visitorName}|${Option.getOrElse(a.mentionPost, () => '')}|${a.visitorProf || ''}|`).join('\n') +
             '\n'
 
           const content: ToolContentResponse[] = []
@@ -433,7 +433,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           );
         })
       }
-      
+
       const replySnsWriter = (message: string, id: string) => {
         //  TODO 固定フィルタ
         return Effect.gen(function* () {

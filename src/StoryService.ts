@@ -270,9 +270,9 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
               '\n' +
               '5. Get mentions from SNS with get_sns_mentions.\n' +
               'Choose one line from the reply list of the SNS article. The selection criteria should be a line that does not contain inappropriate language and is not an advertisement. If there is no appropriate line, there is no need to output it.\n' +
-              'For the selected line, send a short reply to the person who replied to you on SNS. Considering the content of the reply article and the reply article, write a reply about the current situation of the traveler with reply_sns_writer.\n' +
+              'For the selected line, send a short reply to the person who replied to you on SNS. Considering the content of the reply article and the reply article, write a shortly reply about the current location and view of the traveler with reply_sns_writer.\n' +
               'Choose one line from the like list of the SNS article. The selection criteria should be a line that does not contain inappropriate language and is not an advertisement.\n' +
-              'For the selected line, send a short reply to the person who liked you on SNS. Considering the most recent post of the person who liked you, write a sentence explaining the content of the liked post and write a reply with reply_sns_writer.\n' +
+              'For the selected line, send a short reply to the person who liked you on SNS. Considering the most recent post of the person who liked you, write a sentence explaining the content of the liked post and write a shortly reply about the current location and view of the traveler with reply_sns_writer.\n' +
               'Please do not use offensive language in the post.\n' +
               '\n' +
               '6. Get the current SNS post from get_sns_feeds about the status of your friends\' journey. Please choose one article that you think describes your companions\' journey.\n' +
