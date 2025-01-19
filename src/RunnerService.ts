@@ -160,7 +160,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           status = loc.status;
           yield *McpLogService.logTrace(`getCurrentView:now:${dayjs().unix()},start:${runStatus.startTime},end:${runStatus.endTime},status:${loc.status}`)
           //  ただし前回旅が存在し、それが終了していても、そのendTimeから1時間以内ならその場所にいるものとして表示する
-          if (dayjs().isBefore(dayjs(runStatus.endTime || 0).add(1, "hour"))) {
+          if (justArrive && dayjs().isBefore(dayjs.unix(status.tilEndEpoch).add(1, "hour"))) {
             status = 'running'
           }
         }
