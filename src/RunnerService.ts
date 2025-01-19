@@ -153,13 +153,14 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       return Effect.gen(function* () {
         const {runStatus, justArrive} = yield* getRunStatusAndUpdateEnd();
         const loc = yield* calcCurrentLoc(runStatus, dayjs()); //  これは計算位置情報
-        let status: any;
+        let status: TripStatus;
         if (practice) {
           status = runStatus.status;
         } else {
           status = loc.status;
+          yield *McpLogService.logTrace(`getCurrentView:now:${dayjs().unix()},start:${runStatus.startTime},end:${dayjs.unix(runStatus.tilEndEpoch)},status:${loc.status}`)
           //  ただし前回旅が存在し、それが終了していても、そのendTimeから1時間以内ならその場所にいるものとして表示する
-          if (dayjs().isBefore(dayjs(runStatus.endTime || 0).add(1, "hour"))) {
+          if (justArrive && dayjs().isBefore(dayjs.unix(runStatus.tilEndEpoch).add(1, "hour"))) {
             status = 'running'
           }
         }
@@ -209,7 +210,6 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
             return out
           }
         }
-        return yield* Effect.fail(new Error('unknown status'))
       }).pipe(Effect.catchAll(e => {
         if (e instanceof AnswerError) {
           return Effect.fail(e)
@@ -321,7 +321,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           //  すでに到着済み または不定
           yield* McpLogService.logTrace(`calcCurrentLoc: end`)
           return {
-            status: "stop",
+            status: "stop" as TripStatus,
             lat: runStatus.endLat,
             lng: runStatus.endLng,
             bearing: MapService.getBearing(runStatus.startLat, runStatus.startLng, runStatus.endLat, runStatus.endLng),
@@ -341,7 +341,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         yield* McpLogService.logTrace(`calcCurrentLoc: step=${currentStep.pathNo},${currentStep.stepNo},${currentStep.start},${currentStep.end},${runAllSec},${rat},${lat},${lng},${currentStep.maneuver}`)
 
         return {
-          status: isShips(currentStep.maneuver) ? "vehicle" : "running",
+          status: (isShips(currentStep.maneuver) ? "vehicle" : "running") as TripStatus,
           lat: lat,
           lng: lng,
           bearing: geolib.getRhumbLineBearing({

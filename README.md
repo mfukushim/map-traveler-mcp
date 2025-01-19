@@ -193,5 +193,6 @@ claude_desktop_config.json
    https://note.com/marble_walkers/n/n7a8f79e4fb30
 2. DB, Google Map API, Image gen API
    https://note.com/marble_walkers/n/n765257c27f3b
-3. Avatar prompt, SNS integration (in preparation)
-
+3. Avatar prompt
+   https://note.com/marble_walkers/n/nc7273724faea
+4. SNS integration (in preparation)
