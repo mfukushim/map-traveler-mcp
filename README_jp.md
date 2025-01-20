@@ -176,4 +176,6 @@ claude_desktop_config.json
    https://note.com/marble_walkers/n/n765257c27f3b
 3. アバター設定
    https://note.com/marble_walkers/n/nc7273724faea
-4. SNS設定 (準備中)
+4. SNS設定  
+   https://note.com/marble_walkers/n/na7c956befe7b
+5. 応用編 (準備中)
