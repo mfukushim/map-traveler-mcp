@@ -267,7 +267,7 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
         })
       } else if (pathname.includes("/tokyoDungeon.txt")) {
         return Effect.async<string, Error>((resume) => {
-          fs.readFile(path.join(__pwd, 'assets/role.txt'), {encoding: "utf8"}, (err, data) => {
+          fs.readFile(path.join(__pwd, 'assets/tokyoDungeon.txt'), {encoding: "utf8"}, (err, data) => {
             if (err) resume(Effect.fail(err))
             else resume(Effect.succeed(data));
           });
