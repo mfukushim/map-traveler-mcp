@@ -195,4 +195,6 @@ claude_desktop_config.json
    https://note.com/marble_walkers/n/n765257c27f3b
 3. Avatar prompt
    https://note.com/marble_walkers/n/nc7273724faea
-4. SNS integration (in preparation)
+4. SNS integration
+   https://note.com/marble_walkers/n/na7c956befe7b
+5. Application and Extension (in preparation)
