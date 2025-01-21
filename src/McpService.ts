@@ -124,6 +124,14 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           )
         )
       }
+      const getEnvironment = () => {
+        const envText = 'A list of current environment settings\n'
+        
+        return Effect.succeed([{
+          type: "text",
+          text: envText
+        } as ToolContentResponse])
+      }
     const setAvatarPrompt = (prompt: string) => {
       return DbService.updateBasePrompt(defaultAvatarId, prompt).pipe(
         Effect.andThen(a => [{
@@ -284,11 +292,11 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           const visitorName = notification.name || notification.handle || '誰か'
           yield* McpLogService.logTrace(`avatarName:${visitorName}`)
           let visitorPostText = ''
-          let visitorPostId = ''
+          // let visitorPostId = ''
           if (visitorPosts && visitorPosts.feed.length > 0) {
             const p = visitorPosts.feed[0].post;
             visitorPostText =(p.record as any).text as string
-            visitorPostId = p.uri+'-'+p.cid
+            // visitorPostId = p.uri+'-'+p.cid
           }
           yield* McpLogService.logTrace(`mentionPostText:${Option.getOrUndefined(mentionPostText)}`)
           yield* McpLogService.logTrace(`repliedPostText:${Option.getOrUndefined(repliedPostText)}`)
@@ -299,7 +307,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             visitorProf: visitorProf.description,
             mentionPost: mentionPostText,
             repliedPost: repliedPostText,
-            target: notification.mentionType === 'reply' ? notification.uri + '-' + notification.cid: visitorPostId //  bsの場合はuri+cid replyの場合はreplyそのものにアクションする、likeの場合は相手の最新のpostにアクションする
+            target: notification.uri + '-' + notification.cid//notification.mentionType === 'reply' ? notification.uri + '-' + notification.cid: visitorPostId //  bsの場合はuri+cid replyの場合はreplyそのものにアクションする、likeの場合は相手の最新のpostにアクションする→likeされた自身のpostにする
           }
         })
       }
@@ -320,7 +328,9 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             return p
           }, {reply: [], like: []} as { reply: AtPubNotification[], like: AtPubNotification[] })
           const likeMes = yield* Effect.forEach(like, a => makeVisitorMessage(a))
-          const replyMes = yield* Effect.forEach(reply, a => makeVisitorMessage(a))
+          //  replyはrootに対するreplyのみにする。1段くらいはreplyを重ねたいけど、そこはまた後で考える
+          const replyMes = yield* Effect.forEach(reply.filter(v => v.rootUri != v.parentUri), a => makeVisitorMessage(a))
+          //  反応するreplyにはタグを確認する
 
           //  replyがあればreplyを優先にしてlikeは処理しないことにするか。多くをまとめて処理できることを確認してからより多くの返答を行う
           const likeText = `Our SNS post received the following likes.\n` +
@@ -593,6 +603,19 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               properties: {}
             }
           },
+          {
+            name: "get_environment",  //  pythonがあったらよいとか、db設定がよいとか、tipsを取得する。tipsの取得を行うのはproject側スクリプトとか、script batchとか
+            description: "Get the current environment setting state",
+            inputSchema: {
+              type: "object",
+              properties: {
+                content: {
+                  type: "text",
+                  text: "Get current environment text."
+                }
+              }
+            }
+          },
           //  TODO 当面はずす
           // {
           //   name: "set_person_mode",  //  環境情報はリソースに反映する できれば更新イベントを出す
@@ -775,7 +798,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             } else {
               const basicToolsCommand: Tool[] = [
                 {
-                  name: env.personMode === 'second' ? "set_current_view" : "set_traveler_view",
+                  name: env.personMode === 'second' ? "set_current_location" : "set_traveler_location",
                   description: env.personMode === 'second' ? "Set my current address" : "Set the traveler's current address",
                   inputSchema: {
                     type: "object",
@@ -867,6 +890,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 return getTravelerInfo()
               case "set_traveler_info":
                 return setTravelerInfo(String(request.params.arguments?.settings))
+              case "get_environment":
+                return getEnvironment()
               case "set_avatar_prompt":
                 return setAvatarPrompt(String(request.params.arguments?.prompt))
               case "reset_avatar_prompt":

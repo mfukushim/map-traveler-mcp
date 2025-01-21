@@ -88,6 +88,8 @@ claude_desktop_config.json
         "fixed_model_prompt": "(オプション: 固定でアバターの姿指定プロンプトを設定する。会話でアバター姿を変更できなくなる。)",
         "bodyAreaRatio": "(オプション: 許容されるアバター面積比. default 0.042)",
         "bodyHWRatio": "(オプション: 許容されるアバター縦横比. default 1.5~2.3)",
+        "bodyWindowRatioW": "(オプション: アバター合成ウィンドウ横比率. default 0.5)",
+        "bodyWindowRatioH": "(オプション: アバター合成ウィンドウ縦比率. default 0.75)",
         "bs_id":"(bluesky snsの登録アドレス)",
         "bs_pass":"(bluesky snsのパスワード)",
         "bs_handle":"(bluesky snsのハンドル名 例 xxxxx.bsky.social など)",
@@ -176,4 +178,6 @@ claude_desktop_config.json
    https://note.com/marble_walkers/n/n765257c27f3b
 3. アバター設定
    https://note.com/marble_walkers/n/nc7273724faea
-4. SNS設定 (準備中)
+4. SNS設定  
+   https://note.com/marble_walkers/n/na7c956befe7b
+5. 応用編 (準備中)
