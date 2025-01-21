@@ -535,9 +535,11 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       return Effect.gen(function* () {
         const okLoc = yield* MapService.findStreetViewMeta(loc.lat, loc.lng, loc.bearing, 640, 640)
         const baseImage = yield* MapService.getStreetViewImage(okLoc.lat, okLoc.lng, loc.bearing, 640, 640)
-        const bodyAreaRatio = Process.env.bodyAreaRatio ? Number.parseFloat(Process.env.bodyAreaRatio) : undefined
-        const bodyHWRatio = Process.env.bodyHWRatio ? Number.parseFloat(Process.env.bodyHWRatio) : undefined
-        return yield* ImageService.makeRunnerImageV3(baseImage, useAiImageGen, abort, localDebug, bodyAreaRatio, bodyHWRatio).pipe(
+        const bodyAreaRatio = Process.env.bodyAreaRatio ? {bodyAreaRatio: Number.parseFloat(Process.env.bodyAreaRatio)} : {}
+        const bodyHWRatio = Process.env.bodyHWRatio ? {bodyHWRatio:Number.parseFloat(Process.env.bodyHWRatio)} : {}
+        const bodyWindowRatioW = Process.env.bodyWindowRatioW ? {bodyWindowRatioW:Number.parseFloat(Process.env.bodyWindowRatioW)} : {}
+        const bodyWindowRatioH = Process.env.bodyWindowRatioH ? {bodyWindowRatioH:Number.parseFloat(Process.env.bodyWindowRatioH)} : {}
+        return yield* ImageService.makeRunnerImageV3(baseImage, useAiImageGen, abort,{...bodyAreaRatio,...bodyHWRatio,...bodyWindowRatioW,...bodyWindowRatioH},localDebug).pipe(
           //  合成画像を失敗したらStreetViewだけでも出す
           Effect.orElse(() => Effect.tryPromise(() => sharp(baseImage).resize({
             width: 512,
@@ -548,7 +550,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
             shiftY: 0,
             fit: false,
             append: ''
-          })))))
+          })))));
       })
     }
 
