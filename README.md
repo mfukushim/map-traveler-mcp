@@ -97,6 +97,8 @@ claude_desktop_config.json
         "fixed_model_prompt": "(Optional: Fixed avatar generation prompt. You will no longer be able to change your avatar during conversations.)",
         "bodyAreaRatio": "(Optional: Acceptable avatar image area ratio. default 0.042)",
         "bodyHWRatio": "(Optional: Acceptable avatar image aspect ratios. default 1.5~2.3)",
+        "bodyWindowRatioW": "(Optional: Avatar composite window horizontal ratio. default 0.5)",
+        "bodyWindowRatioH": "(Optional: Avatar composite window aspect ratio. default 0.75)",
         "bs_id":"(Bluesky sns registration address)",
         "bs_pass":"(bluesky sns password)",
         "bs_handle":"(bluesky sns handle name: e.g. xxxxxxxx.bsky.social )",
@@ -195,4 +197,6 @@ claude_desktop_config.json
    https://note.com/marble_walkers/n/n765257c27f3b
 3. Avatar prompt
    https://note.com/marble_walkers/n/nc7273724faea
-4. SNS integration (in preparation)
+4. SNS integration
+   https://note.com/marble_walkers/n/na7c956befe7b
+5. Application and Extension (in preparation)
