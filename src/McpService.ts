@@ -803,7 +803,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             } else {
               const basicToolsCommand: Tool[] = [
                 {
-                  name: env.personMode === 'second' ? "set_current_view" : "set_traveler_view",
+                  name: env.personMode === 'second' ? "set_current_location" : "set_traveler_location",
                   description: env.personMode === 'second' ? "Set my current address" : "Set the traveler's current address",
                   inputSchema: {
                     type: "object",
