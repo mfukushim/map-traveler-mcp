@@ -88,6 +88,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           }),
           Effect.flatMap(client.execute),
           Effect.flatMap(a => a.json),
+          Effect.tap(a => McpLogService.logTrace('sdMakeTextToImage:'+JSON.stringify(a).slice(0,200))),
           Effect.andThen(a => a as { artifacts: { base64: string, finishReason: string, seed: number }[] }),
           Effect.flatMap(a => {
             if (a.artifacts.some(b => b.finishReason !== 'SUCCESS') || a.artifacts.length === 0) {
@@ -145,6 +146,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             catch: error => new Error(`${error}`)
           })),
         Effect.andThen(a => a.json()),
+        Effect.tap(a => McpLogService.logTrace('sdMakeTextToImage:'+JSON.stringify(a).slice(0,200))),
         Effect.andThen(a => a as { artifacts: { base64: string, finishReason: string, seed: number }[] }),
         Effect.flatMap(a => {
           if (!a.artifacts || a.artifacts.some(b => b.finishReason !== 'SUCCESS') || a.artifacts.length === 0) {
