@@ -26,6 +26,7 @@ import * as path from "path";
 import * as fs from "node:fs";
 import {NodeFileSystem} from "@effect/platform-node";
 import { z } from "zod";
+import dayjs from "dayjs";
 
 //  Toolのcontentの定義だがzodから持ってくると重いのでここで定義
 export interface ToolContentResponse {
@@ -161,11 +162,17 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       )
     }
 
-      const getCurrentLocationInfo = (includePhoto: boolean, includeNearbyFacilities: boolean, localDebug = false) => {
-        return RunnerService.getCurrentView(includePhoto, includeNearbyFacilities, env.isPractice, localDebug).pipe(
-          Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
-        )
-      }
+    const getCurrentLocationInfo = (includePhoto: boolean, includeNearbyFacilities: boolean, localDebug = false) => {
+      return RunnerService.getCurrentView(dayjs(), includePhoto, includeNearbyFacilities, env.isPractice, localDebug).pipe(
+        Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
+      )
+    }
+    
+    const getSpecifiedView = (routeProceedPercentage: number, localDebug = false) => {
+      return RunnerService.getSpecifiedView(routeProceedPercentage,localDebug).pipe(
+        Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
+      )
+    }
 
       const practiceNotUsableMessage = Effect.succeed([
           {
@@ -541,6 +548,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         case "get_current_view_info":
         case "get_traveler_view_info":
           return getCurrentLocationInfo(request.params.arguments?.includePhoto as boolean, request.params.arguments?.includeNearbyFacilities as boolean)
+        case "get_specified_course_view":
+          return getSpecifiedView(request.params.arguments?.routeProceedPercentage as number)
         case "set_current_location":
         case "set_traveler_location":
           return setCurrentLocation(String(request.params.arguments?.address))
@@ -777,6 +786,24 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 includeNearbyFacilities: {
                   type: "boolean",
                   description: "Get information on nearby facilities"
+                },
+                routeProceedRatio: {
+                  type: "number",
+                  description: "Ratio of routes to proceed (0 ~ 1) Usually not specified"
+                },
+              }
+            }
+          },
+          {
+            name: "get_specified_course_view",
+            description:
+              "Get the view and nearby facilities for a specified percentage of the current route",
+            inputSchema: {
+              type: "object",
+              properties: {
+                routeProceedPercentage: {
+                  type: "number",
+                  description: "Percentage of routes to proceed (0 ~ 100) Usually not specified"
                 },
               }
             }
