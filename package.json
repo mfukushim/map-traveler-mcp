@@ -1,6 +1,6 @@
 {
   "name": "@mfukushim/map-traveler-mcp",
-  "version": "0.0.30",
+  "version": "0.0.31",
   "type": "module",
   "bin": {
     "map-traveler-mcp": "build/esm/mapTraveler.js"
