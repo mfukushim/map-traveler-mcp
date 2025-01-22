@@ -25,6 +25,7 @@ import {FeedViewPost} from "@atproto/api/dist/client/types/app/bsky/feed/defs.js
 import * as path from "path";
 import * as fs from "node:fs";
 import {NodeFileSystem} from "@effect/platform-node";
+import { z } from "zod";
 
 //  Toolのcontentの定義だがzodから持ってくると重いのでここで定義
 export interface ToolContentResponse {
@@ -125,8 +126,13 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         )
       }
       const getEnvironment = () => {
-        const envText = 'A list of current environment settings\n'
-        
+        const envText = 'A json of current environment settings\n'+
+          JSON.stringify(env)+
+          '\nList of Image settings\n'+
+          `bodyAreaRatio:${Process.env.bodyAreaRatio}`+
+          `bodyHWRatio:${Process.env.bodyHWRatio}`+
+          `bodyWindowRatioW:${Process.env.bodyWindowRatioW}`+
+          `bodyWindowRatioH:${Process.env.bodyWindowRatioH}`
         return Effect.succeed([{
           type: "text",
           text: envText
@@ -516,7 +522,62 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         })
       }
 
-      /**
+    const toolSwitch = (request:z.infer<typeof CallToolRequestSchema>) => {
+      switch (request.params.name) {
+        case "tips":
+          return tips()
+        // case "set_person_mode":
+        //   return setPersonMode(String(request.params.arguments?.person)).pipe(Effect.provide([DbServiceLive,McpLogServiceLive]))
+        case "get_traveler_info":
+          return getTravelerInfo()
+        case "set_traveler_info":
+          return setTravelerInfo(String(request.params.arguments?.settings))
+        case "get_environment":
+          return getEnvironment()
+        case "set_avatar_prompt":
+          return setAvatarPrompt(String(request.params.arguments?.prompt))
+        case "reset_avatar_prompt":
+          return resetAvatarPrompt()
+        case "get_current_view_info":
+        case "get_traveler_view_info":
+          return getCurrentLocationInfo(request.params.arguments?.includePhoto as boolean, request.params.arguments?.includeNearbyFacilities as boolean)
+        case "set_current_location":
+        case "set_traveler_location":
+          return setCurrentLocation(String(request.params.arguments?.address))
+        case "get_destination_address":
+        case "get_traveler_destination_address":
+          return getDestinationAddress()
+        case "set_destination_address":
+        case "set_traveler_destination_address":
+          return setDestinationAddress(String(request.params.arguments?.address))
+        case "start_journey":
+        case "start_traveler_journey":
+          return startJourney()
+        case "stop_journey":
+        case "stop_traveler_journey":
+          return stopJourney()
+        case "call_traveler":
+          return setTravelerExist(true)
+        case "kick_traveler":
+          return setTravelerExist(false)
+        case "get_sns_mentions":
+          return getSnsMentions()
+        case "read_sns_reader":
+          return readSnsReader()
+        case "get_sns_feeds":
+          return getSnsFeeds()
+        case "post_sns_writer":
+          return postSnsWriter(String(request.params.arguments?.message))
+        case "reply_sns_writer":
+          return replySnsWriter(String(request.params.arguments?.message), String(request.params.arguments?.id))
+        case "add_like":
+          return addLike(String(request.params.arguments?.id))
+        default:
+          return Effect.fail(new Error(`Unknown tool:${request.params.name}`));
+      }
+    }
+
+    /**
        * Effect上でMCP実行
        */
       const run = () => {
@@ -879,62 +940,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           return await makeToolsDef().pipe(Effect.runPromise)
         });
 
-        server.setRequestHandler(CallToolRequestSchema, async (request) => {
-          const toolSwitch = () => {
-            switch (request.params.name) {
-              case "tips":
-                return tips()
-              // case "set_person_mode":
-              //   return setPersonMode(String(request.params.arguments?.person)).pipe(Effect.provide([DbServiceLive,McpLogServiceLive]))
-              case "get_traveler_info":
-                return getTravelerInfo()
-              case "set_traveler_info":
-                return setTravelerInfo(String(request.params.arguments?.settings))
-              case "get_environment":
-                return getEnvironment()
-              case "set_avatar_prompt":
-                return setAvatarPrompt(String(request.params.arguments?.prompt))
-              case "reset_avatar_prompt":
-                return resetAvatarPrompt()
-              case "get_current_view_info":
-              case "get_traveler_view_info":
-                return getCurrentLocationInfo(request.params.arguments?.includePhoto as boolean, request.params.arguments?.includeNearbyFacilities as boolean)
-              case "set_current_location":
-              case "set_traveler_location":
-                return setCurrentLocation(String(request.params.arguments?.address))
-              case "get_destination_address":
-              case "get_traveler_destination_address":
-                return getDestinationAddress()
-              case "set_destination_address":
-              case "set_traveler_destination_address":
-                return setDestinationAddress(String(request.params.arguments?.address))
-              case "start_journey":
-              case "start_traveler_journey":
-                return startJourney()
-              case "stop_journey":
-              case "stop_traveler_journey":
-                return stopJourney()
-              case "call_traveler":
-                return setTravelerExist(true)
-              case "kick_traveler":
-                return setTravelerExist(false)
-              case "get_sns_mentions":
-                return getSnsMentions()
-              case "read_sns_reader":
-                return readSnsReader()
-              case "get_sns_feeds":
-                return getSnsFeeds()
-              case "post_sns_writer":
-                return postSnsWriter(String(request.params.arguments?.message))
-              case "reply_sns_writer":
-                return replySnsWriter(String(request.params.arguments?.message), String(request.params.arguments?.id))
-              case "add_like":
-                return addLike(String(request.params.arguments?.id))
-              default:
-                return Effect.fail(new Error(`Unknown tool:${request.params.name}`));
-            }
-          }
-          return await toolSwitch().pipe(
+        server.setRequestHandler(CallToolRequestSchema, async (request:z.infer<typeof CallToolRequestSchema>) => {
+          return await toolSwitch(request).pipe(
             Effect.provide([DbServiceLive, ImageServiceLive]),
             Effect.andThen(a => ({content:a}) ),
             Effect.catchIf(a => a instanceof AnswerError, e => {
@@ -1010,6 +1017,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         getSnsFeeds,
         getSnsMentions,
         replySnsWriter,
+        toolSwitch,
+        getEnvironment
       }
     }
   )

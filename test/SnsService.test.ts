@@ -24,7 +24,7 @@ describe("Sns", () => {
         Effect.provide([SnsServiceLive, McpLogServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
-        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed({})),
+        Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed({})),
         Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
         runPromise
     )
@@ -39,7 +39,7 @@ describe("Sns", () => {
         Effect.provide([SnsServiceLive, McpLogServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
-        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed({})),
+        Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed({})),
         Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
         runPromise
     )
@@ -57,7 +57,7 @@ describe("Sns", () => {
         Effect.provide([SnsServiceLive, McpLogServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
-        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed({})),
+        Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed({})),
         Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
         runPromise
     )
@@ -71,7 +71,7 @@ describe("Sns", () => {
         Effect.provide([SnsServiceLive, McpLogServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
-        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed({})),
+        Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed({})),
         Effect.catchIf(a => a.toString() === 'Error: no bs handle', e => Effect.succeed({})),
         Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
         runPromise
@@ -86,7 +86,7 @@ describe("Sns", () => {
         Effect.provide([SnsServiceLive, McpLogServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
-        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed({})),
+        Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed({})),
         Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
         runPromise
     )
@@ -100,7 +100,7 @@ describe("Sns", () => {
         Effect.provide([SnsServiceLive, McpLogServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
-        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed({})),
+        Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed({})),
         Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
         runPromise
     )
@@ -114,7 +114,7 @@ describe("Sns", () => {
         Effect.provide([SnsServiceLive, McpLogServiceLive,DbServiceLive]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
-        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed({})),
+        Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed({})),
         Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
         runPromiseExit
     )
@@ -127,7 +127,7 @@ describe("Sns", () => {
     }).pipe(
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(e => McpLogService.logError(e.toString())),
-        Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed([])),
+        Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed([])),
         Effect.tap(a => McpLogService.log(a)),
       Effect.provide([SnsServiceLive, DbServiceLive]),
         runPromise
@@ -142,7 +142,7 @@ describe("Sns", () => {
       Effect.provide([SnsServiceLive, DbServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
-      Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed([])),
+      Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed([])),
       Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
       runPromise
     )
@@ -156,7 +156,7 @@ describe("Sns", () => {
       Effect.provide([SnsServiceLive, McpLogServiceLive,DbServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
-      Effect.catchIf(a => a.toString() === 'Error: no bs account', e => Effect.succeed(1)),
+      Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed(1)),
       Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
       runPromise
     )
