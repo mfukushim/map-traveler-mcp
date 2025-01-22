@@ -9,6 +9,9 @@ import * as path from "node:path"
 import * as Process from "node:process";
 import {NodeFileSystem} from "@effect/platform-node";
 import dayjs from "dayjs";
+import {ToolContentResponse} from "./McpService.js";
+
+const inGitHubAction = process.env.GITHUB_ACTIONS === 'true';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -58,11 +61,28 @@ export class McpLogService extends Effect.Service<McpLogService>()("traveler/Mcp
       }
       return Effect.succeed(false)
     }
+    
+    function logTraceToolsRes(res:ToolContentResponse[]) {
+      return Effect.forEach(res,(a, i) => {
+        if(a.type === 'text') {
+          return log(`${i}:${a.text}`)
+        } else if(a.type === 'image') {
+          if (inGitHubAction) {
+            return log(`${i}:${a.data?.slice(0, 5)}`)
+          } else {
+            fs.writeFileSync(`tools/test/temp${i}.png`, Buffer.from(a.data!, "base64"));
+            return log(`${i}:${a.data?.slice(0, 5)}`)
+          }
+        }
+        return Effect.succeed(true)
+      })
+    }
 
     return {
       log,
       logError,
-      logTrace
+      logTrace,
+      logTraceToolsRes
     }
   }),
 }) {
