@@ -552,8 +552,8 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           const outSize = {w: 1600, h: 1000};
           const innerSize = {w: 1600, h: 1600}
           const windowSize = {
-            w: innerSize.w * (opt?.bodyWindowRatioW || 0.5),
-            h: innerSize.h * (opt?.bodyWindowRatioH || 0.75)
+            w: Math.floor((innerSize.w * (opt?.bodyWindowRatioW || 0.5))/64)*64,
+            h: Math.floor((innerSize.h * (opt?.bodyWindowRatioH || 0.75))/64)*64
           }
           // const windowSize = {w: 832, h: 1216}
           const sideBias = opt?.sideBias || false
