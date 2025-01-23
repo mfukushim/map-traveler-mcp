@@ -25,7 +25,7 @@ import {FeedViewPost} from "@atproto/api/dist/client/types/app/bsky/feed/defs.js
 import * as path from "path";
 import * as fs from "node:fs";
 import {NodeFileSystem} from "@effect/platform-node";
-import { z } from "zod";
+import {z} from "zod";
 
 //  Toolのcontentの定義だがzodから持ってくると重いのでここで定義
 export interface ToolContentResponse {
@@ -49,6 +49,7 @@ const labelImage = (aiGen: string) => {
 export class McpService extends Effect.Service<McpService>()("traveler/McpService", {
   accessors: true,
   effect: Effect.gen(function* () {
+      //  region initServer
       const server = new Server(
         {
           name: "geo-less-traveler",
@@ -67,7 +68,301 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           },
         }
       );
+      //  endregion
 
+      //  region tool定義
+      const SETTING_COMMANDS: Tool[] = [
+        {
+          name: "tips",  //  pythonがあったらよいとか、db設定がよいとか、tipsを取得する。tipsの取得を行うのはproject側スクリプトとか、script batchとか
+          description: "Inform you of recommended actions for your device",
+          inputSchema: {
+            type: "object",
+            properties: {}
+          }
+        },
+        {
+          name: "get_environment",  //  pythonがあったらよいとか、db設定がよいとか、tipsを取得する。tipsの取得を行うのはproject側スクリプトとか、script batchとか
+          description: "Get the current environment setting state",
+          inputSchema: {
+            type: "object",
+            properties: {
+              content: {
+                type: "text",
+                text: "Get current environment text."
+              }
+            }
+          }
+        },
+        //  TODO 当面はずす
+        // {
+        //   name: "set_person_mode",  //  環境情報はリソースに反映する できれば更新イベントを出す
+        //   description: "set a traveler's view mode. Third person or Second person.",
+        //   inputSchema: {
+        //     type: "object",
+        //     properties: {
+        //       person: {
+        //         type: "string",
+        //         enum: ["third_person", "second_person"],
+        //         description: "traveler's view mode."
+        //       },
+        //     },
+        //     required: ["person"]
+        //   }
+        // },
+        {
+          name: "get_traveler_info",
+          description: "get a traveler's setting.For example, traveler's name, the language traveler speak, Personality and speaking habits, etc.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              settings: {},
+            }
+          }
+        },
+        {
+          name: "set_traveler_info",  //  環境情報はリソースに反映する できれば更新イベントを出す
+          description: "set a traveler's setting.For example, traveler's name, the language traveler speak, Personality and speaking habits, etc.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              settings: {
+                type: "string",
+                description: "traveler's setting. traveler's name, the language traveler speak, etc."
+              },
+            },
+            required: ["settings"]
+          }
+        },
+      ]
+      const AVATAR_PROMPT_COMMANDS: Tool[] = [
+        {
+          name: "set_avatar_prompt",
+          description: "set a traveler's avatar prompt. A prompt for AI image generation to specify the appearance of a traveler's avatar",
+          inputSchema: {
+            type: "object",
+            properties: {
+              prompt: {
+                type: "string",
+                description: "traveler's avatar AI image generation prompt."
+              },
+            },
+            required: ["prompt"]
+          }
+        },
+        {
+          name: "reset_avatar_prompt",  //  環境情報はリソースに反映する できれば更新イベントを出す
+          description: "reset to default traveler's avatar prompt.",
+          inputSchema: {
+            type: "object",
+            properties: {},
+          }
+        },
+      ]
+      const START_STOP_COMMAND: Tool[] = [
+        {
+          name: env.personMode === 'second' ? "start_journey" : "start_traveler_journey",
+          description: env.personMode === 'second' ? "Start the journey to destination" : "Start the traveler's journey to destination",  //  スタートと合わせてスタートシーン画像を取得して添付する
+          inputSchema: {
+            type: "object",
+            properties: {},
+          }
+        },
+        {
+          name: env.personMode === 'second' ? "stop_journey" : "stop_traveler_journey",
+          description: env.personMode === 'second' ? "Stop the journey" : "Stop the traveler's journey",  //  停泊と合わせて停止シーン画像を取得して添付する
+          inputSchema: {
+            type: "object",
+            properties: {},
+          }
+        },
+      ]
+      const GET_VIEW_COMMAND: Tool[] = [
+        {
+          name: env.personMode === 'second' ? "get_current_view_info" : "get_traveler_view_info",
+          description: env.personMode === 'second' ?
+            "Get the address of the current location and information on nearby facilities,view snapshot" :
+            "Get the address of the current traveler's location and information on nearby facilities,view snapshot",
+          inputSchema: {
+            type: "object",
+            properties: {
+              includePhoto: {
+                type: "boolean",
+                description: "Get scenery photos of current location"
+              },
+              includeNearbyFacilities: {
+                type: "boolean",
+                description: "Get information on nearby facilities"
+              },
+            }
+          }
+        },
+        {
+          name: "get_traveler_location",  //  関数名の合成現象があった? とりあえずaliasを置く
+          description: 
+            "Get the address of the current traveler's location",
+          inputSchema: {
+            type: "object",
+            properties: {
+            }
+          }
+        },
+      ]
+
+      const SNS_COMMAND: Tool[] = [
+        {
+          name: "get_sns_mentions",
+          description: "Get recent social media mentions",
+          inputSchema: {
+            type: "object",
+            properties: {},
+          }
+        },
+        {
+          name: "get_sns_feeds",
+          description: "Get recent social media posts from fellow travelers feeds",
+          inputSchema: {
+            type: "object",
+            properties: {},
+          }
+        },
+        {
+          name: "post_sns_writer",
+          description: "Post your recent travel experiences to social media for fellow travelers and readers.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              message: {
+                type: "string",
+                description: "A description of the journey. important: Do not use offensive language."
+              }
+            },
+            required: ["message"]
+          }
+        },
+        {
+          name: "reply_sns_writer",
+          description: "Write a reply to the article with the specified ID.",
+          inputSchema: {
+            type: "object",
+            properties: {
+              message: {
+                type: "string",
+                description: "A description of the reply article. important: Do not use offensive language."
+              },
+              id: {
+                type: "string",
+                description: "The ID of the original post to which you want to add a reply."
+              }
+            },
+            required: ["message", "id"]
+          }
+        },
+        {
+          name: "add_like",
+          description: "Add a like to the specified post",
+          inputSchema: {
+            type: "object",
+            properties: {
+              id: {
+                type: "string",
+                description: "The ID of the post to like."
+              }
+            },
+            required: ["id"]
+          }
+        },
+      ]
+
+      const makeToolsDef = () => {
+        const def = () => {
+          if (env.isPractice) {
+            return [
+              ...GET_VIEW_COMMAND,
+              ...SETTING_COMMANDS,
+              ...START_STOP_COMMAND
+            ]
+          } else {
+            const basicToolsCommand: Tool[] = [
+              {
+                name: env.personMode === 'second' ? "set_current_location" : "set_traveler_location",
+                description: env.personMode === 'second' ? "Set my current address" : "Set the traveler's current address",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    address: {
+                      type: "string",
+                      description: env.personMode === 'second' ? "address to set" : "address set to traveler"
+                    }
+                  },
+                  required: ["address"]
+                }
+              },
+              {
+                name: env.personMode === 'second' ? "get_destination_address" : "get_traveler_destination_address",
+                description: env.personMode === 'second' ? "get a address of destination location" : "get a address of traveler's destination location",
+                inputSchema: {
+                  type: "object",
+                  properties: {}
+                }
+              },
+              {
+                name: env.personMode === 'second' ? "set_destination_address" : "set_traveler_destination_address",
+                description: env.personMode === 'second' ? "set a address of destination" : "set a address of traveler's destination",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    address: {
+                      type: "string",
+                      description: "address of destination"
+                    }
+                  },
+                  required: ["address"]
+                }
+              }]
+            const cmd: Tool[] = []
+            if (env.travelerExist) {
+              cmd.push(
+                //  TODO tool change Notificationがきかないので一旦はずしておく
+                // {
+                //   name: "kick_traveler",  //  pythonがあったらよいとか、db設定がよいとか、tipsを取得する。tipsの取得を行うのはproject側スクリプトとか、script batchとか
+                //   description: "kick the traveler",
+                //   inputSchema: {
+                //     type: "object",
+                //     properties: {}
+                //   }
+                // },
+                ...basicToolsCommand,
+                ...GET_VIEW_COMMAND,
+                ...SETTING_COMMANDS,
+                ...START_STOP_COMMAND)
+              if (env.anySnsExist) {
+                cmd.push(...SNS_COMMAND)
+              }
+              if (!env.fixedModelPrompt) {
+                cmd.push(...AVATAR_PROMPT_COMMANDS)
+              }
+            } else {
+              cmd.push({
+                  name: "call_traveler",  //  pythonがあったらよいとか、db設定がよいとか、tipsを取得する。tipsの取得を行うのはproject側スクリプトとか、script batchとか
+                  description: "call the traveler",
+                  inputSchema: {
+                    type: "object",
+                    properties: {}
+                  }
+                },
+              )
+            }
+            return cmd
+          }
+        }
+        return Effect.succeed(def()).pipe(
+          Effect.andThen(a =>
+            ({tools: env.filterTools.length > 0 ? a.filter(b => env.filterTools.includes(b.name)) : a}))
+        )
+      }
+      //  endregion
+
+      //  region tools関数
       const tips = () => {
         return Effect.gen(function* () {
             const res = yield* StoryService.tips()
@@ -75,7 +370,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             if (res.imagePathList.length > 0) {
               // const fs = yield* FileSystem.FileSystem
               yield* Effect.forEach(res.imagePathList, a => {
-                return Effect.async<Buffer,Error>((resume) => fs.readFile(path.join(__pwd, a),(err, data) => {
+                return Effect.async<Buffer, Error>((resume) => fs.readFile(path.join(__pwd, a), (err, data) => {
                   if (err) {
                     resume(Effect.fail(err))
                   }
@@ -126,40 +421,40 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         )
       }
       const getEnvironment = () => {
-        const envText = 'A json of current environment settings\n'+
-          JSON.stringify(env)+
-          '\nList of Image settings\n'+
-          `bodyAreaRatio:${Process.env.bodyAreaRatio}`+
-          `bodyHWRatio:${Process.env.bodyHWRatio}`+
-          `bodyWindowRatioW:${Process.env.bodyWindowRatioW}`+
+        const envText = 'A json of current environment settings\n' +
+          JSON.stringify(env) +
+          '\nList of Image settings\n' +
+          `bodyAreaRatio:${Process.env.bodyAreaRatio}` +
+          `bodyHWRatio:${Process.env.bodyHWRatio}` +
+          `bodyWindowRatioW:${Process.env.bodyWindowRatioW}` +
           `bodyWindowRatioH:${Process.env.bodyWindowRatioH}`
         return Effect.succeed([{
           type: "text",
           text: envText
         } as ToolContentResponse])
       }
-    const setAvatarPrompt = (prompt: string) => {
-      return DbService.updateBasePrompt(defaultAvatarId, prompt).pipe(
-        Effect.andThen(a => [{
-            type: "text",
-            text: `Set traveller prompt to: "${a}"`
-          } as ToolContentResponse]
-        ),
-        Effect.tap(() => {
-          env.promptChanged = true
-          return DbService.saveEnv('promptChanged', '1');
-        })
-      )
-    }
-    const resetAvatarPrompt = () => {
-      return DbService.updateBasePrompt(defaultAvatarId, defaultBaseCharPrompt).pipe(
-        Effect.andThen(() => [{
-            type: "text",
-            text: `reset traveller prompt to default.`
-          } as ToolContentResponse]
-        ),
-      )
-    }
+      const setAvatarPrompt = (prompt: string) => {
+        return DbService.updateBasePrompt(defaultAvatarId, prompt).pipe(
+          Effect.andThen(a => [{
+              type: "text",
+              text: `Set traveller prompt to: "${a}"`
+            } as ToolContentResponse]
+          ),
+          Effect.tap(() => {
+            env.promptChanged = true
+            return DbService.saveEnv('promptChanged', '1');
+          })
+        )
+      }
+      const resetAvatarPrompt = () => {
+        return DbService.updateBasePrompt(defaultAvatarId, defaultBaseCharPrompt).pipe(
+          Effect.andThen(() => [{
+              type: "text",
+              text: `reset traveller prompt to default.`
+            } as ToolContentResponse]
+          ),
+        )
+      }
 
       const getCurrentLocationInfo = (includePhoto: boolean, includeNearbyFacilities: boolean, localDebug = false) => {
         return RunnerService.getCurrentView(includePhoto, includeNearbyFacilities, env.isPractice, localDebug).pipe(
@@ -226,9 +521,9 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             Effect.orElse(() => Effect.succeed(true))
           );
           return [{
-              type: "text",
-              text: setMessage.join('\n')
-            } as ToolContentResponse]
+            type: "text",
+            text: setMessage.join('\n')
+          } as ToolContentResponse]
         }).pipe(Effect.provide([MapServiceLive, DbServiceLive, RunnerServiceLive]))
       }
       const getDestinationAddress = () => {
@@ -253,10 +548,10 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         return RunnerService.startJourney(env.isPractice).pipe(
           Effect.andThen(a => {
             return [{type: "text", text: a.text}, {
-                type: "image",
-                data: a.image.toString("base64"),
-                mimeType: 'image/png'
-              }] as ToolContentResponse[]
+              type: "image",
+              data: a.image.toString("base64"),
+              mimeType: 'image/png'
+            }] as ToolContentResponse[]
           }),
           Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer]),
         )
@@ -273,9 +568,9 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           Effect.tap(() => sendToolListChanged()),
           Effect.andThen(() => {
             return [{
-                type: "text",
-                text: (callKick ? "traveler called" : "traveler kicked")
-              } as ToolContentResponse]
+              type: "text",
+              text: (callKick ? "traveler called" : "traveler kicked")
+            } as ToolContentResponse]
           })
         )
       }
@@ -284,7 +579,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         // `|イイネを付けた人の名前|イイネが付いた記事の内容|イイネを付けた人の直近の記事|イイネを付けた人のプロフィール|\n`+
         return Effect.gen(function* () {
           const visitorProf = yield* SnsService.getProfile(notification.handle)
-          const visitorPosts = yield* SnsService.getAuthorFeed(notification.handle, 3);
+          const recentvisitorPosts = yield* SnsService.getAuthorFeed(notification.handle, 3);
           //  イイネのときの自分が書いていいねがつけられたpost、replyの場合のreplyを付けた相手のpost
           const mentionPostText = yield* SnsService.getPost(notification.uri).pipe(
             Effect.andThen(a =>
@@ -297,23 +592,23 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
 
           const visitorName = notification.name || notification.handle || '誰か'
           yield* McpLogService.logTrace(`avatarName:${visitorName}`)
-          let visitorPostText = ''
-          // let visitorPostId = ''
-          if (visitorPosts && visitorPosts.feed.length > 0) {
-            const p = visitorPosts.feed[0].post;
-            visitorPostText =(p.record as any).text as string
-            // visitorPostId = p.uri+'-'+p.cid
+          let recentVisitorPost = ''
+          let recentVisitorPostId = ''
+          if (recentvisitorPosts && recentvisitorPosts.feed.length > 0) {
+            const p = recentvisitorPosts.feed[0].post;
+            recentVisitorPost = (p.record as any).text as string
+            recentVisitorPostId = p.uri+'-'+p.cid
           }
           yield* McpLogService.logTrace(`mentionPostText:${Option.getOrUndefined(mentionPostText)}`)
           yield* McpLogService.logTrace(`repliedPostText:${Option.getOrUndefined(repliedPostText)}`)
-          yield* McpLogService.logTrace(`visitorPostText:${visitorPostText}`)
+          yield* McpLogService.logTrace(`visitorPostText:${recentVisitorPost}`)
           return {
             visitorName,
-            recentVisitorPost: visitorPostText,
+            recentVisitorPost: recentVisitorPost,
             visitorProf: visitorProf.description,
             mentionPost: mentionPostText,
             repliedPost: repliedPostText,
-            target: notification.uri + '-' + notification.cid//notification.mentionType === 'reply' ? notification.uri + '-' + notification.cid: visitorPostId //  bsの場合はuri+cid replyの場合はreplyそのものにアクションする、likeの場合は相手の最新のpostにアクションする→likeされた自身のpostにする
+            target: notification.mentionType === 'reply' ? notification.uri + '-' + notification.cid: recentVisitorPostId //  bsの場合はuri+cid replyの場合はreplyそのものにアクションする、likeの場合は相手の最新のpostにアクションする→likeされた自身のpostにする
           }
         })
       }
@@ -375,8 +670,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       const getSnsFeeds = () => {
         //  特定タグを含むものしか読み取れない。現在から一定期間しか読み取れない。最大件数がある。その他固定フィルタ機能を置く
         //  自身は除去する
-        return Effect.gen(function *() {
-          const posts = yield *SnsService.getFeed(feedUri, 4)
+        return Effect.gen(function* () {
+          const posts = yield* SnsService.getFeed(feedUri, 4)
           const detectFeeds = posts.filter(v => v.post.author.handle !== Process.env.bs_handle)
             .reduce((p, c) => {
               //  同一ハンドルの直近1件のみ
@@ -388,7 +683,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           const select = detectFeeds.map(v => {
             const im = (v.post.embed as any)?.images as any[]
             return ({
-              id: v.post.uri+'-'+v.post.cid,
+              id: v.post.uri + '-' + v.post.cid,
               authorHandle: v.post.author.displayName || v.post.author.handle, //  LLMには可読名を返す。id管理は面倒なので正しくなくても可読名で記事の対応を取る
               body: (v.post.record as any).text || '',
               imageUri: im ? im[0].thumb as string : undefined
@@ -396,15 +691,15 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           })
           const out = select.map(v => `id: ${v.id} \nauthor: ${v.authorHandle}\nbody: ${v.body}`).join('\n-----\n')
           const images = select.flatMap(v => v.imageUri ? [{uri: v.imageUri, handle: v.authorHandle}] : [])
-          const imageOut = yield *Effect.forEach(images,(a) => {
+          const imageOut = yield* Effect.forEach(images, (a) => {
             return HttpClient.get(a.uri).pipe(
               Effect.andThen((response) => response.arrayBuffer),
               Effect.scoped,
               Effect.provide(FetchHttpClient.layer)
             ).pipe(Effect.andThen(a1 => ({
-              type:"image",
-              data:Buffer.from(a1).toString("base64"),
-              mimeType:"image/jpeg"
+              type: "image",
+              data: Buffer.from(a1).toString("base64"),
+              mimeType: "image/jpeg"
             } as ToolContentResponse)))
           })
           const c: ToolContentResponse[] = [{
@@ -421,11 +716,11 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         return Effect.gen(function* () {
           if (env.noSnsPost) {
             const noMes = [
-                {
-                  type: "text",
-                  text: env.loggingMode ? "like to log." : "Like to SNS is stopped by env settings."
-                }
-              ] as ToolContentResponse[]
+              {
+                type: "text",
+                text: env.loggingMode ? "like to log." : "Like to SNS is stopped by env settings."
+              }
+            ] as ToolContentResponse[]
             if (env.loggingMode) {
               return yield* McpLogService.logTrace(`log like:${id}`).pipe(Effect.andThen(() => noMes))
             }
@@ -455,11 +750,11 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         return Effect.gen(function* () {
           if (env.noSnsPost) {
             const noMes = [
-                {
-                  type: "text",
-                  text: env.loggingMode ? "posted to log." : "Posting to SNS is stopped by env settings."
-                }
-              ] as ToolContentResponse[]
+              {
+                type: "text",
+                text: env.loggingMode ? "posted to log." : "Posting to SNS is stopped by env settings."
+              }
+            ] as ToolContentResponse[]
             if (env.loggingMode) {
               return yield* McpLogService.log(message).pipe(Effect.andThen(() => noMes))
             }
@@ -491,11 +786,11 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         return Effect.gen(function* () {
           if (env.noSnsPost) {
             const noMes = [
-                {
-                  type: "text",
-                  text: env.loggingMode ? "posted to log." : "Posting to SNS is stopped by env settings."
-                }
-              ] as ToolContentResponse[]
+              {
+                type: "text",
+                text: env.loggingMode ? "posted to log." : "Posting to SNS is stopped by env settings."
+              }
+            ] as ToolContentResponse[]
             return yield* Effect.succeed(noMes).pipe(Effect.tap(() => env.loggingMode && McpLogService.logTrace(message)))
           }
           const img = yield* ImageService.getRecentImageAndClear().pipe(Effect.tap(a => McpLogService.logTrace(`sns image:${a !== undefined}`)))
@@ -521,63 +816,66 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           );
         })
       }
+      //  endregion
 
-    const toolSwitch = (request:z.infer<typeof CallToolRequestSchema>) => {
-      switch (request.params.name) {
-        case "tips":
-          return tips()
-        // case "set_person_mode":
-        //   return setPersonMode(String(request.params.arguments?.person)).pipe(Effect.provide([DbServiceLive,McpLogServiceLive]))
-        case "get_traveler_info":
-          return getTravelerInfo()
-        case "set_traveler_info":
-          return setTravelerInfo(String(request.params.arguments?.settings))
-        case "get_environment":
-          return getEnvironment()
-        case "set_avatar_prompt":
-          return setAvatarPrompt(String(request.params.arguments?.prompt))
-        case "reset_avatar_prompt":
-          return resetAvatarPrompt()
-        case "get_current_view_info":
-        case "get_traveler_view_info":
-          return getCurrentLocationInfo(request.params.arguments?.includePhoto as boolean, request.params.arguments?.includeNearbyFacilities as boolean)
-        case "set_current_location":
-        case "set_traveler_location":
-          return setCurrentLocation(String(request.params.arguments?.address))
-        case "get_destination_address":
-        case "get_traveler_destination_address":
-          return getDestinationAddress()
-        case "set_destination_address":
-        case "set_traveler_destination_address":
-          return setDestinationAddress(String(request.params.arguments?.address))
-        case "start_journey":
-        case "start_traveler_journey":
-          return startJourney()
-        case "stop_journey":
-        case "stop_traveler_journey":
-          return stopJourney()
-        case "call_traveler":
-          return setTravelerExist(true)
-        case "kick_traveler":
-          return setTravelerExist(false)
-        case "get_sns_mentions":
-          return getSnsMentions()
-        case "read_sns_reader":
-          return readSnsReader()
-        case "get_sns_feeds":
-          return getSnsFeeds()
-        case "post_sns_writer":
-          return postSnsWriter(String(request.params.arguments?.message))
-        case "reply_sns_writer":
-          return replySnsWriter(String(request.params.arguments?.message), String(request.params.arguments?.id))
-        case "add_like":
-          return addLike(String(request.params.arguments?.id))
-        default:
-          return Effect.fail(new Error(`Unknown tool:${request.params.name}`));
+      const toolSwitch = (request: z.infer<typeof CallToolRequestSchema>) => {
+        switch (request.params.name) {
+          case "tips":
+            return tips()
+          // case "set_person_mode":
+          //   return setPersonMode(String(request.params.arguments?.person)).pipe(Effect.provide([DbServiceLive,McpLogServiceLive]))
+          case "get_traveler_info":
+            return getTravelerInfo()
+          case "set_traveler_info":
+            return setTravelerInfo(String(request.params.arguments?.settings))
+          case "get_environment":
+            return getEnvironment()
+          case "set_avatar_prompt":
+            return setAvatarPrompt(String(request.params.arguments?.prompt))
+          case "reset_avatar_prompt":
+            return resetAvatarPrompt()
+          case "get_current_view_info":
+          case "get_traveler_view_info":
+            return getCurrentLocationInfo(request.params.arguments?.includePhoto as boolean, request.params.arguments?.includeNearbyFacilities as boolean)
+          case "get_traveler_location":
+            return getCurrentLocationInfo(false, false)
+          case "set_current_location":
+          case "set_traveler_location":
+            return setCurrentLocation(String(request.params.arguments?.address))
+          case "get_destination_address":
+          case "get_traveler_destination_address":
+            return getDestinationAddress()
+          case "set_destination_address":
+          case "set_traveler_destination_address":
+            return setDestinationAddress(String(request.params.arguments?.address))
+          case "start_journey":
+          case "start_traveler_journey":
+            return startJourney()
+          case "stop_journey":
+          case "stop_traveler_journey":
+            return stopJourney()
+          case "call_traveler":
+            return setTravelerExist(true)
+          case "kick_traveler":
+            return setTravelerExist(false)
+          case "get_sns_mentions":
+            return getSnsMentions()
+          case "read_sns_reader":
+            return readSnsReader()
+          case "get_sns_feeds":
+            return getSnsFeeds()
+          case "post_sns_writer":
+            return postSnsWriter(String(request.params.arguments?.message))
+          case "reply_sns_writer":
+            return replySnsWriter(String(request.params.arguments?.message), String(request.params.arguments?.id))
+          case "add_like":
+            return addLike(String(request.params.arguments?.id))
+          default:
+            return Effect.fail(new Error(`Unknown tool:${request.params.name}`));
+        }
       }
-    }
 
-    /**
+      /**
        * Effect上でMCP実行
        */
       const run = () => {
@@ -655,295 +953,15 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           };
         });
 
-        const SETTING_COMMANDS: Tool[] = [
-          {
-            name: "tips",  //  pythonがあったらよいとか、db設定がよいとか、tipsを取得する。tipsの取得を行うのはproject側スクリプトとか、script batchとか
-            description: "Inform you of recommended actions for your device",
-            inputSchema: {
-              type: "object",
-              properties: {}
-            }
-          },
-          {
-            name: "get_environment",  //  pythonがあったらよいとか、db設定がよいとか、tipsを取得する。tipsの取得を行うのはproject側スクリプトとか、script batchとか
-            description: "Get the current environment setting state",
-            inputSchema: {
-              type: "object",
-              properties: {
-                content: {
-                  type: "text",
-                  text: "Get current environment text."
-                }
-              }
-            }
-          },
-          //  TODO 当面はずす
-          // {
-          //   name: "set_person_mode",  //  環境情報はリソースに反映する できれば更新イベントを出す
-          //   description: "set a traveler's view mode. Third person or Second person.",
-          //   inputSchema: {
-          //     type: "object",
-          //     properties: {
-          //       person: {
-          //         type: "string",
-          //         enum: ["third_person", "second_person"],
-          //         description: "traveler's view mode."
-          //       },
-          //     },
-          //     required: ["person"]
-          //   }
-          // },
-          {
-            name: "get_traveler_info",
-            description: "get a traveler's setting.For example, traveler's name, the language traveler speak, Personality and speaking habits, etc.",
-            inputSchema: {
-              type: "object",
-              properties: {
-                settings: {},
-              }
-            }
-          },
-          {
-            name: "set_traveler_info",  //  環境情報はリソースに反映する できれば更新イベントを出す
-            description: "set a traveler's setting.For example, traveler's name, the language traveler speak, Personality and speaking habits, etc.",
-            inputSchema: {
-              type: "object",
-              properties: {
-                settings: {
-                  type: "string",
-                  description: "traveler's setting. traveler's name, the language traveler speak, etc."
-                },
-              },
-              required: ["settings"]
-            }
-          },
-          ]
-        const AVATAR_PROMPT_COMMANDS: Tool[] = [
-          {
-            name: "set_avatar_prompt",
-            description: "set a traveler's avatar prompt. A prompt for AI image generation to specify the appearance of a traveler's avatar",
-            inputSchema: {
-              type: "object",
-              properties: {
-                prompt: {
-                  type: "string",
-                  description: "traveler's avatar AI image generation prompt."
-                },
-              },
-              required: ["prompt"]
-            }
-          },
-          {
-            name: "reset_avatar_prompt",  //  環境情報はリソースに反映する できれば更新イベントを出す
-            description: "reset to default traveler's avatar prompt.",
-            inputSchema: {
-              type: "object",
-              properties: {
-              },
-            }
-          },
-        ]
-        const START_STOP_COMMAND: Tool[] = [
-          {
-            name: env.personMode === 'second' ? "start_journey" : "start_traveler_journey",
-            description: env.personMode === 'second' ? "Start the journey to destination" : "Start the traveler's journey to destination",  //  スタートと合わせてスタートシーン画像を取得して添付する
-            inputSchema: {
-              type: "object",
-              properties: {},
-            }
-          },
-          {
-            name: env.personMode === 'second' ? "stop_journey" : "stop_traveler_journey",
-            description: env.personMode === 'second' ? "Stop the journey" : "Stop the traveler's journey",  //  停泊と合わせて停止シーン画像を取得して添付する
-            inputSchema: {
-              type: "object",
-              properties: {},
-            }
-          },
-        ]
-        const GET_VIEW_COMMAND: Tool[] = [
-          {
-            name: env.personMode === 'second' ? "get_current_view_info" : "get_traveler_view_info",
-            description: env.personMode === 'second' ?
-              "Get the address of the current location and information on nearby facilities,view snapshot" :
-              "Get the address of the current traveler's location and information on nearby facilities,view snapshot",
-            inputSchema: {
-              type: "object",
-              properties: {
-                includePhoto: {
-                  type: "boolean",
-                  description: "Get scenery photos of current location"
-                },
-                includeNearbyFacilities: {
-                  type: "boolean",
-                  description: "Get information on nearby facilities"
-                },
-              }
-            }
-          },
-        ]
-
-        const SNS_COMMAND: Tool[] = [
-          {
-            name: "get_sns_mentions",
-            description: "Get recent social media mentions",
-            inputSchema: {
-              type: "object",
-              properties: {},
-            }
-          },
-          {
-            name: "get_sns_feeds",
-            description: "Get recent social media posts from fellow travelers feeds",
-            inputSchema: {
-              type: "object",
-              properties: {},
-            }
-          },
-          {
-            name: "post_sns_writer",
-            description: "Post your recent travel experiences to social media for fellow travelers and readers.",
-            inputSchema: {
-              type: "object",
-              properties: {
-                message: {
-                  type: "string",
-                  description: "A description of the journey. important: Do not use offensive language."
-                }
-              },
-              required: ["message"]
-            }
-          },
-          {
-            name: "reply_sns_writer",
-            description: "Write a reply to the article with the specified ID.",
-            inputSchema: {
-              type: "object",
-              properties: {
-                message: {
-                  type: "string",
-                  description: "A description of the reply article. important: Do not use offensive language."
-                },
-                id: {
-                  type: "string",
-                  description: "The ID of the original post to which you want to add a reply."
-                }
-              },
-              required: ["message", "id"]
-            }
-          },
-          {
-            name: "add_like",
-            description: "Add a like to the specified post",
-            inputSchema: {
-              type: "object",
-              properties: {
-                id: {
-                  type: "string",
-                  description: "The ID of the post to like."
-                }
-              },
-              required: ["id"]
-            }
-          },
-        ]
-
-        const makeToolsDef = () => {
-          const def = () => {
-            if (env.isPractice) {
-              return [
-                ...GET_VIEW_COMMAND,
-                ...SETTING_COMMANDS,
-                ...START_STOP_COMMAND
-              ]
-            } else {
-              const basicToolsCommand: Tool[] = [
-                {
-                  name: env.personMode === 'second' ? "set_current_location" : "set_traveler_location",
-                  description: env.personMode === 'second' ? "Set my current address" : "Set the traveler's current address",
-                  inputSchema: {
-                    type: "object",
-                    properties: {
-                      address: {
-                        type: "string",
-                        description: env.personMode === 'second' ? "address to set" : "address set to traveler"
-                      }
-                    },
-                    required: ["address"]
-                  }
-                },
-                {
-                  name: env.personMode === 'second' ? "get_destination_address" : "get_traveler_destination_address",
-                  description: env.personMode === 'second' ? "get a address of destination location" : "get a address of traveler's destination location",
-                  inputSchema: {
-                    type: "object",
-                    properties: {}
-                  }
-                },
-                {
-                  name: env.personMode === 'second' ? "set_destination_address" : "set_traveler_destination_address",
-                  description: env.personMode === 'second' ? "set a address of destination" : "set a address of traveler's destination",
-                  inputSchema: {
-                    type: "object",
-                    properties: {
-                      address: {
-                        type: "string",
-                        description: "address of destination"
-                      }
-                    },
-                    required: ["address"]
-                  }
-                }]
-              const cmd: Tool[] = []
-              if (env.travelerExist) {
-                cmd.push(
-                  //  TODO tool change Notificationがきかないので一旦はずしておく
-                  // {
-                  //   name: "kick_traveler",  //  pythonがあったらよいとか、db設定がよいとか、tipsを取得する。tipsの取得を行うのはproject側スクリプトとか、script batchとか
-                  //   description: "kick the traveler",
-                  //   inputSchema: {
-                  //     type: "object",
-                  //     properties: {}
-                  //   }
-                  // },
-                  ...basicToolsCommand,
-                  ...GET_VIEW_COMMAND,
-                  ...SETTING_COMMANDS,
-                  ...START_STOP_COMMAND)
-                if (env.anySnsExist) {
-                  cmd.push(...SNS_COMMAND)
-                }
-                if (!env.fixedModelPrompt) {
-                  cmd.push(...AVATAR_PROMPT_COMMANDS)
-                }
-              } else {
-                cmd.push({
-                    name: "call_traveler",  //  pythonがあったらよいとか、db設定がよいとか、tipsを取得する。tipsの取得を行うのはproject側スクリプトとか、script batchとか
-                    description: "call the traveler",
-                    inputSchema: {
-                      type: "object",
-                      properties: {}
-                    }
-                  },
-                )
-              }
-              return cmd
-            }
-          }
-          return Effect.succeed(def()).pipe(
-            Effect.andThen(a =>
-              ({tools: env.filterTools.length > 0 ? a.filter(b => env.filterTools.includes(b.name)) : a}))
-          )
-        }
 
         server.setRequestHandler(ListToolsRequestSchema, async () => {
           return await makeToolsDef().pipe(Effect.runPromise)
         });
 
-        server.setRequestHandler(CallToolRequestSchema, async (request:z.infer<typeof CallToolRequestSchema>) => {
+        server.setRequestHandler(CallToolRequestSchema, async (request: z.infer<typeof CallToolRequestSchema>) => {
           return await toolSwitch(request).pipe(
             Effect.provide([DbServiceLive, ImageServiceLive]),
-            Effect.andThen(a => ({content:a}) ),
+            Effect.andThen(a => ({content: a})),
             Effect.catchIf(a => a instanceof AnswerError, e => {
               return Effect.succeed({
                 content: [{
@@ -1018,7 +1036,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         getSnsMentions,
         replySnsWriter,
         toolSwitch,
-        getEnvironment
+        getEnvironment,
+        makeToolsDef
       }
     }
   )

@@ -7,7 +7,7 @@ import {FetchHttpClient} from "@effect/platform";
 import {runPromise} from "effect/Effect";
 import * as fs from "node:fs";
 import {McpLogService, McpLogServiceLive} from "../src/McpLogService.js";
-import {DbService, DbServiceLive} from "../src/DbService.js";
+import {DbService, DbServiceLive, env} from "../src/DbService.js";
 import {StoryServiceLive} from "../src/StoryService.js";
 import {AnswerError} from "../src/mapTraveler.js";
 import {SnsServiceLive} from "../src/SnsService.js";
@@ -29,15 +29,24 @@ describe("Mcp", () => {
     //  vitest --run --testNamePattern=practice McpService.test.ts
     //  他のテストスクリプトが走行状態を作るのでこれは最初にやらないといけない
     const res = await Effect.gen(function* () {
-      const requests:z.infer<typeof CallToolRequestSchema>[] = [
-        {params: {name:"tips"},method: "tools/call"},
-        {params: {name:"get_traveler_view_info",arguments:{includePhoto:true,includeNearbyFacilities:true}},method: "tools/call"},
-        {params: {name:"start_traveler_journey"},method: "tools/call"},
-        {params: {name:"get_traveler_view_info",arguments:{includePhoto:true,includeNearbyFacilities:true}},method: "tools/call"},
-        {params: {name:"stop_traveler_journey"},method: "tools/call"},
-        {params: {name:"get_traveler_view_info",arguments:{includePhoto:true,includeNearbyFacilities:true}},method: "tools/call"},
+      const requests: z.infer<typeof CallToolRequestSchema>[] = [
+        {params: {name: "tips"}, method: "tools/call"},
+        {
+          params: {name: "get_traveler_view_info", arguments: {includePhoto: true, includeNearbyFacilities: true}},
+          method: "tools/call"
+        },
+        {params: {name: "start_traveler_journey"}, method: "tools/call"},
+        {
+          params: {name: "get_traveler_view_info", arguments: {includePhoto: true, includeNearbyFacilities: true}},
+          method: "tools/call"
+        },
+        {params: {name: "stop_traveler_journey"}, method: "tools/call"},
+        {
+          params: {name: "get_traveler_view_info", arguments: {includePhoto: true, includeNearbyFacilities: true}},
+          method: "tools/call"
+        },
       ]
-      return yield *Effect.forEach(requests,(request, i) => McpService.toolSwitch(request))
+      return yield* Effect.forEach(requests, (request, i) => McpService.toolSwitch(request))
     }).pipe(
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
@@ -48,7 +57,7 @@ describe("Mcp", () => {
       // Effect.catchIf(a => a instanceof AnswerError, e => {
       //   return Effect.log(e.toString());
       // }),
-      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive,ImageServiceLive]),
+      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive]),
       runPromise
     )
     expect(res).toBeInstanceOf(Array)
@@ -359,6 +368,23 @@ describe("Mcp", () => {
     )
     expect(res).toBeInstanceOf(Array)
   })
+  it("makeToolsDef", async () => {
+    //  vitest --run --testNamePattern=replySnsWriter McpService.test.ts
+    const res = await Effect.gen(function* () {
+      env.filterTools = ["tips"]
+      return yield* McpService.makeToolsDef()
+    }).pipe(
+      Effect.provide([McpServiceLive, SnsServiceLive, McpLogServiceLive, DbServiceLive]),
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      // Effect.tapError(e => Effect.logError(e.toString())),
+      // Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed([])),
+      Effect.tap(a => Effect.log(a)),
+      runPromise
+    )
+    expect(res).toBeInstanceOf(Object)
+    expect(res.tools.length).toBe(1)
+    env.filterTools = []
+  })
   it("toolSwitch", async () => {
     //  vitest --run --testNamePattern=toolSwitch McpService.test.ts
     const res = await Effect.gen(function* () {
@@ -380,9 +406,13 @@ describe("Mcp", () => {
         "add_like",
         "tips",
         "get_environment",
+        "get_traveler_location",
       ]
-      const requests:z.infer<typeof CallToolRequestSchema>[] = commands.map(value => ({params: {name:value},method: "tools/call"}))
-      return yield *Effect.forEach(requests,(request, i) => McpService.toolSwitch(request).pipe(
+      const requests: z.infer<typeof CallToolRequestSchema>[] = commands.map(value => ({
+        params: {name: value},
+        method: "tools/call"
+      }))
+      return yield* Effect.forEach(requests, (request, i) => McpService.toolSwitch(request).pipe(
         Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed([])),
         Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed([])),
       ))
@@ -390,7 +420,7 @@ describe("Mcp", () => {
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => McpLogService.logTraceToolsRes(a.flat())),
-      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive,ImageServiceLive]),
+      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive]),
       runPromise
     )
     expect(res).toBeInstanceOf(Array)

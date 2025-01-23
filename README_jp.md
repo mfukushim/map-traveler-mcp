@@ -82,6 +82,7 @@ claude_desktop_config.json
       "args": ["-y", "@mfukushim/map-traveler-mcp"],
       "env":{
         "GoogleMapApi_key":"(Google Map APIのキー)",
+        "time_scale": "(オプション:道路での移動時間の尺度. default 4)",
         "sqlite_path":"(db保存ファイルのパス 例 %USERPROFILE%/Desktop/traveler.sqlite など)",
         "rembg_path": "(インストールしたrembg cliの絶対パス)",
         "pixAi_key":"(pixAi APIのキー)",
