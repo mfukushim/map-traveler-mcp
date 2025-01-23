@@ -168,9 +168,9 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       }
       return Effect.succeed(out)
     }
-    const hotelView = (loc:LocationDetail,includePhoto: boolean,toAddress:string) => {
+    const hotelView = (timeZoneId:string,includePhoto: boolean,toAddress:string) => {
       //  ホテル画像
-      const hour = dayjs().tz(loc.timeZoneId).hour()
+      const hour = dayjs().tz(timeZoneId).hour()
       const out: ToolContentResponse[] = [
         {type: "text", text: `I am in a hotel in ${toAddress}.`}
       ]
@@ -213,11 +213,18 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
     
     function makeView(runStatus:RunStatus,elapseRatio:number,showRunning:boolean,includePhoto: boolean,includeNearbyFacilities:boolean, practice = false,debugRoute?:string) {
       return Effect.gen(function* () {
-        const loc = yield* calcCurrentLoc(runStatus, elapseRatio,debugRoute); //  これは計算位置情報
+        let loc:LocationDetail
         let status: TripStatus;
         if (practice) {
+          loc = {
+            status:runStatus.status,
+            lat:runStatus.endLat,
+            lng:runStatus.endLng,
+            lat:runStatus.endLat,
+          }
           status = runStatus.status;
         } else {
+          loc = yield* calcCurrentLoc(runStatus, elapseRatio,debugRoute); //  これは計算位置情報
           status = loc.status;
           yield *McpLogService.logTrace(`getCurrentView:elapseRatio:${elapseRatio},start:${runStatus.startTime},end:${dayjs.unix(runStatus.tilEndEpoch)},status:${loc.status}`)
           if (showRunning) {
@@ -226,9 +233,9 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         }
         switch (status) {
           case 'vehicle':
-            return vehicleView(loc, includePhoto);
+            return yield *vehicleView(loc, includePhoto);
           case 'stop':
-            return hotelView(loc,includePhoto,runStatus.to)
+            return yield *hotelView(practice ?'Asia/Tokyo': loc.timeZoneId,includePhoto,runStatus.to)
           case "running":
             const {
               nearFacilities,
@@ -680,7 +687,6 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       startJourney,
       stopJourney,
       sumDurationSec,
-      calcCurrentLoc,
       routesToDirectionStep,
       getElapsedView,
       makeView,
