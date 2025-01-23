@@ -197,6 +197,16 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             }
           }
         },
+        {
+          name: "get_traveler_location",  //  関数名の合成現象があった? とりあえずaliasを置く
+          description: 
+            "Get the address of the current traveler's location",
+          inputSchema: {
+            type: "object",
+            properties: {
+            }
+          }
+        },
       ]
 
       const SNS_COMMAND: Tool[] = [
@@ -576,7 +586,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         // `|イイネを付けた人の名前|イイネが付いた記事の内容|イイネを付けた人の直近の記事|イイネを付けた人のプロフィール|\n`+
         return Effect.gen(function* () {
           const visitorProf = yield* SnsService.getProfile(notification.handle)
-          const visitorPosts = yield* SnsService.getAuthorFeed(notification.handle, 3);
+          const recentvisitorPosts = yield* SnsService.getAuthorFeed(notification.handle, 3);
           //  イイネのときの自分が書いていいねがつけられたpost、replyの場合のreplyを付けた相手のpost
           const mentionPostText = yield* SnsService.getPost(notification.uri).pipe(
             Effect.andThen(a =>
@@ -589,23 +599,23 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
 
           const visitorName = notification.name || notification.handle || '誰か'
           yield* McpLogService.logTrace(`avatarName:${visitorName}`)
-          let visitorPostText = ''
-          // let visitorPostId = ''
-          if (visitorPosts && visitorPosts.feed.length > 0) {
-            const p = visitorPosts.feed[0].post;
-            visitorPostText = (p.record as any).text as string
-            // visitorPostId = p.uri+'-'+p.cid
+          let recentVisitorPost = ''
+          let recentVisitorPostId = ''
+          if (recentvisitorPosts && recentvisitorPosts.feed.length > 0) {
+            const p = recentvisitorPosts.feed[0].post;
+            recentVisitorPost = (p.record as any).text as string
+            recentVisitorPostId = p.uri+'-'+p.cid
           }
           yield* McpLogService.logTrace(`mentionPostText:${Option.getOrUndefined(mentionPostText)}`)
           yield* McpLogService.logTrace(`repliedPostText:${Option.getOrUndefined(repliedPostText)}`)
-          yield* McpLogService.logTrace(`visitorPostText:${visitorPostText}`)
+          yield* McpLogService.logTrace(`visitorPostText:${recentVisitorPost}`)
           return {
             visitorName,
-            recentVisitorPost: visitorPostText,
+            recentVisitorPost: recentVisitorPost,
             visitorProf: visitorProf.description,
             mentionPost: mentionPostText,
             repliedPost: repliedPostText,
-            target: notification.uri + '-' + notification.cid//notification.mentionType === 'reply' ? notification.uri + '-' + notification.cid: visitorPostId //  bsの場合はuri+cid replyの場合はreplyそのものにアクションする、likeの場合は相手の最新のpostにアクションする→likeされた自身のpostにする
+            target: notification.mentionType === 'reply' ? notification.uri + '-' + notification.cid: recentVisitorPostId //  bsの場合はuri+cid replyの場合はreplyそのものにアクションする、likeの場合は相手の最新のpostにアクションする→likeされた自身のpostにする
           }
         })
       }
@@ -815,62 +825,64 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       }
       //  endregion
 
-    const toolSwitch = (request:z.infer<typeof CallToolRequestSchema>) => {
-      switch (request.params.name) {
-        case "tips":
-          return tips()
-        // case "set_person_mode":
-        //   return setPersonMode(String(request.params.arguments?.person)).pipe(Effect.provide([DbServiceLive,McpLogServiceLive]))
-        case "get_traveler_info":
-          return getTravelerInfo()
-        case "set_traveler_info":
-          return setTravelerInfo(String(request.params.arguments?.settings))
-        case "get_environment":
-          return getEnvironment()
-        case "set_avatar_prompt":
-          return setAvatarPrompt(String(request.params.arguments?.prompt))
-        case "reset_avatar_prompt":
-          return resetAvatarPrompt()
-        case "get_current_view_info":
-        case "get_traveler_view_info":
-          return getCurrentLocationInfo(request.params.arguments?.includePhoto as boolean, request.params.arguments?.includeNearbyFacilities as boolean)
-        case "get_time_elapsed_view":
-          return getElapsedView(request.params.arguments?.timeElapsedPercentage as number)
-        case "set_current_location":
-        case "set_traveler_location":
-          return setCurrentLocation(String(request.params.arguments?.address))
-        case "get_destination_address":
-        case "get_traveler_destination_address":
-          return getDestinationAddress()
-        case "set_destination_address":
-        case "set_traveler_destination_address":
-          return setDestinationAddress(String(request.params.arguments?.address))
-        case "start_journey":
-        case "start_traveler_journey":
-          return startJourney()
-        case "stop_journey":
-        case "stop_traveler_journey":
-          return stopJourney()
-        case "call_traveler":
-          return setTravelerExist(true)
-        case "kick_traveler":
-          return setTravelerExist(false)
-        case "get_sns_mentions":
-          return getSnsMentions()
-        case "read_sns_reader":
-          return readSnsReader()
-        case "get_sns_feeds":
-          return getSnsFeeds()
-        case "post_sns_writer":
-          return postSnsWriter(String(request.params.arguments?.message))
-        case "reply_sns_writer":
-          return replySnsWriter(String(request.params.arguments?.message), String(request.params.arguments?.id))
-        case "add_like":
-          return addLike(String(request.params.arguments?.id))
-        default:
-          return Effect.fail(new Error(`Unknown tool:${request.params.name}`));
+      const toolSwitch = (request: z.infer<typeof CallToolRequestSchema>) => {
+        switch (request.params.name) {
+          case "tips":
+            return tips()
+          // case "set_person_mode":
+          //   return setPersonMode(String(request.params.arguments?.person)).pipe(Effect.provide([DbServiceLive,McpLogServiceLive]))
+          case "get_traveler_info":
+            return getTravelerInfo()
+          case "set_traveler_info":
+            return setTravelerInfo(String(request.params.arguments?.settings))
+          case "get_environment":
+            return getEnvironment()
+          case "set_avatar_prompt":
+            return setAvatarPrompt(String(request.params.arguments?.prompt))
+          case "reset_avatar_prompt":
+            return resetAvatarPrompt()
+          case "get_current_view_info":
+          case "get_traveler_view_info":
+            return getCurrentLocationInfo(request.params.arguments?.includePhoto as boolean, request.params.arguments?.includeNearbyFacilities as boolean)
+          case "get_time_elapsed_view":
+            return getElapsedView(request.params.arguments?.timeElapsedPercentage as number)
+          case "get_traveler_location":
+            return getCurrentLocationInfo(false, false)
+          case "set_current_location":
+          case "set_traveler_location":
+            return setCurrentLocation(String(request.params.arguments?.address))
+          case "get_destination_address":
+          case "get_traveler_destination_address":
+            return getDestinationAddress()
+          case "set_destination_address":
+          case "set_traveler_destination_address":
+            return setDestinationAddress(String(request.params.arguments?.address))
+          case "start_journey":
+          case "start_traveler_journey":
+            return startJourney()
+          case "stop_journey":
+          case "stop_traveler_journey":
+            return stopJourney()
+          case "call_traveler":
+            return setTravelerExist(true)
+          case "kick_traveler":
+            return setTravelerExist(false)
+          case "get_sns_mentions":
+            return getSnsMentions()
+          case "read_sns_reader":
+            return readSnsReader()
+          case "get_sns_feeds":
+            return getSnsFeeds()
+          case "post_sns_writer":
+            return postSnsWriter(String(request.params.arguments?.message))
+          case "reply_sns_writer":
+            return replySnsWriter(String(request.params.arguments?.message), String(request.params.arguments?.id))
+          case "add_like":
+            return addLike(String(request.params.arguments?.id))
+          default:
+            return Effect.fail(new Error(`Unknown tool:${request.params.name}`));
+        }
       }
-    }
 
       /**
        * Effect上でMCP実行
