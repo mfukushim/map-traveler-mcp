@@ -91,6 +91,7 @@ claude_desktop_config.json
       "args": ["-y", "@mfukushim/map-traveler-mcp"],
       "env":{
         "GoogleMapApi_key":"(Google Map API key)",
+        "time_scale": "(Optional:Scale of travel time on real roads duration. default 4)",
         "sqlite_path":"(db save path: e.g. %USERPROFILE%/Desktop/traveler.sqlite ,$HOME/traveler.sqlite )",
         "rembg_path": "(absolute path of the installed rembg cli)",
         "pixAi_key":"(pixAi API key)",

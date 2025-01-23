@@ -74,7 +74,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
   accessors: true,
   effect: Effect.gen(function* () {
     //  走行時間スケール 2で時速40kmくらい 4くらいにするか 20km/hくらい
-    const durationScale2 = 4
+    const durationScale2 = (Process.env.time_scale && Number.parseFloat(Process.env.time_scale)) || 4
 
     const isShips = (maneuver?: string) => ['ferry', 'airplane'].includes(maneuver || '')
     const maneuverIsShip = (step: typeof MapDef.GmStepSchema.Type) => isShips(step.maneuver)
