@@ -196,6 +196,16 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             }
           }
         },
+        {
+          name: "get_traveler_location",  //  関数名の合成現象があった? とりあえずaliasを置く
+          description: 
+            "Get the address of the current traveler's location",
+          inputSchema: {
+            type: "object",
+            properties: {
+            }
+          }
+        },
       ]
 
       const SNS_COMMAND: Tool[] = [
@@ -827,6 +837,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           case "get_current_view_info":
           case "get_traveler_view_info":
             return getCurrentLocationInfo(request.params.arguments?.includePhoto as boolean, request.params.arguments?.includeNearbyFacilities as boolean)
+          case "get_traveler_location":
+            return getCurrentLocationInfo(false, false)
           case "set_current_location":
           case "set_traveler_location":
             return setCurrentLocation(String(request.params.arguments?.address))
