@@ -447,8 +447,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         )
       }
 
-    const getCurrentLocationInfo = (includePhoto: boolean, includeNearbyFacilities: boolean, localDebug = false) => {
-      return RunnerService.getCurrentView(dayjs(), includePhoto, includeNearbyFacilities, env.isPractice, localDebug).pipe(
+    const getCurrentLocationInfo = (includePhoto: boolean, includeNearbyFacilities: boolean) => {
+      return RunnerService.getCurrentView(dayjs(), includePhoto, includeNearbyFacilities, env.isPractice).pipe(
         Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
       )
     }

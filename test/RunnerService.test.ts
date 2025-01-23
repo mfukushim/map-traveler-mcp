@@ -13,34 +13,19 @@ import {McpLogServiceLive} from "../src/McpLogService.js";
 import {AnswerError} from "../src/mapTraveler.js";
 import * as fs from "node:fs";
 import dayjs from "dayjs";
-import {integer, real, text} from "drizzle-orm/sqlite-core";
 
 
 describe("Runner", () => {
 
-  it("getCurrentView", async () => {
+  it("getCurrentView_practice", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* RunnerService.getCurrentView(false, false, true)  //
+      return yield* RunnerService.getCurrentView(dayjs(),false, false, true)  //
     }).pipe(
       Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive,
         NodeFileSystem.layer, FetchHttpClient.layer, McpLogServiceLive]), //  layer
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(a => Effect.logError(a)),
-      Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed([])),
-      Effect.tap(a => Effect.log(a)),
-      runPromise
-    )
-    expect(res).toBeInstanceOf(Array)
-  })
-  it("setCurrentLocation", async () => {
-    const res = await Effect.gen(function* () {
-      return yield* RunnerService.getCurrentView(false, false, true)
-    }).pipe(
-      Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive,
-        NodeFileSystem.layer, FetchHttpClient.layer, McpLogServiceLive]),
-      Logger.withMinimumLogLevel(LogLevel.Trace),
-      Effect.tapError(Effect.logError),
       Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed([])),
       Effect.tap(a => Effect.log(a)),
       runPromise
@@ -85,7 +70,7 @@ describe("Runner", () => {
       },
     ])
   })
-  it("calcCurrentLoc", async () => {
+  it("makeView", async () => {
     const s = fs.readFileSync('tools/test/routeSample.json', {encoding: 'utf-8'});
     const runStatus:RunStatus = {
       id: 1,
@@ -111,12 +96,11 @@ describe("Runner", () => {
       currentPathNo: -1,
       currentStepNo: -1,
     }
-    const now = dayjs()
     let pct = 30
     
     
     const res = await Effect.gen(function* () {
-      return yield* RunnerService.calcCurrentLoc(runStatus,now,s)
+      return yield* RunnerService.makeView(runStatus,pct/100,false,true,true,false,s)
     }).pipe(
       Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive,
         NodeFileSystem.layer, FetchHttpClient.layer, McpLogServiceLive]),

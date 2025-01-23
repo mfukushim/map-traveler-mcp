@@ -145,25 +145,8 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
             mimeType: 'image/png'
           } as ToolContentResponse)
         }
-        return {out: content, address: nearFacilities ? nearFacilities.address:''}
+        return {out: content, address: nearFacilities ? nearFacilities.address:Option.none()}
       }).pipe(Effect.provide(NodeFileSystem.layer))
-    }
-
-    function getElapsedView(proceedPercent:number, localDebug = false) {
-      return Effect.gen(function *() {
-        const status = yield* DbService.getRecentRunStatus().pipe(Effect.orElseFail(() =>
-          new AnswerError(`current location not set. Please set the current location address`)))
-        if (status.status === "stop" && !status.to) {
-          //  停止している場合は直近の行き先のtoが現在地
-          return yield* Effect.fail(new AnswerError(`current location not set. Please set the current location address`))
-        } else if(status.status === "stop") {
-          return yield* Effect.fail(new AnswerError(`The journey is over`))
-        }
-        const proceed = Math.max(0,Math.min(100,proceedPercent))
-        const fullSec = dayjs.unix(status.tilEndEpoch).diff(dayjs(status.startTime),"seconds");
-        const now = dayjs(status.startTime).add(fullSec*proceed/100,"seconds")
-        return yield *getCurrentView(now,true, true, false, localDebug)
-      })
     }
 
     const vehicleView = (loc:LocationDetail,includePhoto:boolean) => {
@@ -203,18 +186,41 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       }
       return Effect.succeed(out)
     }
-    function getCurrentView(now:dayjs.Dayjs,includePhoto: boolean, includeNearbyFacilities: boolean, practice = false, localDebug = false) {
+
+    function getElapsedView(proceedPercent:number, localDebug = false) {
+      return Effect.gen(function *() {
+        const status = yield* DbService.getRecentRunStatus().pipe(Effect.orElseFail(() =>
+          new AnswerError(`current location not set. Please set the current location address`)))
+        if (status.status === "stop" && !status.to) {
+          //  停止している場合は直近の行き先のtoが現在地
+          return yield* Effect.fail(new AnswerError(`current location not set. Please set the current location address`))
+        } else if(status.status === "stop") {
+          return yield* Effect.fail(new AnswerError(`The journey is over`))
+        }
+        const proceed = Math.max(0,Math.min(100,proceedPercent))
+        return yield *makeView(status,proceed/100,false, true,true)
+      })
+    }
+
+
+    function getCurrentView(now:dayjs.Dayjs,includePhoto: boolean,includeNearbyFacilities:boolean, practice = false) {
+      return Effect.gen(function *() {
+        const {runStatus, justArrive,elapseRatio} = yield* getRunStatusAndUpdateEnd(now);
+        //  ただし前回旅が存在し、それが終了していても、そのendTimeから1時間以内ならその場所にいるものとして表示する
+        return yield *makeView(runStatus,elapseRatio,justArrive && dayjs().isBefore(dayjs.unix(runStatus.tilEndEpoch).add(1, "hour")),includePhoto,includeNearbyFacilities, practice)
+      })
+    }
+    
+    function makeView(runStatus:RunStatus,elapseRatio:number,showRunning:boolean,includePhoto: boolean,includeNearbyFacilities:boolean, practice = false,debugRoute?:string) {
       return Effect.gen(function* () {
-        const {runStatus, justArrive} = yield* getRunStatusAndUpdateEnd(now);
-        const loc = yield* calcCurrentLoc(runStatus, now); //  これは計算位置情報
+        const loc = yield* calcCurrentLoc(runStatus, elapseRatio,debugRoute); //  これは計算位置情報
         let status: TripStatus;
         if (practice) {
           status = runStatus.status;
         } else {
           status = loc.status;
-          yield *McpLogService.logTrace(`getCurrentView:now:${now.unix()},start:${runStatus.startTime},end:${dayjs.unix(runStatus.tilEndEpoch)},status:${loc.status}`)
-          //  ただし前回旅が存在し、それが終了していても、そのendTimeから1時間以内ならその場所にいるものとして表示する
-          if (justArrive && now.isBefore(dayjs.unix(runStatus.tilEndEpoch).add(1, "hour"))) {
+          yield *McpLogService.logTrace(`getCurrentView:elapseRatio:${elapseRatio},start:${runStatus.startTime},end:${dayjs.unix(runStatus.tilEndEpoch)},status:${loc.status}`)
+          if (showRunning) {
             status = 'running'
           }
         }
@@ -229,86 +235,92 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
               image,
               locText
             } = yield* (practice ? getFacilitiesPractice(runStatus.to, includePhoto) : getFacilities(loc, includePhoto, false))
-            return yield* runningReport(locText, nearFacilities, image, false, justArrive).pipe(Effect.andThen(a => a.out))
+            return yield* runningReport(locText, includeNearbyFacilities ? nearFacilities:undefined, image, false, showRunning).pipe(Effect.andThen(a => a.out))
         }
 
-      })      
-    }
-
-    function makeView(status:TripStatus,loc:LocationDetail,toAddress:string,justArrive:boolean,includePhoto: boolean,runInfo:{nearFacilities,image:Buffer,locText;string}) {
-      // function makeView(now:dayjs.Dayjs,includePhoto: boolean, includeNearbyFacilities: boolean, practice = false, localDebug = false) {
-      return Effect.gen(function* () {
-/*
-        const {runStatus, justArrive} = yield* getRunStatusAndUpdateEnd(now);
-        const loc = yield* calcCurrentLoc(runStatus, now); //  これは計算位置情報
-        let status: TripStatus;
-        if (practice) {
-          status = runStatus.status;
-        } else {
-          status = loc.status;
-          yield *McpLogService.logTrace(`getCurrentView:now:${now.unix()},start:${runStatus.startTime},end:${dayjs.unix(runStatus.tilEndEpoch)},status:${loc.status}`)
-          //  ただし前回旅が存在し、それが終了していても、そのendTimeから1時間以内ならその場所にいるものとして表示する
-          if (justArrive && now.isBefore(dayjs.unix(runStatus.tilEndEpoch).add(1, "hour"))) {
-            status = 'running'
-          }
-        }
-*/
-
-        switch (status) {
-          case 'vehicle': {
-            //  乗り物
-            const maneuver = loc.maneuver;
-            const vehiclePrompt = maneuver?.includes('ferry') ? '(on ship deck:1.3),(ferry:1.2),sea,handrails' :
-              maneuver?.includes('airplane') ? '(airplane cabin:1.3),reclining seat,sitting' : ''
-            const image = includePhoto && env.anyImageAiExist && (yield* ImageService.makeEtcTripImage(useAiImageGen, vehiclePrompt, loc.timeZoneId))
-            const out: ToolContentResponse[] = [
-              {
-                type: "text",
-                text: `I'm on the ${maneuver} now. Longitude and Latitude is almost ${loc.lat},${loc.lng}`
-              },
-            ]
-            if (image) {
-              out.push({type: "image", data: image.toString("base64"), mimeType: 'image/png'}
-              )
-            }
-            return out
-          }
-          case 'running': {
-            //  通常旅行
-/*
-            const {
-              nearFacilities,
-              image,
-              locText
-            } = yield* (practice ? getFacilitiesPractice(toAddress, includePhoto) : getFacilities(loc, includePhoto, false))
-*/
-            return yield* runningReport(locText, nearFacilities, image, false, justArrive).pipe(Effect.andThen(a => a.out))
-          }
-          case 'stop': {
-            //  ホテル画像
-            const hour = now.tz(loc.timeZoneId).hour()
-            const image1 = includePhoto && (yield* ImageService.makeHotelPict(useAiImageGen, hour, undefined))
-            const out: ToolContentResponse[] = [
-              {type: "text", text: `I am in a hotel in ${toAddress}.`}
-            ]
-            if (image1) {
-              out.push({
-                type: "image",
-                data: image1.toString("base64"),
-                mimeType: 'image/png'
-              })
-            }
-            return out
-          }
-        }
-      }).pipe(Effect.catchAll(e => {
+      }) .pipe(Effect.catchAll(e => {
         if (e instanceof AnswerError) {
           return Effect.fail(e)
         }
         return McpLogService.logError(`getCurrentView catch:${e},${JSON.stringify(e)}`).pipe(Effect.andThen(() =>
           Effect.fail(new AnswerError("Sorry,I don't know where you are right now. Please wait a moment and ask again."))));
-      }))
+      }))     
     }
+
+//     function makeView(status:TripStatus,loc:LocationDetail,toAddress:string,justArrive:boolean,includePhoto: boolean,runInfo:{nearFacilities,image:Buffer,locText;string}) {
+//       // function makeView(now:dayjs.Dayjs,includePhoto: boolean, includeNearbyFacilities: boolean, practice = false, localDebug = false) {
+//       return Effect.gen(function* () {
+// /*
+//         const {runStatus, justArrive} = yield* getRunStatusAndUpdateEnd(now);
+//         const loc = yield* calcCurrentLoc(runStatus, now); //  これは計算位置情報
+//         let status: TripStatus;
+//         if (practice) {
+//           status = runStatus.status;
+//         } else {
+//           status = loc.status;
+//           yield *McpLogService.logTrace(`getCurrentView:now:${now.unix()},start:${runStatus.startTime},end:${dayjs.unix(runStatus.tilEndEpoch)},status:${loc.status}`)
+//           //  ただし前回旅が存在し、それが終了していても、そのendTimeから1時間以内ならその場所にいるものとして表示する
+//           if (justArrive && now.isBefore(dayjs.unix(runStatus.tilEndEpoch).add(1, "hour"))) {
+//             status = 'running'
+//           }
+//         }
+// */
+//
+//         switch (status) {
+//           case 'vehicle': {
+//             //  乗り物
+//             const maneuver = loc.maneuver;
+//             const vehiclePrompt = maneuver?.includes('ferry') ? '(on ship deck:1.3),(ferry:1.2),sea,handrails' :
+//               maneuver?.includes('airplane') ? '(airplane cabin:1.3),reclining seat,sitting' : ''
+//             const image = includePhoto && env.anyImageAiExist && (yield* ImageService.makeEtcTripImage(useAiImageGen, vehiclePrompt, loc.timeZoneId))
+//             const out: ToolContentResponse[] = [
+//               {
+//                 type: "text",
+//                 text: `I'm on the ${maneuver} now. Longitude and Latitude is almost ${loc.lat},${loc.lng}`
+//               },
+//             ]
+//             if (image) {
+//               out.push({type: "image", data: image.toString("base64"), mimeType: 'image/png'}
+//               )
+//             }
+//             return out
+//           }
+//           case 'running': {
+//             //  通常旅行
+// /*
+//             const {
+//               nearFacilities,
+//               image,
+//               locText
+//             } = yield* (practice ? getFacilitiesPractice(toAddress, includePhoto) : getFacilities(loc, includePhoto, false))
+// */
+//             return yield* runningReport(locText, nearFacilities, image, false, justArrive).pipe(Effect.andThen(a => a.out))
+//           }
+//           case 'stop': {
+//             //  ホテル画像
+//             const hour = now.tz(loc.timeZoneId).hour()
+//             const image1 = includePhoto && (yield* ImageService.makeHotelPict(useAiImageGen, hour, undefined))
+//             const out: ToolContentResponse[] = [
+//               {type: "text", text: `I am in a hotel in ${toAddress}.`}
+//             ]
+//             if (image1) {
+//               out.push({
+//                 type: "image",
+//                 data: image1.toString("base64"),
+//                 mimeType: 'image/png'
+//               })
+//             }
+//             return out
+//           }
+//         }
+//       }).pipe(Effect.catchAll(e => {
+//         if (e instanceof AnswerError) {
+//           return Effect.fail(e)
+//         }
+//         return McpLogService.logError(`getCurrentView catch:${e},${JSON.stringify(e)}`).pipe(Effect.andThen(() =>
+//           Effect.fail(new AnswerError("Sorry,I don't know where you are right now. Please wait a moment and ask again."))));
+//       }))
+//     }
 
     /**
      * ルートjsonをローカル一時上書き保存する
@@ -396,21 +408,17 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
      走行時間からルートのstepのどれに該当するかを取り出し、その中点補完lat/lngと想定向きを取り出す 乗り物とstep内の残時間
      @link MiRunnerSeq.puml:6
      * @param runStatus
-     * @param now
+     * @param elapseRatio
      * @param debugRouteStr
      */
-    function calcCurrentLoc(runStatus: RunStatus, now: dayjs.Dayjs,debugRouteStr?:string) {
+    function calcCurrentLoc(runStatus: RunStatus, elapseRatio:number,debugRouteStr?:string) { //  now: dayjs.Dayjs
       return Effect.gen(function* () {
-        yield* McpLogService.logTrace(`calcCurrentLoc: time=${now.toISOString()}`)
-        const runAllSec = now.diff(runStatus.startTime, "seconds");  //  実時間でのstep0を0とした旅行実行秒数
+        const runAllSec = dayjs.unix(runStatus.tilEndEpoch).diff(runStatus.startTime, "seconds")*elapseRatio;  //  実時間でのstep0を0とした旅行実行秒数
+        yield* McpLogService.logTrace(`calcCurrentLoc: elapseRatio=${elapseRatio},runAllSec=${runAllSec}`)
+        // const runAllSec = now.diff(runStatus.startTime, "seconds");  //  実時間でのstep0を0とした旅行実行秒数
         const fullRoute = debugRouteStr ? yield *Schema.decode(Schema.parseJson(MapDef.RouteArraySchema))(debugRouteStr) : yield* loadCurrentRunnerRoute(runStatus.avatarId)
         const allSteps = routesToDirectionStep(fullRoute)
         const currentStepOption = calcCurrentStep(allSteps, runAllSec)
-        // const currentStepOption = yield* loadCurrentRunnerRoute(runStatus.avatarId).pipe(
-        //   Effect.andThen(a => {
-        //     const allSteps = routesToDirectionStep(a)
-        //     return Effect.succeed(calcCurrentStep(allSteps, runAllSec))  //  次到達ステップ(現在のステップ位置でもある)
-        //   }), Effect.orElseSucceed(() => Option.none()));
 
         if (Option.isNone(currentStepOption)) {
           //  すでに到着済み または不定
@@ -538,8 +546,10 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           return yield* Effect.fail(new AnswerError(`current location not set. Please set the current location address`))
         }
         const endTime = dayjs.unix(status.tilEndEpoch);
+        const start = dayjs(status.startTime);
+        const elapseRatio = Math.min((now.diff(start,"seconds"))/(endTime.diff(start,"seconds")),1)
         let justArrive = false
-        if (now.isAfter(endTime)) {
+        if (elapseRatio >= 1) {
           //  旅は終了している 終点画像を撮るタイミングがないな。。ここで入れるか? 今の取得で作れるのは作れるが。。
           if (status.status !== "running") {
             justArrive = true
@@ -547,10 +557,10 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           resetRunStatus(status, status.to, endTime.toDate(), status.endLat, status.endLng, status.endCountry, status.endTz);
           yield* DbService.saveRunStatus(status)
         }
-        return {runStatus: status, justArrive}
+        return {runStatus: status, justArrive,elapseRatio}
       })
     }
-
+    
     function startJourney(practice = false) {
       return Effect.gen(function* () {
         const now = dayjs();
@@ -608,7 +618,8 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         if (practice) {
           res = yield* getFacilitiesPractice(runStatus.to, true).pipe(Effect.andThen(a => runningReport(a.locText,a.nearFacilities, a.image, true)))
         } else {
-          const currentInfo = yield* calcCurrentLoc(runStatus, now); //  これは計算位置情報
+          const elapse = Math.min(now.diff(runStatus.startTime,"seconds")/dayjs.unix(runStatus.tilEndEpoch).diff(runStatus.startTime,"seconds"),1)
+          const currentInfo = yield* calcCurrentLoc(runStatus, elapse); //  これは計算位置情報
           const nears = yield* StoryService.getNearbyFacilities({
             lat: currentInfo.lat,
             lng: currentInfo.lng,
@@ -672,6 +683,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       calcCurrentLoc,
       routesToDirectionStep,
       getElapsedView,
+      makeView,
     }
   }),
   dependencies: [DbServiceLive]
