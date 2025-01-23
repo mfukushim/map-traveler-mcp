@@ -569,7 +569,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         // `|イイネを付けた人の名前|イイネが付いた記事の内容|イイネを付けた人の直近の記事|イイネを付けた人のプロフィール|\n`+
         return Effect.gen(function* () {
           const visitorProf = yield* SnsService.getProfile(notification.handle)
-          const visitorPosts = yield* SnsService.getAuthorFeed(notification.handle, 3);
+          const recentvisitorPosts = yield* SnsService.getAuthorFeed(notification.handle, 3);
           //  イイネのときの自分が書いていいねがつけられたpost、replyの場合のreplyを付けた相手のpost
           const mentionPostText = yield* SnsService.getPost(notification.uri).pipe(
             Effect.andThen(a =>
@@ -582,23 +582,23 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
 
           const visitorName = notification.name || notification.handle || '誰か'
           yield* McpLogService.logTrace(`avatarName:${visitorName}`)
-          let visitorPostText = ''
-          // let visitorPostId = ''
-          if (visitorPosts && visitorPosts.feed.length > 0) {
-            const p = visitorPosts.feed[0].post;
-            visitorPostText = (p.record as any).text as string
-            // visitorPostId = p.uri+'-'+p.cid
+          let recentVisitorPost = ''
+          let recentVisitorPostId = ''
+          if (recentvisitorPosts && recentvisitorPosts.feed.length > 0) {
+            const p = recentvisitorPosts.feed[0].post;
+            recentVisitorPost = (p.record as any).text as string
+            recentVisitorPostId = p.uri+'-'+p.cid
           }
           yield* McpLogService.logTrace(`mentionPostText:${Option.getOrUndefined(mentionPostText)}`)
           yield* McpLogService.logTrace(`repliedPostText:${Option.getOrUndefined(repliedPostText)}`)
-          yield* McpLogService.logTrace(`visitorPostText:${visitorPostText}`)
+          yield* McpLogService.logTrace(`visitorPostText:${recentVisitorPost}`)
           return {
             visitorName,
-            recentVisitorPost: visitorPostText,
+            recentVisitorPost: recentVisitorPost,
             visitorProf: visitorProf.description,
             mentionPost: mentionPostText,
             repliedPost: repliedPostText,
-            target: notification.uri + '-' + notification.cid//notification.mentionType === 'reply' ? notification.uri + '-' + notification.cid: visitorPostId //  bsの場合はuri+cid replyの場合はreplyそのものにアクションする、likeの場合は相手の最新のpostにアクションする→likeされた自身のpostにする
+            target: notification.mentionType === 'reply' ? notification.uri + '-' + notification.cid: recentVisitorPostId //  bsの場合はuri+cid replyの場合はreplyそのものにアクションする、likeの場合は相手の最新のpostにアクションする→likeされた自身のpostにする
           }
         })
       }
