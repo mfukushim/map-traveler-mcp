@@ -88,10 +88,11 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           }),
           Effect.flatMap(client.execute),
           Effect.flatMap(a => a.json),
+          Effect.tap(a => McpLogService.logTrace('sdMakeTextToImage:' + JSON.stringify(a).slice(0, 200))),
           Effect.andThen(a => a as { artifacts: { base64: string, finishReason: string, seed: number }[] }),
           Effect.flatMap(a => {
-            if (a.artifacts.some(b => b.finishReason !== 'SUCCESS') || a.artifacts.length === 0) {
-              return Effect.fail(new Error(`fail sd`))
+            if (!a.artifacts || a.artifacts.length === 0 || a.artifacts.some(b => b.finishReason !== 'SUCCESS')) {
+              return Effect.fail(new Error(`fail sd:${opt?.width},${opt?.height},` + JSON.stringify(a)))
             }
             return Effect.tryPromise(() => sharp(Buffer.from(a.artifacts[0].base64, 'base64')).resize({
               width: 512,
@@ -145,10 +146,11 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             catch: error => new Error(`${error}`)
           })),
         Effect.andThen(a => a.json()),
+        Effect.tap(a => McpLogService.logTrace('sdMakeImageToImage:' + JSON.stringify(a).slice(0, 200))),
         Effect.andThen(a => a as { artifacts: { base64: string, finishReason: string, seed: number }[] }),
         Effect.flatMap(a => {
-          if (!a.artifacts || a.artifacts.some(b => b.finishReason !== 'SUCCESS') || a.artifacts.length === 0) {
-            return Effect.fail(new Error(`fail sd`))
+          if (!a.artifacts || a.artifacts.length === 0 || a.artifacts.some(b => b.finishReason !== 'SUCCESS')) {
+            return Effect.fail(new Error(`fail sd:${opt?.width},${opt?.height},` + JSON.stringify(a)))
           }
           return Effect.succeed(Buffer.from(a.artifacts[0].base64, 'base64'))
           // return Effect.tryPromise(() => sharp(Buffer.from(a.artifacts[0].base64, 'base64')).resize({
@@ -548,9 +550,10 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           }
           const outSize = {w: 1600, h: 1000};
           const innerSize = {w: 1600, h: 1600}
-          const windowSize = {
-            w: innerSize.w * (opt?.bodyWindowRatioW || 0.5),
-            h: innerSize.h * (opt?.bodyWindowRatioH || 0.75)
+          //  TODO sdではサイズ制限がきつかったんだ
+          const windowSize = selectGen === 'sd' ? {w: 832, h: 1216} : {
+            w: Math.floor((innerSize.w * (opt?.bodyWindowRatioW || 0.5)) / 64) * 64,
+            h: Math.floor((innerSize.h * (opt?.bodyWindowRatioH || 0.75)) / 64) * 64
           }
           // const windowSize = {w: 832, h: 1216}
           const sideBias = opt?.sideBias || false
