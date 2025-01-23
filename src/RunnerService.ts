@@ -29,7 +29,7 @@ dayjs.extend(relativeTime)
 export const useAiImageGen = (Process.env.pixAi_key ? 'pixAi' : Process.env.sd_key ? 'sd' : '')
 
 export interface LocationDetail {
-  status: string;
+  status: TripStatus;
   lat: number;
   lng: number;
   bearing: number;
@@ -166,6 +166,43 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       })
     }
 
+    const vehicleView = (loc:LocationDetail,includePhoto:boolean) => {
+      //  乗り物
+      const maneuver = loc.maneuver;
+      const vehiclePrompt = maneuver?.includes('ferry') ? '(on ship deck:1.3),(ferry:1.2),sea,handrails' :
+        maneuver?.includes('airplane') ? '(airplane cabin:1.3),reclining seat,sitting' : ''
+      const out: ToolContentResponse[] = [
+        {
+          type: "text",
+          text: `I'm on the ${maneuver} now. Longitude and Latitude is almost ${loc.lat},${loc.lng}`
+        },
+      ]
+      if (includePhoto && env.anyImageAiExist) {
+        return ImageService.makeEtcTripImage(useAiImageGen, vehiclePrompt, loc.timeZoneId).pipe(Effect.andThen(image => {
+          out.push({type: "image", data: image.toString("base64"), mimeType: 'image/png'})
+          return Effect.succeed(out)
+        }))
+      }
+      return Effect.succeed(out)
+    }
+    const hotelView = (loc:LocationDetail,includePhoto: boolean,toAddress:string) => {
+      //  ホテル画像
+      const hour = dayjs().tz(loc.timeZoneId).hour()
+      const out: ToolContentResponse[] = [
+        {type: "text", text: `I am in a hotel in ${toAddress}.`}
+      ]
+      if (includePhoto) {
+        return ImageService.makeHotelPict(useAiImageGen, hour, undefined).pipe(Effect.andThen(image1 => {
+          out.push({
+            type: "image",
+            data: image1.toString("base64"),
+            mimeType: 'image/png'
+          })
+          return Effect.succeed(out)
+        }))
+      }
+      return Effect.succeed(out)
+    }
     function getCurrentView(now:dayjs.Dayjs,includePhoto: boolean, includeNearbyFacilities: boolean, practice = false, localDebug = false) {
       return Effect.gen(function* () {
         const {runStatus, justArrive} = yield* getRunStatusAndUpdateEnd(now);
@@ -181,16 +218,24 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
             status = 'running'
           }
         }
-        const {
-          nearFacilities,
-          image,
-          locText
-        } = yield* (practice ? getFacilitiesPractice(runStatus.to, includePhoto) : getFacilities(loc, includePhoto, false))
+        switch (status) {
+          case 'vehicle':
+            return vehicleView(loc, includePhoto);
+          case 'stop':
+            return hotelView(loc,includePhoto,runStatus.to)
+          case "running":
+            const {
+              nearFacilities,
+              image,
+              locText
+            } = yield* (practice ? getFacilitiesPractice(runStatus.to, includePhoto) : getFacilities(loc, includePhoto, false))
+            return yield* runningReport(locText, nearFacilities, image, false, justArrive).pipe(Effect.andThen(a => a.out))
+        }
 
-      }      
+      })      
     }
 
-    function makeView(status:TripStatus,loc:LocationDetail,toAddress:string,justArrive:boolean,includePhoto: boolean) {
+    function makeView(status:TripStatus,loc:LocationDetail,toAddress:string,justArrive:boolean,includePhoto: boolean,runInfo:{nearFacilities,image:Buffer,locText;string}) {
       // function makeView(now:dayjs.Dayjs,includePhoto: boolean, includeNearbyFacilities: boolean, practice = false, localDebug = false) {
       return Effect.gen(function* () {
 /*
