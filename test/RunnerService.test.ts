@@ -4,7 +4,7 @@ import {describe, expect, it} from "@effect/vitest"
 import {RunnerService, RunnerServiceLive} from "../src/RunnerService.js";
 import {runPromise} from "effect/Effect";
 import {FetchHttpClient} from "@effect/platform";
-import {DbServiceLive} from "../src/DbService.js";
+import {DbServiceLive, RunStatus} from "../src/DbService.js";
 import {MapDef, MapServiceLive} from "../src/MapService.js";
 import {ImageServiceLive} from "../src/ImageService.js";
 import {StoryServiceLive} from "../src/StoryService.js";
@@ -12,6 +12,8 @@ import {NodeFileSystem} from "@effect/platform-node"
 import {McpLogServiceLive} from "../src/McpLogService.js";
 import {AnswerError} from "../src/mapTraveler.js";
 import * as fs from "node:fs";
+import dayjs from "dayjs";
+import {integer, real, text} from "drizzle-orm/sqlite-core";
 
 
 describe("Runner", () => {
@@ -83,4 +85,48 @@ describe("Runner", () => {
       },
     ])
   })
+  it("calcCurrentLoc", async () => {
+    const s = fs.readFileSync('tools/test/routeSample.json', {encoding: 'utf-8'});
+    const runStatus:RunStatus = {
+      id: 1,
+      avatarId: 1,
+      tripId: 1,
+      tilEndEpoch: 0,
+      status: "running",
+      from: '',
+      to: '', //  現在処理中の行き先,現在位置
+      destination: '', //  計画中の行き先
+      startLat: 0,
+      startLng: 0,
+      endLat: 0,
+      endLng: 0,
+      durationSec: 1,
+      distanceM: 1,
+      startTime: new Date(),
+      endTime: new Date(),
+      startCountry: null,
+      endCountry: null,
+      startTz: null,
+      endTz: null,
+      currentPathNo: -1,
+      currentStepNo: -1,
+    }
+    const now = dayjs()
+    let pct = 30
+    
+    
+    const res = await Effect.gen(function* () {
+      return yield* RunnerService.calcCurrentLoc(runStatus,now,s)
+    }).pipe(
+      Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive,
+        NodeFileSystem.layer, FetchHttpClient.layer, McpLogServiceLive]),
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.tapError(Effect.logError),
+      // Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed({content: []})),
+      Effect.tap(a => Effect.log(a)),
+      runPromise
+    )
+    expect(res).toBe(41216)
+  })
+
 })

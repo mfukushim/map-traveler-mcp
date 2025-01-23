@@ -168,8 +168,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       )
     }
     
-    const getSpecifiedView = (routeProceedPercentage: number, localDebug = false) => {
-      return RunnerService.getSpecifiedView(routeProceedPercentage,localDebug).pipe(
+    const getElapsedView = (timeElapsedPercentage: number, localDebug = false) => {
+      return RunnerService.getElapsedView(timeElapsedPercentage,localDebug).pipe(
         Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
       )
     }
@@ -548,8 +548,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         case "get_current_view_info":
         case "get_traveler_view_info":
           return getCurrentLocationInfo(request.params.arguments?.includePhoto as boolean, request.params.arguments?.includeNearbyFacilities as boolean)
-        case "get_specified_course_view":
-          return getSpecifiedView(request.params.arguments?.routeProceedPercentage as number)
+        case "get_time_elapsed_view":
+          return getElapsedView(request.params.arguments?.timeElapsedPercentage as number)
         case "set_current_location":
         case "set_traveler_location":
           return setCurrentLocation(String(request.params.arguments?.address))
@@ -795,13 +795,13 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             }
           },
           {
-            name: "get_specified_course_view",
+            name: "get_time_elapsed_view",
             description:
               "Get the view and nearby facilities for a specified percentage of the current route",
             inputSchema: {
               type: "object",
               properties: {
-                routeProceedPercentage: {
+                timeElapsedPercentage: {
                   type: "number",
                   description: "Percentage of routes to proceed (0 ~ 100) Usually not specified"
                 },
