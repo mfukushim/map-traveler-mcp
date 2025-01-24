@@ -361,7 +361,6 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
             MapDef.ErrorSchema.pipe(Schema.attachPropertySignature('kind', 'error')),
             MapDef.EmptySchema.pipe(Schema.attachPropertySignature('kind', 'empty')),
           ))(a)),
-          // Effect.flatMap(a => HttpClientResponse.schemaBodyJson(MapDef.GmTextSearchSchema)(a)),
           Effect.onError(cause => McpLogService.logError(`getNearly error:${JSON.stringify(cause)}`)),
           Effect.scoped,
         )
@@ -378,6 +377,9 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
      * @param height
      */
     function findStreetViewMeta(lat: number, lng: number, bearing: number, width: number, height: number) {
+      if (!key) {
+        return Effect.fail(new Error('no street view key'))
+      }
       return Effect.gen(function* () {
         const client = yield* HttpClient.HttpClient
         let result: { lat: number, lng: number } | undefined
@@ -413,7 +415,7 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
           }
         })
         return result ? result : yield* Effect.fail(new Error('no StreetView'));
-      })
+      });
     }
 
     /**
