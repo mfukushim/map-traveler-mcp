@@ -51,11 +51,16 @@ export class McpLogService extends Effect.Service<McpLogService>()("traveler/Mcp
       }
       return Effect.succeed(false)
     }
-    function logTrace(message:unknown) {
+    function logTrace(...message:any[]) {
       if (process.env.VITEST === 'true') {
         return Effect.logTrace(message)
       } else if(logLevel.includes('trace')) {
-        fs.writeFileSync(logPath,`${dayjs().toISOString()}:T:`+(message as any).toString()+"\n",{flag:"a"})
+        fs.writeFileSync(logPath,`${dayjs().toISOString()}:T:`+message.map(value => {
+          if (typeof value === "object" && value !== null) {
+            return JSON.stringify(value).slice(0,200)
+          }
+          return value;
+        }).join(',')+"\n",{flag:"a"})
         return Effect.succeed(true)
       }
       return Effect.succeed(false)
