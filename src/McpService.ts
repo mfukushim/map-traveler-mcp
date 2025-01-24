@@ -615,7 +615,9 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             visitorProf: visitorProf.description,
             mentionPost: mentionPostText,
             repliedPost: repliedPostText,
-            target: notification.mentionType === 'reply' ? notification.uri + '-' + notification.cid: recentVisitorPostId //  bsの場合はuri+cid replyの場合はreplyそのものにアクションする、likeの場合は相手の最新のpostにアクションする→likeされた自身のpostにする
+            target: notification.mentionType === 'reply' ? notification.uri + '-' + notification.cid: //  bsの場合はuri+cid replyの場合はreplyそのものにアクションする、
+              //  likeの場合は相手の最新のpostにアクションする→likeされた自身のpostにする→likeの場合は相手の記事にbotタグがある場合は相手の最新記事に直接リプライする、タグがない一般ユーザの記事の場合自身にポストする
+              recentVisitorPost.includes(feedTag) ? recentVisitorPostId : notification.uri + '-' + notification.cid 
           }
         })
       }
