@@ -130,7 +130,7 @@ https://bsky.app/
 
 You can also run it in practice mode, which does not require an API key for verification.
 
-Practice mode settings  
+#### Practice mode settings  
 claude_desktop_config.json
 ```json
 {
@@ -192,7 +192,7 @@ claude_desktop_config.json
    Import the travel knowledge prompt roleWithSns.txt to report travel actions to SNS (it will automatically post as a bot, so we recommend allocating a dedicated account)
 
 
-### Install guide (Japanese, but lots of photos)
+## Install guide (Japanese, but lots of photos)
 
 1. introduction and Practice mode
    https://note.com/marble_walkers/n/n7a8f79e4fb30
