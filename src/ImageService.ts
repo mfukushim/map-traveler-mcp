@@ -334,7 +334,6 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         const prompt = `${baseCharPrompt},${appendPrompt}`
         return yield* selectImageGenerator(selectGen, prompt).pipe(
           Effect.tap(a => {
-            // const data = Buffer.from(a, "base64");
             recentImage = a
             if (localDebug) {
               return Effect.async<void, Error>((resume) => fs.writeFile('tools/test/etcPict.png', a, err => {

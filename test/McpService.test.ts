@@ -117,7 +117,7 @@ describe("Mcp", () => {
   it("getCurrentLocationInfo追加なし", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* McpService.getCurrentLocationInfo(false, false, true)
+      return yield* McpService.getCurrentLocationInfo(false, false)
     }).pipe(
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => {
@@ -137,7 +137,7 @@ describe("Mcp", () => {
   it("getCurrentLocationInfoすべて", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* McpService.getCurrentLocationInfo(true, true, true)
+      return yield* McpService.getCurrentLocationInfo(true, true)
     }).pipe(
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
@@ -246,7 +246,7 @@ describe("Mcp", () => {
     //  vitest --run --testNamePattern=startJourneyPractice McpService.test.ts
     const res = await Effect.gen(function* () {
       yield* McpService.startJourney()
-      return yield* McpService.getCurrentLocationInfo(true, true, true)
+      return yield* McpService.getCurrentLocationInfo(true, true)
     }).pipe(
       Effect.provide([McpServiceLive, DbServiceLive, McpLogServiceLive, NodeFileSystem.layer]),
       Logger.withMinimumLogLevel(LogLevel.Trace),

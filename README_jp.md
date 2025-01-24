@@ -72,7 +72,8 @@ Claudeが旅人の立場の役をします。合わせてSNSへの読み取り�
 複数のGoogle mapのアクセスや画像生成など複数のAPIのアクセスキーを取得して設定する必要があります。
 APIの使用には課金がかかることがあります。
 
-Claude Desktopで使用する場合の設定  
+#### Claude Desktopで使用する場合の設定  
+
 claude_desktop_config.json
 ```json
 {
@@ -119,9 +120,10 @@ bluesky SNSのアドレス/パスワードの設定は任意です。自動ポ�
 
    https://bsky.app/
 
+#### 練習モードの設定  
+
 確認用にAPIキーを必要としない練習モードで実行することもできます。
 
-練習モードの設定  
 claude_desktop_config.json
 ```json
 {
@@ -136,7 +138,7 @@ claude_desktop_config.json
 
 ## 使い方
 
-練習モードまで
+#### 練習モードまで
 
 1. nodejs 22をインストールします。
 2. Claude Desktopを使える状況にします。
@@ -150,7 +152,7 @@ claude_desktop_config.json
    <img alt="img_3.png" src="tools/img_3.png" width="200"/>
 7. 旅用のプロンプトが組み込まれたので自由に会話してみてください。
 
-本格的に使う
+#### 本格的に使う
 
 1. GoogleMapAPIのアクセスキーを取得して、Street View Static API,Places API (New),Time Zone API,Directions APIの権限を設定してください。これをclaude_desktop_config.jsonのenvに設定して再起動します。  
 ここまでで旅行動ログが現実のマップに即します。旅画像も合成されない状態なら出力します。
@@ -173,7 +175,7 @@ claude_desktop_config.json
 6. bluesky SNSのアドレス/パスワードを取得し、ハンドル名も取得します。claude_desktop_config.jsonのenvのbs_id,bs_pass,bs_handle にそれぞれ設定します。
 旅用知識プロンプト roleWithSns.txt を取り込むことで旅アクションをSNSに報告します(botとして自動ポストしますので専用にアカウントを割り当てることをお勧めします)
 
-### 設定ガイド
+## 設定ガイド
 
 1. 紹介&練習設定編
    https://note.com/marble_walkers/n/n7a8f79e4fb30
