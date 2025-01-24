@@ -1,13 +1,12 @@
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
 
-import {Effect, Layer} from "effect";
+import {Effect} from "effect";
 import 'dotenv/config'
 import * as fs from "node:fs";
 import {fileURLToPath} from "url";
 import {dirname} from "path";
 import * as path from "node:path"
 import * as Process from "node:process";
-import {NodeFileSystem} from "@effect/platform-node";
 import dayjs from "dayjs";
 import {ToolContentResponse} from "./McpService.js";
 
@@ -88,4 +87,4 @@ export class McpLogService extends Effect.Service<McpLogService>()("traveler/Mcp
 }) {
 }
 
-export const McpLogServiceLive = Layer.merge(McpLogService.Default,NodeFileSystem.layer) ;
+export const McpLogServiceLive = McpLogService.Default

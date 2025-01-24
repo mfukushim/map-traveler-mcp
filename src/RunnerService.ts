@@ -14,7 +14,6 @@ import {FacilityInfo, StoryService} from "./StoryService.js";
 import {TripStatus} from "./db/schema.js";
 import 'dotenv/config'
 import {McpLogService} from "./McpLogService.js";
-import {NodeFileSystem} from "@effect/platform-node";
 import {AnswerError} from "./mapTraveler.js";
 import * as path from "path";
 import {ToolContentResponse} from "./McpService.js";
@@ -114,7 +113,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         const image = includePhoto && env.anyImageAiExist ? (yield* getStreetImage(loc, abort, localDebug).pipe(
             Effect.andThen(a => a.buf),
             Effect.orElseSucceed(() => undefined))) :
-          includePhoto ? (yield* getStreetImageOnly(loc)) : undefined
+          includePhoto ? (yield* getStreetImageOnly(loc).pipe(Effect.orElseSucceed(() => undefined))) : undefined
         return {
           nearFacilities,
           image,
@@ -146,7 +145,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           } as ToolContentResponse)
         }
         return {out: content, address: nearFacilities ? nearFacilities.address:Option.none()}
-      }).pipe(Effect.provide(NodeFileSystem.layer))
+      })
     }
 
     const vehicleView = (loc:LocationDetail,includePhoto:boolean) => {
@@ -218,9 +217,14 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         if (practice) {
           loc = {
             status:runStatus.status,
-            lat:runStatus.endLat,
-            lng:runStatus.endLng,
-            lat:runStatus.endLat,
+            lat: runStatus.endLat,
+            lng: runStatus.endLng,
+            bearing: MapService.getBearing(runStatus.startLat, runStatus.startLng, runStatus.endLat, runStatus.endLng),
+            timeZoneId: 'Asia/Tokyo',
+            remainSecInPath: 0,
+            maneuver: undefined,
+            isEnd: true,
+            landPathNo: -1,
           }
           status = runStatus.status;
         } else {
@@ -460,7 +464,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
             },
             {lat: currentStep.end_location.lat, lng: currentStep.end_location.lng}),  //  step始点終点を使った向き想定
           maneuver: currentStep.maneuver,
-          timeZoneId: yield* MapService.getTimezoneByLatLng(lat, lng),
+          timeZoneId: yield* MapService.getTimezoneByLatLng(lat, lng).pipe(Effect.orElseSucceed(() => 'Asia/Tokyo')), //  通常時ここはこないが来たら今のところは日本決め打ち
           //  remainSecInPathはフェリーとかの特殊移動での残時間計算しか使っていない。そしてここの倍数は4倍になっているはずだが、//  フェリーや飛行機などの特殊な乗り物の場合は想定時間そのまま、通常のコースなら時間を4倍する で4倍しているから問題が起きていないのかも?
           //  src/services/Mi/RunnerService.ts:402
           isEnd: false,

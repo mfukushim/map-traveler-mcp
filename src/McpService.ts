@@ -24,7 +24,6 @@ import * as Process from "node:process";
 import {FeedViewPost} from "@atproto/api/dist/client/types/app/bsky/feed/defs.js";
 import * as path from "path";
 import * as fs from "node:fs";
-import {NodeFileSystem} from "@effect/platform-node";
 import { z } from "zod";
 import dayjs from "dayjs";
 
@@ -369,7 +368,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             const res = yield* StoryService.tips()
             const content = [{type: "text", text: res.textList.join('\n-------\n')} as ToolContentResponse]
             if (res.imagePathList.length > 0) {
-              // const fs = yield* FileSystem.FileSystem
               yield* Effect.forEach(res.imagePathList, a => {
                 return Effect.async<Buffer, Error>((resume) => fs.readFile(path.join(__pwd, a), (err, data) => {
                   if (err) {
@@ -539,7 +537,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         }
         return RunnerService.getDestinationAddress().pipe(
           Effect.andThen(a => [{type: "text", text: `Current destination is "${a}"`} as ToolContentResponse]),
-          Effect.provide([MapServiceLive, StoryServiceLive, RunnerServiceLive, ImageServiceLive, NodeFileSystem.layer, DbServiceLive]),
+          Effect.provide([MapServiceLive, StoryServiceLive, RunnerServiceLive, ImageServiceLive, DbServiceLive]),
         )
       }
       const setDestinationAddress = (address: string) => {
@@ -548,7 +546,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         }
         return RunnerService.setDestinationAddress(address).pipe(
           Effect.andThen(a => [{type: "text", text: a.message} as ToolContentResponse]),
-          Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, ImageServiceLive, NodeFileSystem.layer]),
+          Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, ImageServiceLive]),
         )
       }
       const startJourney = () => {
@@ -560,12 +558,12 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               mimeType: 'image/png'
             }] as ToolContentResponse[]
           }),
-          Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer]),
+          Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
         )
       }
       const stopJourney = () => {
         return RunnerService.stopJourney(env.isPractice).pipe(
-          Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer]),
+          Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
         )
       }
 
@@ -927,7 +925,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 text: a
               }]
             })),
-            Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive, NodeFileSystem.layer]),
+            Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
             Effect.runPromise
           ).catch(e => {
             if (e instanceof Error) {

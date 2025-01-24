@@ -8,8 +8,7 @@ import {DbServiceLive, RunStatus} from "../src/DbService.js";
 import {MapDef, MapServiceLive} from "../src/MapService.js";
 import {ImageServiceLive} from "../src/ImageService.js";
 import {StoryServiceLive} from "../src/StoryService.js";
-import {NodeFileSystem} from "@effect/platform-node"
-import {McpLogServiceLive} from "../src/McpLogService.js";
+import {McpLogService, McpLogServiceLive} from "../src/McpLogService.js";
 import {AnswerError} from "../src/mapTraveler.js";
 import * as fs from "node:fs";
 import dayjs from "dayjs";
@@ -20,10 +19,10 @@ describe("Runner", () => {
   it("getCurrentView_practice", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* RunnerService.getCurrentView(dayjs(),false, false, true)  //
+      return yield* RunnerService.getCurrentView(dayjs(), false, false, true)  //
     }).pipe(
       Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive,
-        NodeFileSystem.layer, FetchHttpClient.layer, McpLogServiceLive]), //  layer
+        FetchHttpClient.layer, McpLogServiceLive]), //  layer
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(a => Effect.logError(a)),
       Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed([])),
@@ -38,7 +37,7 @@ describe("Runner", () => {
       return yield* RunnerService.sumDurationSec(JSON.parse(s) as typeof MapDef.RouteArraySchema.Type)
     }).pipe(
       Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive,
-        NodeFileSystem.layer, FetchHttpClient.layer, McpLogServiceLive]),
+        FetchHttpClient.layer, McpLogServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(Effect.logError),
       // Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed({content: []})),
@@ -53,7 +52,7 @@ describe("Runner", () => {
       return yield* RunnerService.routesToDirectionStep(JSON.parse(s) as typeof MapDef.RouteArraySchema.Type)
     }).pipe(
       Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive,
-        NodeFileSystem.layer, FetchHttpClient.layer, McpLogServiceLive]),
+        FetchHttpClient.layer, McpLogServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(Effect.logError),
       // Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed({content: []})),
@@ -71,46 +70,47 @@ describe("Runner", () => {
     ])
   })
   it("makeView", async () => {
+    const now = dayjs()
     const s = fs.readFileSync('tools/test/routeSample.json', {encoding: 'utf-8'});
-    const runStatus:RunStatus = {
+    //  このサンプルの秒ステップ [{0,104},{104,276},{276,764},{764,1624},{1624,1684},{1684,40180},{40180,40316},{40316,40388},{40388,40560},{40560,40968},{40968,41216}]
+    const runStatus: RunStatus = {
       id: 1,
       avatarId: 1,
       tripId: 1,
-      tilEndEpoch: 0,
+      tilEndEpoch: now.add(41216, 'second').unix(), //  このサンプルは41216秒 約11.5時間
       status: "running",
-      from: '',
-      to: '', //  現在処理中の行き先,現在位置
-      destination: '', //  計画中の行き先
+      from: 'from',
+      to: 'to', //  現在処理中の行き先,現在位置
+      destination: 'dest', //  計画中の行き先
       startLat: 0,
       startLng: 0,
       endLat: 0,
       endLng: 0,
       durationSec: 1,
       distanceM: 1,
-      startTime: new Date(),
-      endTime: new Date(),
+      startTime: now.toDate(),
+      endTime: null,
       startCountry: null,
       endCountry: null,
-      startTz: null,
-      endTz: null,
+      startTz: 'Asia/Tokyo',
+      endTz: 'Asia/Tokyo',
       currentPathNo: -1,
       currentStepNo: -1,
     }
-    let pct = 30
-    
-    
+    const pctList = [0,5,40,60,90,100]
+
     const res = await Effect.gen(function* () {
-      return yield* RunnerService.makeView(runStatus,pct/100,false,true,true,false,s)
+      return yield* Effect.forEach(pctList, a => RunnerService.makeView(runStatus, a / 100, false, true, true, false, s)) 
     }).pipe(
-      Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive,
-        NodeFileSystem.layer, FetchHttpClient.layer, McpLogServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(Effect.logError),
       // Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed({content: []})),
-      Effect.tap(a => Effect.log(a)),
+      Effect.tap(a => McpLogService.logTraceToolsRes(a.flat())),
+      Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive, FetchHttpClient.layer]),
       runPromise
     )
-    expect(res).toBe(41216)
+    expect(res).toBeInstanceOf(Array)
+    expect(res.flat().filter(a => a.type === 'text').every(b => ['current location is','\'I am in a hotel'].some(c => b.text?.includes(c)))).toBeTruthy()
   })
 
 })

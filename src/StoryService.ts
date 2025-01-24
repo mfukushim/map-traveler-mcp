@@ -1,13 +1,12 @@
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
 
-import {Effect, Layer, Option, Schedule} from "effect";
+import {Effect, Option, Schedule} from "effect";
 import dayjs from "dayjs";
 import timezone = require("dayjs/plugin/timezone")
 import {MapDef, MapService} from "./MapService.js";
 import {__pwd, DbService, env} from "./DbService.js";
 import {McpLogService} from "./McpLogService.js";
 import * as Process from "node:process";
-import {NodeFileSystem} from "@effect/platform-node";
 import * as path from "node:path";
 import * as fs from "node:fs";
 
@@ -103,7 +102,16 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
 
     function placesToFacilities(a: typeof MapDef.GmPlacesSchema.Type) {
       const buildings = getNearlyParse(a)
-      const selBuilding = buildings[Math.floor(Math.random() * buildings.length)]
+      if (buildings.length === 0) {
+        return Effect.succeed({
+          townName: Option.none(),
+          address: Option.none(),
+          country: Option.none(),
+          facilities: [],
+          photoReferences: [],
+        })
+      }
+      const selBuilding = buildings[Math.floor(Math.random() * buildings.length)];
 
       const political = getNearlyPoliticalParse(a, selBuilding.id)
       const photoReferences = getPhotoReferences(a, selBuilding.id)
@@ -133,14 +141,15 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
       return Effect.gen(function* () {
         //  最初半径1000以内を探索する。該当件数が2以下なら2000で再検索する
         //  →最初は直近200以内で探索しランドスケープの選択精度を上げる、その後1000,2000へ
-        let retry = 2
-        return yield* Effect.async<number, Error>((resume) => resume(Effect.succeed(retry--))).pipe(
-          Effect.andThen(a => MapService.getNearly(currentLoc.lat, currentLoc.lng, a === 2 ? 200 : retry === 1 ? 1000 : 2000)),
-          Effect.flatMap(a => a.kind === 'places' ? placesToFacilities(a.places) : Effect.fail(new Error('no nearly'))),
+        let retry = 3
+        return yield* Effect.async<number, Error>((resume) => resume(Effect.succeed(--retry))).pipe(
+          Effect.andThen(a => MapService.getNearly(currentLoc.lat, currentLoc.lng, a === 2 ? 200 : a === 1 ? 1000 : 2000)),
+          Effect.andThen(a => a.kind === 'places' ? placesToFacilities(a.places) : Effect.fail(new Error('no nearly'))),
           Effect.tap(a => McpLogService.logTrace(`getNearbyFacilities:${a}`)),
           Effect.tapError(e => McpLogService.logTrace(`getNearbyFacilities error:${e}`)),
-          Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
-        ).pipe(Effect.orElse(() => placesToFacilities([])))
+          Effect.retry(Schedule.recurs(2).pipe(Schedule.intersect(Schedule.spaced("3 seconds")))),
+          Effect.orElse(() => placesToFacilities([]))
+        )
       })
     }
 
@@ -317,4 +326,4 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
 }) {
 }
 
-export const StoryServiceLive = Layer.merge(StoryService.Default, NodeFileSystem.layer)
+export const StoryServiceLive = StoryService.Default
