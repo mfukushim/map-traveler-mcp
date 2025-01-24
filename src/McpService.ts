@@ -461,8 +461,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       )
     }
     
-    const getElapsedView = (timeElapsedPercentage: number, localDebug = false) => {
-      return RunnerService.getElapsedView(timeElapsedPercentage,localDebug).pipe(
+    const getElapsedView = (timeElapsedPercentage: number) => {
+      return RunnerService.getElapsedView(timeElapsedPercentage).pipe(
         Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
       )
     }
