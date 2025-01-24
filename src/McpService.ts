@@ -847,7 +847,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           case "get_time_elapsed_view":
             return getElapsedView(request.params.arguments?.timeElapsedPercentage as number)
           case "get_traveler_location":
-            return getCurrentLocationInfo(false, false)
+            return getCurrentLocationInfo(false, true)
           case "set_current_location":
           case "set_traveler_location":
             return setCurrentLocation(String(request.params.arguments?.address))
