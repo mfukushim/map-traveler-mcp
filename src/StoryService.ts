@@ -143,9 +143,10 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
         //  →最初は直近200以内で探索しランドスケープの選択精度を上げる、その後1000,2000へ
         let retry = 3
         return yield* Effect.async<number, Error>((resume) => resume(Effect.succeed(--retry))).pipe(
-          Effect.andThen(a => MapService.getNearly(currentLoc.lat, currentLoc.lng, a === 2 ? 200 : a === 1 ? 1000 : 2000)),
+          Effect.tap(a => McpLogService.logTrace(`getNearbyFacilities retry:`,a)),
+          Effect.andThen(a => MapService.getNearly(currentLoc.lat, currentLoc.lng, a === 2 ? 200 : a === 1 ? 1000 : 3000)),
           Effect.andThen(a => a.kind === 'places' ? placesToFacilities(a.places) : Effect.fail(new Error('no nearly'))),
-          Effect.tap(a => McpLogService.logTrace(`getNearbyFacilities:${a}`)),
+          Effect.tap(a => McpLogService.logTrace(`getNearbyFacilities:`,a)),
           Effect.tapError(e => McpLogService.logTrace(`getNearbyFacilities error:${e}`)),
           Effect.retry(Schedule.recurs(2).pipe(Schedule.intersect(Schedule.spaced("3 seconds")))),
           Effect.orElse(() => placesToFacilities([]))
