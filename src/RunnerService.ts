@@ -186,7 +186,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       return Effect.succeed(out)
     }
 
-    function getElapsedView(proceedPercent:number, localDebug = false) {
+    function getElapsedView(proceedPercent:number) {
       return Effect.gen(function *() {
         const status = yield* DbService.getRecentRunStatus().pipe(Effect.orElseFail(() =>
           new AnswerError(`current location not set. Please set the current location address`)))
