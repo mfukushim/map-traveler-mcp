@@ -209,7 +209,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         return yield *makeView(runStatus,elapseRatio,justArrive && dayjs().isBefore(dayjs.unix(runStatus.tilEndEpoch).add(1, "hour")),includePhoto,includeNearbyFacilities, practice)
       })
     }
-    
+
     function makeView(runStatus:RunStatus,elapseRatio:number,showRunning:boolean,includePhoto: boolean,includeNearbyFacilities:boolean, practice = false,debugRoute?:string) {
       return Effect.gen(function* () {
         let loc:LocationDetail
@@ -255,7 +255,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         }
         return McpLogService.logError(`getCurrentView catch:${e},${JSON.stringify(e)}`).pipe(Effect.andThen(() =>
           Effect.fail(new AnswerError("Sorry,I don't know where you are right now. Please wait a moment and ask again."))));
-      }))     
+      }))
     }
 
 //     function makeView(status:TripStatus,loc:LocationDetail,toAddress:string,justArrive:boolean,includePhoto: boolean,runInfo:{nearFacilities,image:Buffer,locText;string}) {
@@ -424,6 +424,20 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
      */
     function calcCurrentLoc(runStatus: RunStatus, elapseRatio:number,debugRouteStr?:string) { //  now: dayjs.Dayjs
       return Effect.gen(function* () {
+        if (runStatus.status === "stop") {
+          yield* McpLogService.logTrace(`calcCurrentLoc: stopped`)
+          return {
+            status: "stop" as TripStatus,
+            lat: runStatus.endLat,
+            lng: runStatus.endLng,
+            bearing: MapService.getBearing(runStatus.startLat, runStatus.startLng, runStatus.endLat, runStatus.endLng),
+            timeZoneId: runStatus.endTz!,
+            remainSecInPath: 0,
+            maneuver: undefined,
+            isEnd: true,
+            landPathNo: -1,
+          } as LocationDetail
+        }
         const runAllSec = dayjs.unix(runStatus.tilEndEpoch).diff(runStatus.startTime, "seconds")*elapseRatio;  //  実時間でのstep0を0とした旅行実行秒数
         yield* McpLogService.logTrace(`calcCurrentLoc: elapseRatio=${elapseRatio},runAllSec=${runAllSec}`)
         // const runAllSec = now.diff(runStatus.startTime, "seconds");  //  実時間でのstep0を0とした旅行実行秒数
@@ -571,7 +585,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         return {runStatus: status, justArrive,elapseRatio}
       })
     }
-    
+
     function startJourney(practice = false) {
       return Effect.gen(function* () {
         const now = dayjs();
