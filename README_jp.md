@@ -26,8 +26,6 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
   includeNearbyFacilities: 付近の施設情報を取得します。
 - get_traveler_location()  
   現在の旅アバターのいる住所と付近の施設についての情報を取得します。
-- get_time_elapsed_view(timeElapsedPercentage:number)
-  現在の旅で指定割合まで進行したときの付近の情報と写真を取得します。
 - set_traveler_location(address: string)  
 現在の旅アバターのいる場所を設定します。  
   address: 住所情報(正確な住所、またはGoogle MapやClaudeが認識できる一般的な呼称など)
