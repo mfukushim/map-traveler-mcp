@@ -23,6 +23,8 @@ Example:
   Gets information about the current travel avatar's location.  
   - includePhoto: Gets nearby Google Street View photos. If you have set up an image generation AI, it will synthesize the avatar.
   - includeNearbyFacilities: Gets information about nearby facilities.
+- get_traveler_location()  
+  Gets information about the current travel avatar's address and nearby facilities.
 - set_traveler_location(address: string)  
   Sets the current travel avatar's location.
   - address: Address information (exact address, or general name that Google Maps or Claude can recognize, etc.)
