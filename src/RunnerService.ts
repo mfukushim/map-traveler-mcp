@@ -117,7 +117,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         return {
           nearFacilities,
           image,
-          locText: `current location is below\nlatitude:${loc.lat}\nlongitude:${loc.lng}\n`
+          locText: `current location is below\nlatitude:${loc.lat}\nlongitude:${loc.lng}\nhttps://www.google.com/maps?q=${loc.lat},${loc.lng}\n`
         }
       })
 
@@ -672,10 +672,20 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         const bodyWindowRatioW = Process.env.bodyWindowRatioW ? {bodyWindowRatioW:Number.parseFloat(Process.env.bodyWindowRatioW)} : {}
         const bodyWindowRatioH = Process.env.bodyWindowRatioH ? {bodyWindowRatioH:Number.parseFloat(Process.env.bodyWindowRatioH)} : {}
         return yield* ImageService.makeRunnerImageV3(baseImage, useAiImageGen, abort,{...bodyAreaRatio,...bodyHWRatio,...bodyWindowRatioW,...bodyWindowRatioH},localDebug).pipe(
+            Effect.andThen(a => Effect.gen(function *() {
+              const buf = yield* Effect.tryPromise(() => sharp(a.buf).resize({
+                width: 512,
+                height: 384
+              }).png().toBuffer())
+              return {
+                ...a,
+                buf:buf
+              }
+            })),
           //  合成画像を失敗したらStreetViewだけでも出す
           Effect.orElse(() => Effect.tryPromise(() => sharp(baseImage).resize({
             width: 512,
-            height: 512
+            height: 384
           }).png().toBuffer()).pipe(Effect.andThen(a => ({
             buf: a,
             shiftX: 0,
