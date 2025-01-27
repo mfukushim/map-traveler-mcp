@@ -540,7 +540,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             return {
               buf: yield* Effect.tryPromise(() => sharp(basePhoto).resize({
                 width: 512,
-                height: 512
+                height: 384
               }).png().toBuffer()),
               shiftX: 0,
               shiftY: 0,
