@@ -24,35 +24,39 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 現在の旅アバターのいる場所についての情報を取得します。  
   includePhoto: 付近のGoogle Street Viewの写真を取得します。画像生成AIを設定していればアバターを合成します。
   includeNearbyFacilities: 付近の施設情報を取得します。
-- set_traveler_location(address: string)
+- get_traveler_location()  
+  現在の旅アバターのいる住所と付近の施設についての情報を取得します。
+- set_traveler_location(address: string)  
 現在の旅アバターのいる場所を設定します。  
   address: 住所情報(正確な住所、またはGoogle MapやClaudeが認識できる一般的な呼称など)
-- get_traveler_destination_address
+- get_traveler_destination_address  
 設定している旅アバターの目的地を取得します
-- set_traveler_destination_address(address: string)
+- set_traveler_destination_address(address: string)  
 旅アバターの目的地を設定します  
   address: 住所情報(正確な住所、またはGoogle MapやClaudeが認識できる一般的な呼称など)
-- start_traveler_journey
+- start_traveler_journey  
 目的地に旅を開始します。
-- stop_traveler_journey
+- stop_traveler_journey  
 旅を中止します。
-- set_traveler_info(settings:string)
+- set_traveler_info(settings:string)  
 旅人の属性を設定します。名前や性格など動的に変更したい旅人の性格付けを設定します。ただしroleスクリプトを使う場合はスクリプトのほうが安定に反映できます。
   settings: 名前や性格付けなどの設定情報。
-- get_traveler_info
+- get_traveler_info  
 旅人の属性を取得します。旅人の性格付けを取得します。
-- set_avatar_prompt(prompt:string)
+- set_avatar_prompt(prompt:string)  
 旅アバターの画像生成時のプロンプトを設定します。デフォルトはアニメ風女性です。フェイク画像抑制の目的でアニメ風を強制しています。
-- reset_avatar_prompt
+- reset_avatar_prompt  
   アバターの生成プロンプトをデフォルトにリセットする
-- post_sns_writer(message:string)
+- post_sns_writer(message:string)  
 設定したハンドルでBluesky snsへ記事をポストします。旅botが生成したポストと判定できるように特定のタグを設定します。
-- get_sns_feeds
+- get_sns_feeds  
 指定のカスタムフィード(特定タグを含むフィード)のBluesky sns記事を取得します。
 - get_sns_mentions
 自身がポストしたBluesky snsへの最近のメンション(イイネ、リプライ)を取得します。
-- tips
-まだ未設定の機能について設定方法をガイドします。
+- tips  
+  まだ未設定の機能について設定方法をガイドします。
+- get_environment  
+  環境設定値と画像設定値を取得する
 
 #### MCP resources
 
@@ -70,7 +74,8 @@ Claudeが旅人の立場の役をします。合わせてSNSへの読み取り�
 複数のGoogle mapのアクセスや画像生成など複数のAPIのアクセスキーを取得して設定する必要があります。
 APIの使用には課金がかかることがあります。
 
-Claude Desktopで使用する場合の設定  
+#### Claude Desktopで使用する場合の設定  
+
 claude_desktop_config.json
 ```json
 {
@@ -80,6 +85,7 @@ claude_desktop_config.json
       "args": ["-y", "@mfukushim/map-traveler-mcp"],
       "env":{
         "GoogleMapApi_key":"(Google Map APIのキー)",
+        "time_scale": "(オプション:道路での移動時間の尺度. default 4)",
         "sqlite_path":"(db保存ファイルのパス 例 %USERPROFILE%/Desktop/traveler.sqlite など)",
         "rembg_path": "(インストールしたrembg cliの絶対パス)",
         "pixAi_key":"(pixAi APIのキー)",
@@ -116,9 +122,10 @@ bluesky SNSのアドレス/パスワードの設定は任意です。自動ポ�
 
    https://bsky.app/
 
+#### 練習モードの設定  
+
 確認用にAPIキーを必要としない練習モードで実行することもできます。
 
-練習モードの設定  
 claude_desktop_config.json
 ```json
 {
@@ -133,7 +140,7 @@ claude_desktop_config.json
 
 ## 使い方
 
-練習モードまで
+#### 練習モードまで
 
 1. nodejs 22をインストールします。
 2. Claude Desktopを使える状況にします。
@@ -147,7 +154,7 @@ claude_desktop_config.json
    <img alt="img_3.png" src="tools/img_3.png" width="200"/>
 7. 旅用のプロンプトが組み込まれたので自由に会話してみてください。
 
-本格的に使う
+#### 本格的に使う
 
 1. GoogleMapAPIのアクセスキーを取得して、Street View Static API,Places API (New),Time Zone API,Directions APIの権限を設定してください。これをclaude_desktop_config.jsonのenvに設定して再起動します。  
 ここまでで旅行動ログが現実のマップに即します。旅画像も合成されない状態なら出力します。
@@ -170,7 +177,7 @@ claude_desktop_config.json
 6. bluesky SNSのアドレス/パスワードを取得し、ハンドル名も取得します。claude_desktop_config.jsonのenvのbs_id,bs_pass,bs_handle にそれぞれ設定します。
 旅用知識プロンプト roleWithSns.txt を取り込むことで旅アクションをSNSに報告します(botとして自動ポストしますので専用にアカウントを割り当てることをお勧めします)
 
-### 設定ガイド
+## 設定ガイド
 
 1. 紹介&練習設定編
    https://note.com/marble_walkers/n/n7a8f79e4fb30

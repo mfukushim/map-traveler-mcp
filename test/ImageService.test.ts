@@ -137,7 +137,7 @@ describe("Image", () => {
     //  vitest --run --testNamePattern=makeRunnerImageV3_i2i ImageService.test.ts
     const res = await Effect.gen(function* () {
       const buffer = fs.readFileSync('tools/test.jpg');
-      return yield* ImageService.makeRunnerImageV3(buffer, 'pixAi',false, {bodyWindowRatioW:1,bodyWindowRatioH:1,bodyAreaRatio:0.05,bodyHWRatio:0.3}, true)  //
+      return yield* ImageService.makeRunnerImageV3(buffer, 'pixAi',false, {bodyWindowRatioW:0.7,bodyWindowRatioH:0.7,bodyAreaRatio:0.001,bodyHWRatio:0.3}, true)  //
     }).pipe(
       Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),

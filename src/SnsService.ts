@@ -7,6 +7,7 @@ import dayjs from "dayjs";
 import * as Process from "node:process";
 import {McpLogService} from "./McpLogService.js";
 import {DbService} from "./DbService.js";
+import {AnswerError} from "./mapTraveler.js";
 
 
 type SnsType = "bs" | "tw" | "md" | "sk";
@@ -33,7 +34,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
 
       function reLogin() {
         return Effect.gen(function* () {
-          if (!(Process.env.bs_id && Process.env.bs_pass && Process.env.bs_handle)) return yield* Effect.fail(new Error('no bs account'));
+          if (!(Process.env.bs_id && Process.env.bs_pass && Process.env.bs_handle)) return yield* Effect.fail(new AnswerError('no bluesky account'));
           if (isLogin) return yield* Effect.succeed(true);
           yield* Effect.tryPromise({
             try: () => {
