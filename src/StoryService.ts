@@ -5,7 +5,7 @@ import dayjs from "dayjs";
 import timezone = require("dayjs/plugin/timezone")
 import {MapDef, MapService} from "./MapService.js";
 import {__pwd, DbService, env} from "./DbService.js";
-import {McpLogService} from "./McpLogService.js";
+import {logSync, McpLogService} from "./McpLogService.js";
 import * as Process from "node:process";
 import * as path from "node:path";
 import * as fs from "node:fs";
@@ -261,27 +261,37 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
     }
 
     function getSettingResource(pathname: string) {
-      if (pathname.includes("/roleWithSns.txt")) {
+      //  様式は /credit.txt
+      logSync(`getSettingResource:`,pathname)
+      if(['roleWithSns.txt','role.txt','tokyoDungeon.txt','pathGuardian.txt'].some(value => pathname === `/${value}`)) {
         return Effect.async<string, Error>((resume) => {
-          fs.readFile(path.join(__pwd, 'assets/roleWithSns.txt'), {encoding: "utf8"}, (err, data) => {
+          fs.readFile(path.join(__pwd, `assets${pathname}`), {encoding: "utf8"}, (err, data) => {
             if (err) resume(Effect.fail(err))
             else resume(Effect.succeed(data));
           });
         })
-      } else if (pathname.includes("/role.txt")) {
-        return Effect.async<string, Error>((resume) => {
-          fs.readFile(path.join(__pwd, 'assets/role.txt'), {encoding: "utf8"}, (err, data) => {
-            if (err) resume(Effect.fail(err))
-            else resume(Effect.succeed(data));
-          });
-        })
-      } else if (pathname.includes("/tokyoDungeon.txt")) {
-        return Effect.async<string, Error>((resume) => {
-          fs.readFile(path.join(__pwd, 'assets/tokyoDungeon.txt'), {encoding: "utf8"}, (err, data) => {
-            if (err) resume(Effect.fail(err))
-            else resume(Effect.succeed(data));
-          });
-        })
+      // }
+      // if (pathname.includes("/roleWithSns.txt")) {
+      //   return Effect.async<string, Error>((resume) => {
+      //     fs.readFile(path.join(__pwd, 'assets/roleWithSns.txt'), {encoding: "utf8"}, (err, data) => {
+      //       if (err) resume(Effect.fail(err))
+      //       else resume(Effect.succeed(data));
+      //     });
+      //   })
+      // } else if (pathname.includes("/role.txt")) {
+      //   return Effect.async<string, Error>((resume) => {
+      //     fs.readFile(path.join(__pwd, 'assets/role.txt'), {encoding: "utf8"}, (err, data) => {
+      //       if (err) resume(Effect.fail(err))
+      //       else resume(Effect.succeed(data));
+      //     });
+      //   })
+      // } else if (pathname.includes("/tokyoDungeon.txt")) {
+      //   return Effect.async<string, Error>((resume) => {
+      //     fs.readFile(path.join(__pwd, 'assets/tokyoDungeon.txt'), {encoding: "utf8"}, (err, data) => {
+      //       if (err) resume(Effect.fail(err))
+      //       else resume(Effect.succeed(data));
+      //     });
+      //   })
       } else if (pathname.includes("/setting.txt")) {
         return Effect.gen(function* () {
           //  TODO ここはなおす
