@@ -292,7 +292,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           }),
           Effect.andThen(a => Effect.tryPromise(() => sharp(a).resize({
             width: 512,
-            height: 512
+            height: 384
           }).png().toBuffer()))
         )
       })
@@ -346,7 +346,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           }),
           Effect.andThen(a => Effect.tryPromise(() => sharp(a).resize({
             width: 512,
-            height: 512
+            height: 384
           }).png().toBuffer()))
         )
       })
