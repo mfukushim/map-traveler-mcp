@@ -199,7 +199,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           {
             name: "get_traveler_location",  //  関数名の合成現象があった? とりあえずaliasを置く
             description:
-                "Get the address of the current traveler's location",
+              "Get the address of the current traveler's location",
             inputSchema: {
               type: "object",
               properties: {}
@@ -317,7 +317,23 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                     },
                     required: ["address"]
                   }
-                }]
+                },
+                {
+                  name: "reach_a_percentage_of_destination",  //  現在の経路で指定パーセントまで進めた位置の様子を取得する
+                  description:
+                    "Reach a specified percentage of the destination",
+                  inputSchema: {
+                    type: "object",
+                    properties: {
+                      timeElapsedPercentage: {
+                        type: "number",
+                        description: "Percent progress towards destination. (0~100)"
+                      },
+                    },
+                    required: ["timeElapsedPercentage"]
+                  }
+                },
+              ]
               const cmd: Tool[] = []
               if (env.travelerExist) {
                 cmd.push(
@@ -461,6 +477,9 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         }
 
         const getElapsedView = (timeElapsedPercentage: number) => {
+          if (env.isPractice) {
+            return practiceNotUsableMessage
+          }
           return RunnerService.getElapsedView(timeElapsedPercentage).pipe(
               Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
           )
@@ -843,7 +862,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             case "get_current_view_info":
             case "get_traveler_view_info":
               return getCurrentLocationInfo(request.params.arguments?.includePhoto as boolean, request.params.arguments?.includeNearbyFacilities as boolean)
-            case "get_time_elapsed_view":
+            case "reach_a_percentage_of_destination":
               return getElapsedView(request.params.arguments?.timeElapsedPercentage as number)
             case "get_traveler_location":
               return getCurrentLocationInfo(false, true)
@@ -900,6 +919,11 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                   mimeType: "text/plain",
                   name: "roleWithSns.txt",
                   description: "The purpose and role of AI with SNS"
+                }, {
+                  uri: "file:///carBattle.txt",
+                  mimeType: "text/plain",
+                  name: "carBattle.txt",
+                  description: "Play the fantasy role playing"
                 }, {
                   uri: "file:///credit.txt",
                   mimeType: "text/plain",

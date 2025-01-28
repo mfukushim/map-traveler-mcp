@@ -8,6 +8,9 @@ From an MCP client such as Claude Desktop, you can give instructions to the avat
 
 <img alt="img_5.png" src="tools/img_5.png" width="400"/>
 
+> **caution**  
+Currently, it seems that it is not possible to take images using the PixAI API for some unclear reason.
+
 ## Functions
 
 #### MCP server tools function
@@ -25,6 +28,9 @@ Example:
   - includeNearbyFacilities: Gets information about nearby facilities.
 - get_traveler_location()  
   Gets information about the current travel avatar's address and nearby facilities.
+- reach_a_percentage_of_destination()
+  Reach a specified percentage of the destination
+  timeElapsedPercentage: Percent progress towards destination(0~100)
 - set_traveler_location(address: string)  
   Sets the current travel avatar's location.
   - address: Address information (exact address, or general name that Google Maps or Claude can recognize, etc.)
