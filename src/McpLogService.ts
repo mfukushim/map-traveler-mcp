@@ -19,9 +19,14 @@ const logPath = path.join(__pwd,"mapTravelerLog.log")
 
 const logLevel = Process.env.ServerLog ? (Process.env.ServerLog as string).split(','):[]
 
-export function logSync(message:unknown) {
+export function logSync(...message:any[]) {
   if(process.env.VITEST !== 'true' && logLevel.includes('sync')) {
-    fs.writeFileSync(logPath,`${dayjs().toISOString()}:s:`+(message as any).toString()+"\n",{flag:"a"})
+    fs.writeFileSync(logPath,`${dayjs().toISOString()}:s:`+message.map(value => {
+      if (typeof value === "object" && value !== null) {
+        return JSON.stringify(value).slice(0,200)
+      }
+      return value;
+    }).join(',')+"\n",{flag:"a"})
   }
 }
 

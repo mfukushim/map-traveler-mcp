@@ -10,6 +10,9 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 
 <img alt="img.png" src="tools/img.png" width="400"/>
 
+> **注意**  
+現在PixAIのAPIでよくわからない理由で画像が取れないようです。
+
 ## 機能
 
 #### MCP server tools function
@@ -26,6 +29,9 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
   includeNearbyFacilities: 付近の施設情報を取得します。
 - get_traveler_location()  
   現在の旅アバターのいる住所と付近の施設についての情報を取得します。
+- reach_a_percentage_of_destination(timeElapsedPercentage:number)
+  現在の目的地までの指定の割合の位置に到達する Reach a specified percentage of the destination
+  timeElapsedPercentage: 目的地までの進捗割合(0～100)
 - set_traveler_location(address: string)  
 現在の旅アバターのいる場所を設定します。  
   address: 住所情報(正確な住所、またはGoogle MapやClaudeが認識できる一般的な呼称など)

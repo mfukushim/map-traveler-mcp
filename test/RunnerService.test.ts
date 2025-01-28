@@ -4,7 +4,7 @@ import {describe, expect, it} from "@effect/vitest"
 import {RunnerService, RunnerServiceLive} from "../src/RunnerService.js";
 import {runPromise} from "effect/Effect";
 import {FetchHttpClient} from "@effect/platform";
-import {DbServiceLive, RunStatus} from "../src/DbService.js";
+import {DbService, DbServiceLive, RunStatus} from "../src/DbService.js";
 import {MapDef, MapServiceLive} from "../src/MapService.js";
 import {ImageServiceLive} from "../src/ImageService.js";
 import {StoryServiceLive} from "../src/StoryService.js";
@@ -70,6 +70,7 @@ describe("Runner", () => {
     ])
   })
   it("makeView", async () => {
+    //  envコメントアウトでも通るがGoogle map apiを設定している状態が厳密
     const now = dayjs()
     const s = fs.readFileSync('tools/test/routeSample.json', {encoding: 'utf-8'});
     //  このサンプルの秒ステップ [{0,104},{104,276},{276,764},{764,1624},{1624,1684},{1684,40180},{40180,40316},{40316,40388},{40388,40560},{40560,40968},{40968,41216}]
@@ -82,10 +83,10 @@ describe("Runner", () => {
       from: 'from',
       to: 'to', //  現在処理中の行き先,現在位置
       destination: 'dest', //  計画中の行き先
-      startLat: 0,
+      startLat: 47.62017549999999,
       startLng: 0,
-      endLat: 0,
-      endLng: 0,
+      endLat: 45.5190171,
+      endLng: -122.6798007,
       durationSec: 1,
       distanceM: 1,
       startTime: now.toDate(),
@@ -100,7 +101,7 @@ describe("Runner", () => {
     const pctList = [0,5,40,60,90,100]
 
     const res = await Effect.gen(function* () {
-      return yield* Effect.forEach(pctList, a => RunnerService.makeView(runStatus, a / 100, false, true, true, false, s)) 
+      return yield* Effect.forEach(pctList, a => RunnerService.makeView(runStatus, a / 100, false, true, true, false, s))
     }).pipe(
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(Effect.logError),
@@ -111,6 +112,124 @@ describe("Runner", () => {
     )
     expect(res).toBeInstanceOf(Array)
     expect(res.flat().filter(a => a.type === 'text').every(b => ['current location is','\'I am in a hotel'].some(c => b.text?.includes(c)))).toBeTruthy()
+  })
+  it("getElapsedView_Running", async () => {
+    //  envコメントアウトでも通るがGoogle map apiを設定している状態が厳密
+    const now = dayjs()
+    const s = fs.readFileSync('tools/test/routeSample.json', {encoding: 'utf-8'});
+    //  このサンプルの秒ステップ [{0,104},{104,276},{276,764},{764,1624},{1624,1684},{1684,40180},{40180,40316},{40316,40388},{40388,40560},{40560,40968},{40968,41216}]
+    const runStatus: RunStatus = {
+      id: 1,
+      avatarId: 1,
+      tripId: 1,
+      tilEndEpoch: now.add(41216, 'second').unix(), //  このサンプルは41216秒 約11.5時間
+      status: "running",
+      from: 'from',
+      to: 'to', //  現在処理中の行き先,現在位置
+      destination: 'dest', //  計画中の行き先
+      startLat: 47.62017549999999,
+      startLng: -122.3493189,
+      endLat: 45.5190171,
+      endLng: -122.6798007,
+      durationSec: 1,
+      distanceM: 1,
+      startTime: now.toDate(),
+      endTime: null,
+      startCountry: null,
+      endCountry: null,
+      startTz: 'Asia/Tokyo',
+      endTz: 'Asia/Tokyo',
+      currentPathNo: -1,
+      currentStepNo: -1,
+    }
+    const pctList = [0,5,40,60,90,100]
+
+    const res = await Effect.gen(function* () {
+      yield *DbService.saveRunStatus(runStatus)
+      return yield* RunnerService.getElapsedView(pctList[1] / 100,s)
+      // return yield* Effect.forEach(pctList, a => RunnerService.getElapsedView(a / 100))
+    }).pipe(
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.tapError(Effect.logError),
+      // Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed({content: []})),
+      Effect.tap(a => McpLogService.logTraceToolsRes(a.flat())),
+      Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive, FetchHttpClient.layer]),
+      runPromise
+    )
+    expect(res).toBeInstanceOf(Array)
+    expect(res.flat().filter(a => a.type === 'text').every(b => ['current location is','\'I am in a hotel'].some(c => b.text?.includes(c)))).toBeTruthy()
+    const res2 = await Effect.gen(function* () {
+      return yield *DbService.getRecentRunStatus()
+    }).pipe(
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.tapError(Effect.logError),
+      // Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed({content: []})),
+      Effect.tap(a => McpLogService.logTrace('end runStatus:',a)),
+      Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive, FetchHttpClient.layer]),
+      runPromise
+    )
+    console.log(res2)
+    expect(res2.status).toBe('stop')
+  })
+  it("getElapsedView_stop", async () => {
+    //  vitest --run --testNamePattern=getElapsedView_stop RunnerService.test.ts
+    //  envコメントアウトでも通るがGoogle map apiを設定している状態が厳密
+    const now = dayjs()
+    const s = fs.readFileSync('tools/test/routeSample.json', {encoding: 'utf-8'});
+    //  このサンプルの秒ステップ [{0,104},{104,276},{276,764},{764,1624},{1624,1684},{1684,40180},{40180,40316},{40316,40388},{40388,40560},{40560,40968},{40968,41216}]
+    const runStatus: RunStatus = {
+      id: 1,
+      avatarId: 1,
+      tripId: 1,
+      tilEndEpoch: now.add(41216, 'second').unix(), //  このサンプルは41216秒 約11.5時間
+      status: "stop",
+      from: 'from',
+      to: '365 Thomas St, Seattle, WA 98109, USA', //  現在処理中の行き先,現在位置
+      destination: 'dest', //  計画中の行き先
+      startLat: 0,
+      startLng: 0,
+      endLat: 47.62017549999999,
+      endLng: -122.3493189,
+      durationSec: 1,
+      distanceM: 1,
+      startTime: now.toDate(),
+      endTime: null,
+      startCountry: null,
+      endCountry: null,
+      startTz: 'Asia/Tokyo',
+      endTz: 'Asia/Tokyo',
+      currentPathNo: -1,
+      currentStepNo: -1,
+    }
+    const pctList = [0,5,40,60,90,100]
+
+    const res = await Effect.gen(function* () {
+      yield *DbService.saveEnv("destination","Pioneer Courthouse Square, 701 SW 6th Ave, Portland, OR 97204, USA")
+      yield *DbService.saveRunStatus(runStatus)
+      return yield* RunnerService.getElapsedView(pctList[5] / 100,s)
+      // return yield* Effect.forEach(pctList, a => RunnerService.getElapsedView(a / 100))
+    }).pipe(
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.tapError(Effect.logError),
+      // Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed({content: []})),
+      Effect.tap(a => McpLogService.logTraceToolsRes(a.flat())),
+      Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive, FetchHttpClient.layer]),
+      runPromise
+    )
+    expect(res).toBeInstanceOf(Array)
+    expect(res.flat().filter(a => a.type === 'text').every(b => ['current location is','\'I am in a hotel'].some(c => b.text?.includes(c)))).toBeTruthy()
+    const res2 = await Effect.gen(function* () {
+      return yield *DbService.getRecentRunStatus()
+    }).pipe(
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.tapError(Effect.logError),
+      // Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed({content: []})),
+      Effect.tap(a => McpLogService.logTrace('end runStatus:',a)),
+      Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive, FetchHttpClient.layer]),
+      runPromise
+    )
+    console.log(res2)
+    expect(res2.status).toBe('stop')
   })
 
 })

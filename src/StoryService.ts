@@ -249,6 +249,7 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
           if (!env.promptChanged && !env.fixedModelPrompt) {
             textList.push('You can change the appearance of your avatar by directly telling the AI what you want it to look like, or by specifying a prompt to show its appearance with set_avatar_prompt.')
           }
+          textList.push('You can play a tiny role play game using the scenario in carBattle.txt. Have fun!')
         }
       }
 
@@ -261,29 +262,18 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
     }
 
     function getSettingResource(pathname: string) {
-      if (pathname.includes("/roleWithSns.txt")) {
-        return Effect.async<string, Error>((resume) => {
-          fs.readFile(path.join(__pwd, 'assets/roleWithSns.txt'), {encoding: "utf8"}, (err, data) => {
-            if (err) resume(Effect.fail(err))
-            else resume(Effect.succeed(data));
-          });
-        })
-      } else if (pathname.includes("/role.txt")) {
-        return Effect.async<string, Error>((resume) => {
-          fs.readFile(path.join(__pwd, 'assets/role.txt'), {encoding: "utf8"}, (err, data) => {
-            if (err) resume(Effect.fail(err))
-            else resume(Effect.succeed(data));
-          });
-        })
-      } else if (pathname.includes("/tokyoDungeon.txt")) {
-        return Effect.async<string, Error>((resume) => {
-          fs.readFile(path.join(__pwd, 'assets/role.txt'), {encoding: "utf8"}, (err, data) => {
-            if (err) resume(Effect.fail(err))
-            else resume(Effect.succeed(data));
-          });
-        })
-      } else if (pathname.includes("/setting.txt")) {
-        return Effect.gen(function* () {
+      //  様式は /credit.txt
+      return Effect.gen(function *() {
+        yield *McpLogService.logTrace(`getSettingResource:`,pathname)
+        const files = yield *Effect.tryPromise(() => fs.promises.readdir(path.join(__pwd, `assets/scenario`)))
+        if(files.some(value => pathname === `/${value}`)) {
+          return yield *Effect.async<string, Error>((resume) => {
+            fs.readFile(path.join(__pwd, `assets/scenario${pathname}`), {encoding: "utf8"}, (err, data) => {
+              if (err) resume(Effect.fail(err))
+              else resume(Effect.succeed(data));
+            });
+          })
+        } else if (pathname.includes("/setting.txt")) {
           //  TODO ここはなおす
           //  言語
           const langText = yield* DbService.getEnv('language').pipe(
@@ -301,18 +291,18 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
               Effect.orElseSucceed(() => 'The destination is not decided.'))
           })
           return [langText, destText].join('\n')
-        })
-      } else if (pathname.includes("/credit.txt")) {
-        const packageJsonPath = path.resolve(__pwd, 'package.json');
-        return Effect.async<string, Error>((resume) => {
-          fs.readFile(packageJsonPath, {encoding: "utf8"}, (err, data) => {
-            if (err) resume(Effect.fail(err))
-            else resume(Effect.succeed(data));
-          });
-        }).pipe(Effect.andThen(a => `map-traveler.mcp version:${JSON.parse(a).version} https://akibakokoubou.jp/ `))
-      } else {
-        return Effect.fail(new Error(`resource not found`));
-      }
+        } else if (pathname.includes("/credit.txt")) {
+          const packageJsonPath = path.resolve(__pwd, 'package.json');
+          return yield *Effect.async<string, Error>((resume) => {
+            fs.readFile(packageJsonPath, {encoding: "utf8"}, (err, data) => {
+              if (err) resume(Effect.fail(err))
+              else resume(Effect.succeed(data));
+            });
+          }).pipe(Effect.andThen(a => `map-traveler.mcp version:${JSON.parse(a).version} https://akibakokoubou.jp/ `))
+        } else {
+          return yield *Effect.fail(new Error(`resource not found`));
+        }
+      })
     }
 
     // endregion
