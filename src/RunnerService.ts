@@ -194,22 +194,84 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       return Effect.succeed(out)
     }
 
-    function getElapsedView(proceedPercent: number) {
+    const getRunStatusAndUpdateEnd = (now: dayjs.Dayjs) => {
       return Effect.gen(function* () {
         const status = yield* DbService.getRecentRunStatus().pipe(Effect.orElseFail(() =>
           new AnswerError(`current location not set. Please set the current location address`)))
         if (status.status === "stop" && !status.to) {
           //  停止している場合は直近の行き先のtoが現在地
           return yield* Effect.fail(new AnswerError(`current location not set. Please set the current location address`))
-        } else if (status.status === "stop") {
-          return yield* Effect.fail(new AnswerError(`The journey is over`))
         }
-        const proceed = Math.max(0, Math.min(100, proceedPercent))
-        return yield* makeView(status, proceed / 100, false, true, true)
+        const endTime = dayjs.unix(status.tilEndEpoch);
+        const start = dayjs(status.startTime);
+        const elapseRatio = Math.min((now.diff(start, "seconds")) / (endTime.diff(start, "seconds")), 1)
+        let justArrive = false
+        if (elapseRatio >= 1) {
+          //  旅は終了している 終点画像を撮るタイミングがないな。。ここで入れるか? 今の取得で作れるのは作れるが。。
+          if (status.status !== "running") {
+            justArrive = true
+          }
+          resetRunStatus(status, status.to, endTime.toDate(), status.endLat, status.endLng, status.endCountry, status.endTz);
+          yield* DbService.saveRunStatus(status)
+        }
+        return {runStatus: status, justArrive, elapseRatio}
       })
     }
 
+    function getElapsedView(proceedPercent: number,debugRouteStr?: string) {
+      //  指定割合のその場所まで移動してstop状態にする
+      const proceed = Math.max(0, Math.min(100, proceedPercent))
+      return Effect.gen(function* () {
+        const runStatus = yield* DbService.getRecentRunStatus().pipe(Effect.orElseFail(() =>
+          new AnswerError(`current location not set. Please set the current location address`)))
+        let p = 1
+        let rs:RunStatus
+        if (runStatus.status === 'stop') {
+          if (!runStatus.to) {
+            //  停止している場合は直近の行き先のtoが現在地 現在地がない
+            return yield* Effect.fail(new AnswerError(`current location not set. Please set the current location address`))
+          }
+          const dest = yield* DbService.getEnvOption('destination')
+          if (Option.isNone(dest)) {
+            return yield* Effect.fail(new AnswerError(`destination not set`)) //  行き先未指定
+          }
+          //  走っていなければ走った状態にする。走っていればその状態から計算する 開始位置はどうしよう?
+          if (env.isPractice) {
+            //  TODO 暫定
+            rs = runStatus
+          } else {
+            rs = yield *setStart(runStatus,dayjs());
+          }
+          p = proceed
+        } else {
+          //  走っている
+          if (!runStatus.to || !runStatus.from) {
+            return yield* Effect.fail(new Error(`getElapsedView running but no from or to`))
+          }
+          //  走っている現在の想定時間で残った距離に対する指定された割合の位置に移動する
+          const endTime = dayjs.unix(runStatus.tilEndEpoch);
+          const start = dayjs(runStatus.startTime);
+          const elapseRatio = Math.min((dayjs().diff(start, "seconds")) / (endTime.diff(start, "seconds")), 1)
+          const remainRatio = (1 - elapseRatio) * (1 - proceed)
+          p = 1 - remainRatio
+          rs = runStatus
+        }
+        const loc = yield* calcCurrentLoc(rs, p,debugRouteStr); //  これは計算位置情報
+        yield* McpLogService.logTrace(`getCurrentView:recalcRatio:${p},start:${rs.startTime},end:${dayjs.unix(rs.tilEndEpoch)},status:${loc.status}`)
 
+        const {
+          nearFacilities,
+          image,
+          locText
+        } = yield* getFacilities(loc, true, false)
+
+        resetRunStatus(rs, Option.getOrElse(nearFacilities.address, () => rs.to), dayjs().toDate(),
+          loc.lat, loc.lng, Option.getOrElse(nearFacilities.country, () => rs.endCountry), loc.timeZoneId)
+        yield* DbService.saveRunStatus(rs)
+        return yield* runningReport(locText, nearFacilities, image, false, true).pipe(Effect.andThen(a => a.out))
+      })
+    }
+    
     function getCurrentView(now: dayjs.Dayjs, includePhoto: boolean, includeNearbyFacilities: boolean, practice = false) {
       return Effect.gen(function* () {
         const {runStatus, justArrive, elapseRatio} = yield* getRunStatusAndUpdateEnd(now);
@@ -266,80 +328,6 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       }))
     }
 
-//     function makeView(status:TripStatus,loc:LocationDetail,toAddress:string,justArrive:boolean,includePhoto: boolean,runInfo:{nearFacilities,image:Buffer,locText;string}) {
-//       // function makeView(now:dayjs.Dayjs,includePhoto: boolean, includeNearbyFacilities: boolean, practice = false, localDebug = false) {
-//       return Effect.gen(function* () {
-// /*
-//         const {runStatus, justArrive} = yield* getRunStatusAndUpdateEnd(now);
-//         const loc = yield* calcCurrentLoc(runStatus, now); //  これは計算位置情報
-//         let status: TripStatus;
-//         if (practice) {
-//           status = runStatus.status;
-//         } else {
-//           status = loc.status;
-//           yield *McpLogService.logTrace(`getCurrentView:now:${now.unix()},start:${runStatus.startTime},end:${dayjs.unix(runStatus.tilEndEpoch)},status:${loc.status}`)
-//           //  ただし前回旅が存在し、それが終了していても、そのendTimeから1時間以内ならその場所にいるものとして表示する
-//           if (justArrive && now.isBefore(dayjs.unix(runStatus.tilEndEpoch).add(1, "hour"))) {
-//             status = 'running'
-//           }
-//         }
-// */
-//
-//         switch (status) {
-//           case 'vehicle': {
-//             //  乗り物
-//             const maneuver = loc.maneuver;
-//             const vehiclePrompt = maneuver?.includes('ferry') ? '(on ship deck:1.3),(ferry:1.2),sea,handrails' :
-//               maneuver?.includes('airplane') ? '(airplane cabin:1.3),reclining seat,sitting' : ''
-//             const image = includePhoto && env.anyImageAiExist && (yield* ImageService.makeEtcTripImage(useAiImageGen, vehiclePrompt, loc.timeZoneId))
-//             const out: ToolContentResponse[] = [
-//               {
-//                 type: "text",
-//                 text: `I'm on the ${maneuver} now. Longitude and Latitude is almost ${loc.lat},${loc.lng}`
-//               },
-//             ]
-//             if (image) {
-//               out.push({type: "image", data: image.toString("base64"), mimeType: 'image/png'}
-//               )
-//             }
-//             return out
-//           }
-//           case 'running': {
-//             //  通常旅行
-// /*
-//             const {
-//               nearFacilities,
-//               image,
-//               locText
-//             } = yield* (practice ? getFacilitiesPractice(toAddress, includePhoto) : getFacilities(loc, includePhoto, false))
-// */
-//             return yield* runningReport(locText, nearFacilities, image, false, justArrive).pipe(Effect.andThen(a => a.out))
-//           }
-//           case 'stop': {
-//             //  ホテル画像
-//             const hour = now.tz(loc.timeZoneId).hour()
-//             const image1 = includePhoto && (yield* ImageService.makeHotelPict(useAiImageGen, hour, undefined))
-//             const out: ToolContentResponse[] = [
-//               {type: "text", text: `I am in a hotel in ${toAddress}.`}
-//             ]
-//             if (image1) {
-//               out.push({
-//                 type: "image",
-//                 data: image1.toString("base64"),
-//                 mimeType: 'image/png'
-//               })
-//             }
-//             return out
-//           }
-//         }
-//       }).pipe(Effect.catchAll(e => {
-//         if (e instanceof AnswerError) {
-//           return Effect.fail(e)
-//         }
-//         return McpLogService.logError(`getCurrentView catch:${e},${JSON.stringify(e)}`).pipe(Effect.andThen(() =>
-//           Effect.fail(new AnswerError("Sorry,I don't know where you are right now. Please wait a moment and ask again."))));
-//       }))
-//     }
 
     /**
      * ルートjsonをローカル一時上書き保存する
@@ -569,28 +557,27 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       recent.currentPathNo = -1
       recent.currentStepNo = -1
     }
-
-    const getRunStatusAndUpdateEnd = (now: dayjs.Dayjs) => {
+    
+    function setStart(runStatus:RunStatus,now:dayjs.Dayjs) {
       return Effect.gen(function* () {
-        const status = yield* DbService.getRecentRunStatus().pipe(Effect.orElseFail(() =>
-          new AnswerError(`current location not set. Please set the current location address`)))
-        if (status.status === "stop" && !status.to) {
-          //  停止している場合は直近の行き先のtoが現在地
-          return yield* Effect.fail(new AnswerError(`current location not set. Please set the current location address`))
-        }
-        const endTime = dayjs.unix(status.tilEndEpoch);
-        const start = dayjs(status.startTime);
-        const elapseRatio = Math.min((now.diff(start, "seconds")) / (endTime.diff(start, "seconds")), 1)
-        let justArrive = false
-        if (elapseRatio >= 1) {
-          //  旅は終了している 終点画像を撮るタイミングがないな。。ここで入れるか? 今の取得で作れるのは作れるが。。
-          if (status.status !== "running") {
-            justArrive = true
-          }
-          resetRunStatus(status, status.to, endTime.toDate(), status.endLat, status.endLng, status.endCountry, status.endTz);
-          yield* DbService.saveRunStatus(status)
-        }
-        return {runStatus: status, justArrive, elapseRatio}
+        const dest = yield* DbService.getEnv('destination') //  これはプラン中の行き先
+        //  コース再計算
+        const destInfo = yield* setDestinationAddress(dest)
+        //  旅開始する
+        runStatus.status = "running"
+        runStatus.startTime = now.toDate()
+        runStatus.endTime = dayjs.unix(destInfo.tilEndSec).toDate()
+        runStatus.destination = ""
+        runStatus.from = runStatus.to
+        runStatus.to = dest
+        runStatus.startTz = runStatus.endTz //  TODO 中断の場合異なる可能性がある
+        runStatus.startLat = runStatus.endLat
+        runStatus.startLng = runStatus.endLng
+        runStatus.endLat = destInfo.destination.lat
+        runStatus.endLng = destInfo.destination.lng
+        runStatus.tilEndEpoch = destInfo.tilEndSec + now.unix()
+        runStatus.endTz = yield* DbService.getEnv("destTimezoneId").pipe(Effect.orElseSucceed(() => runStatus.startTz));
+        return runStatus
       })
     }
 
@@ -607,24 +594,25 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
               return Effect.fail(new AnswerError(`already start journey.You may stop or continue the journey`));
             }
           }));
-          const dest = yield* DbService.getEnv('destination') //  これはプラン中の行き先
-          //  コース再計算
-          const destInfo = yield* setDestinationAddress(dest)
-          //  旅開始する
-          runStatus.status = "running"
-          runStatus.startTime = now.toDate()
-          runStatus.endTime = dayjs.unix(destInfo.tilEndSec).toDate()
-          runStatus.destination = ""
-          runStatus.from = runStatus.to
-          runStatus.to = dest
-          runStatus.startTz = runStatus.endTz //  TODO 中断の場合異なる可能性がある
-          runStatus.startLat = runStatus.endLat
-          runStatus.startLng = runStatus.endLng
-          runStatus.endLat = destInfo.destination.lat
-          runStatus.endLng = destInfo.destination.lng
-          runStatus.tilEndEpoch = destInfo.tilEndSec + now.unix()
-          runStatus.endTz = yield* DbService.getEnv("destTimezoneId").pipe(Effect.orElseSucceed(() => runStatus.startTz));
-          rs = runStatus
+          rs = yield *setStart(runStatus,now)
+          // const dest = yield* DbService.getEnv('destination') //  これはプラン中の行き先
+          // //  コース再計算
+          // const destInfo = yield* setDestinationAddress(dest)
+          // //  旅開始する
+          // runStatus.status = "running"
+          // runStatus.startTime = now.toDate()
+          // runStatus.endTime = dayjs.unix(destInfo.tilEndSec).toDate()
+          // runStatus.destination = ""
+          // runStatus.from = runStatus.to
+          // runStatus.to = dest
+          // runStatus.startTz = runStatus.endTz //  TODO 中断の場合異なる可能性がある
+          // runStatus.startLat = runStatus.endLat
+          // runStatus.startLng = runStatus.endLng
+          // runStatus.endLat = destInfo.destination.lat
+          // runStatus.endLng = destInfo.destination.lng
+          // runStatus.tilEndEpoch = destInfo.tilEndSec + now.unix()
+          // runStatus.endTz = yield* DbService.getEnv("destTimezoneId").pipe(Effect.orElseSucceed(() => runStatus.startTz));
+          // rs = runStatus
         }
         //  旅開始ホテル画像、旅開始挨拶
         const hour = now.tz(rs.startTz!).hour()

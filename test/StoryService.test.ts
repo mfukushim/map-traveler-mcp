@@ -28,14 +28,30 @@ describe("Story", () => {
     const res = await Effect.gen(function* () {
       return yield* StoryService.getSettingResource('/credit.txt')
     }).pipe(
-        Effect.provide([StoryServiceLive, DbServiceLive]),
-        Logger.withMinimumLogLevel(LogLevel.Trace),
-        // Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
-        // Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed([])),
-        Effect.tap(a => {
-          return McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive));
-        }),
-        runPromise
+      Effect.provide([StoryServiceLive, DbServiceLive]),
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      // Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
+      // Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed([])),
+      Effect.tap(a => {
+        return McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive));
+      }),
+      runPromise
+    )
+    expect(typeof res).toBe('string')
+  })
+  it("carBattle", async () => {
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    const res = await Effect.gen(function* () {
+      return yield* StoryService.getSettingResource('/carBattle.txt')
+    }).pipe(
+      Effect.provide([StoryServiceLive, DbServiceLive]),
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      // Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
+      // Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed([])),
+      Effect.tap(a => {
+        return McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive));
+      }),
+      runPromise
     )
     expect(typeof res).toBe('string')
   })
