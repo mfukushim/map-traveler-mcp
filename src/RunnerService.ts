@@ -595,28 +595,12 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
             }
           }));
           rs = yield *setStart(runStatus,now)
-          // const dest = yield* DbService.getEnv('destination') //  これはプラン中の行き先
-          // //  コース再計算
-          // const destInfo = yield* setDestinationAddress(dest)
-          // //  旅開始する
-          // runStatus.status = "running"
-          // runStatus.startTime = now.toDate()
-          // runStatus.endTime = dayjs.unix(destInfo.tilEndSec).toDate()
-          // runStatus.destination = ""
-          // runStatus.from = runStatus.to
-          // runStatus.to = dest
-          // runStatus.startTz = runStatus.endTz //  TODO 中断の場合異なる可能性がある
-          // runStatus.startLat = runStatus.endLat
-          // runStatus.startLng = runStatus.endLng
-          // runStatus.endLat = destInfo.destination.lat
-          // runStatus.endLng = destInfo.destination.lng
-          // runStatus.tilEndEpoch = destInfo.tilEndSec + now.unix()
-          // runStatus.endTz = yield* DbService.getEnv("destTimezoneId").pipe(Effect.orElseSucceed(() => runStatus.startTz));
-          // rs = runStatus
         }
         //  旅開始ホテル画像、旅開始挨拶
         const hour = now.tz(rs.startTz!).hour()
-        const image1 = yield* ImageService.makeHotelPict(useAiImageGen, hour);
+        const image1 = yield* ImageService.makeHotelPict(useAiImageGen, hour).pipe(
+          Effect.andThen(a => Effect.succeed(Option.some(a))),
+          Effect.orElseSucceed(() => Option.none()));
         yield* DbService.saveEnv("destination", "")
         yield* DbService.saveEnv("destTimezoneId", "")
         yield* DbService.saveRunStatus(rs)
