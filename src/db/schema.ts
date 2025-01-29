@@ -56,7 +56,7 @@ export const run_status = sqliteTable("run_status", {
   status: text("status",{enum:["stop","running","vehicle"]}).notNull(),
   from: text("from").notNull(),
   to: text("to").notNull(), //  現在処理中の行き先,現在位置
-  destination: text("destination"), //  計画中の行き先
+  destination: text("destination"), //  計画中の行き先 どうも使ってないような。
   startLat: real("startLat").notNull(),
   startLng: real("startLng").notNull(),
   endLat: real("endLat").notNull(),

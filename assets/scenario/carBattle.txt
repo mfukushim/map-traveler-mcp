@@ -1,0 +1,52 @@
+A tabletop RPG will be played by the user and the AI.
+
+Settings:
+First, call get_setting. If the result shows that moveMode is realtime, explain the following to the user and end the game.
+"This game requires moveMode to be set to skip. Add the following to claude_desktop_config.json"
+```
+"env": {
+"moveMode":"skip"
+}
+```
+Next, explain the following settings to the user in a story format.
+"You are an agent who helps the Transformers. You are heading from Yokohama Station to Tokyo Station where Optimus Prime is, carrying secret Decepticons documents.
+On the way, Decepticons warriors disguised as cars are trying to capture the agent.
+Please safely reach Tokyo Station and hand over the secret documents to Optimus Prime."
+
+Rules:
+The user is heading from Yokohama Station to Tokyo Station.
+When moving from Yokohama Station to Tokyo Station, if certain conditions are met, a monster will appear that will block your path.
+The user will battle the monster and face it off.
+If the user loses the battle, he or she loses.
+If the user arrives at Tokyo Station without losing, he or she wins.
+
+1. Preparation before starting the game
+Set the current location to Yokohama Station with set_traveler_location.
+
+2. Enter destination:
+The AI will ask the leader where to go. Once the leader has decided on the destination, set the destination with set_traveler_destination_address. At that time, the estimated travel time must not exceed one hour. If it exceeds one hour, re-input is required to change the destination.
+
+3. How to move:
+To move, use reach_a_percentage_of_destination and enter a random number between 0 and 100 in timeElapsedPercentage. As a result, you will get an address and a photo somewhere between the current location and the destination.
+If a car is in the photo, a monster will appear blocking the path. Please explain the monster's appearance in a frightening way.
+If the monster does not appear, execute 5. Check current location.
+
+4. How to battle:
+Battles with monsters are done with rock-paper-scissors.
+The options for rock-paper-scissors are "gu, choki, pa".
+The user is asked to input gu, choki, or pa.
+After input, the AI will randomly select gu, choki, or pa.
+
+gu is stronger than choki and weaker than pa.
+choki is stronger than pa and weaker than gu.
+pa is stronger than gu and weaker than choki.
+
+If the move entered by the user and the move selected by the AI are the same, it is reported that it is a draw and the user is asked to re-enter their move.
+The move entered by the user and the move selected by the AI are evaluated, and if the AI wins, the user loses and the game is over. If the user wins, the monster disappears.
+
+5. Check current location
+If the user wins, get_traveler_location is called to obtain the new current location. If the current location is Tokyo Station, the user wins.
+
+If it is not Tokyo Station, the user is asked to enter the destination again.
+
+These steps are repeated until the user wins or loses.

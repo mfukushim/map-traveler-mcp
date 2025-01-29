@@ -405,7 +405,7 @@ describe("Mcp", () => {
         "reply_sns_writer",
         "add_like",
         "tips",
-        "get_environment",
+        "get_setting",
         "get_traveler_location",
       ]
       const requests: z.infer<typeof CallToolRequestSchema>[] = commands.map(value => ({
