@@ -575,11 +575,15 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       const startJourney = () => {
         return RunnerService.startJourney(env.isPractice).pipe(
           Effect.andThen(a => {
-            return [{type: "text", text: a.text}, {
-              type: "image",
-              data: a.image.toString("base64"),
-              mimeType: 'image/png'
-            }] as ToolContentResponse[]
+            const out:ToolContentResponse[] = [{type: "text", text: a.text}]
+            if (Option.isSome(a.image)) {
+              out.push({
+                type: "image",
+                data: a.image.value.toString("base64"),
+                mimeType: 'image/png'
+              })
+            }
+            return out
           }),
           Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
         )
