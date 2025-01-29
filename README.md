@@ -29,7 +29,7 @@ Example:
 - get_traveler_location()  
   Gets information about the current travel avatar's address and nearby facilities.
 - reach_a_percentage_of_destination()
-  Reach a specified percentage of the destination
+  Reach a specified percentage of the destination (moveMode=skip only)
   timeElapsedPercentage: Percent progress towards destination(0~100)
 - set_traveler_location(address: string)  
   Sets the current travel avatar's location.
@@ -40,9 +40,9 @@ Example:
   Set the destination of the travel avatar
    - address: Address information (exact address, or general name that Google Maps or Claude can recognize, etc.)
 - start_traveler_journey  
-  Start the journey at the destination.
+  Start the journey at the destination.(moveMode=realtime only)
 - stop_traveler_journey  
-  Stop the journey.
+  Stop the journey.(moveMode=realtime only)
 - set_traveler_info(settings:string)  
   Set the traveler's attributes. Set the traveler's personality that you want to change dynamically, such as name and personality. However, if you use a role script, the script is more stable.
   - settings: Setting information such as name and personality.
@@ -69,7 +69,7 @@ Example:
   - id: The ID of the post to like
 - tips  
   Guides you on how to set up features that have not yet been set.
-- get_environment  
+- get_setting  
   Get environment and image settings.
 
 #### MCP resources
@@ -113,7 +113,8 @@ claude_desktop_config.json
         "bs_id":"(Bluesky sns registration address)",
         "bs_pass":"(bluesky sns password)",
         "bs_handle":"(bluesky sns handle name: e.g. xxxxxxxx.bsky.social )",
-        "filter_tools": "(Optional: Directly filter the tools to be used. All are available if not specified. e.g. tips,set_traveler_location)"
+        "filter_tools": "(Optional: Directly filter the tools to be used. All are available if not specified. e.g. tips,set_traveler_location)",
+        "moveMode": "(Option: Specify whether the movement mode is realtime or skip. default realtime)"
       }
     }
   }

@@ -30,7 +30,7 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 - get_traveler_location()  
   現在の旅アバターのいる住所と付近の施設についての情報を取得します。
 - reach_a_percentage_of_destination(timeElapsedPercentage:number)
-  現在の目的地までの指定の割合の位置に到達する Reach a specified percentage of the destination
+  現在の目的地までの指定の割合の位置に到達する (moveMode=skip のときのみ)
   timeElapsedPercentage: 目的地までの進捗割合(0～100)
 - set_traveler_location(address: string)  
 現在の旅アバターのいる場所を設定します。  
@@ -41,9 +41,9 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 旅アバターの目的地を設定します  
   address: 住所情報(正確な住所、またはGoogle MapやClaudeが認識できる一般的な呼称など)
 - start_traveler_journey  
-目的地に旅を開始します。
+目的地に旅を開始します。(moveMode=realtime のときのみ)
 - stop_traveler_journey  
-旅を中止します。
+旅を中止します。(moveMode=realtime のときのみ)
 - set_traveler_info(settings:string)  
 旅人の属性を設定します。名前や性格など動的に変更したい旅人の性格付けを設定します。ただしroleスクリプトを使う場合はスクリプトのほうが安定に反映できます。
   settings: 名前や性格付けなどの設定情報。
@@ -61,7 +61,7 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 自身がポストしたBluesky snsへの最近のメンション(イイネ、リプライ)を取得します。
 - tips  
   まだ未設定の機能について設定方法をガイドします。
-- get_environment  
+- get_setting  
   環境設定値と画像設定値を取得する
 
 #### MCP resources
@@ -105,7 +105,8 @@ claude_desktop_config.json
         "bs_id":"(bluesky snsの登録アドレス)",
         "bs_pass":"(bluesky snsのパスワード)",
         "bs_handle":"(bluesky snsのハンドル名 例 xxxxx.bsky.social など)",
-        "filter_tools": "(オプション:使うツールを直に絞る 指定しなければ使えるすべて 例 tips,set_traveler_location)"
+        "filter_tools": "(オプション:使うツールを直に絞る 指定しなければ使えるすべて 例 tips,set_traveler_location)",
+        "moveMode": "(オプション:移動モードをrealtimeかskipにするか指定する default realtime)"
       }
     }
   }

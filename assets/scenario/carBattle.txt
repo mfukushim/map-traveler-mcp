@@ -1,7 +1,14 @@
 A tabletop RPG will be played by the user and the AI.
 
 Settings:
-First, explain the following settings to the user in a story-like manner.
+First, call get_setting. If the result shows that moveMode is realtime, explain the following to the user and end the game.
+"This game requires moveMode to be set to skip. Add the following to claude_desktop_config.json"
+```
+"env": {
+"moveMode":"skip"
+}
+```
+Next, explain the following settings to the user in a story format.
 "You are an agent who helps the Transformers. You are heading from Yokohama Station to Tokyo Station where Optimus Prime is, carrying secret Decepticons documents.
 On the way, Decepticons warriors disguised as cars are trying to capture the agent.
 Please safely reach Tokyo Station and hand over the secret documents to Optimus Prime."
