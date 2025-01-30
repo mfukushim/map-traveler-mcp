@@ -5,6 +5,7 @@ import sharp = require("sharp");
 import {FetchHttpClient, HttpClient, HttpClientRequest} from "@effect/platform";
 import dayjs from "dayjs";
 import FormData from 'form-data';
+// import {transparentBackground} from "transparent-background";
 import {Jimp} from "jimp";
 import {PixAIClient} from '@pixai-art/client'
 import {type MediaBaseFragment, TaskBaseFragment} from "@pixai-art/client/types/generated/graphql.js";
@@ -91,10 +92,11 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           }),
           Effect.flatMap(client.execute),
           Effect.flatMap(a => a.json),
+          Effect.tap(a => McpLogService.logTrace('sdMakeTextToImage:' + JSON.stringify(a).slice(0, 200))),
           Effect.andThen(a => a as { artifacts: { base64: string, finishReason: string, seed: number }[] }),
           Effect.flatMap(a => {
-            if (a.artifacts.some(b => b.finishReason !== 'SUCCESS') || a.artifacts.length === 0) {
-              return Effect.fail(new Error(`fail sd`))
+            if (!a.artifacts || a.artifacts.length === 0 || a.artifacts.some(b => b.finishReason !== 'SUCCESS')) {
+              return Effect.fail(new Error(`fail sd:${opt?.width},${opt?.height},` + JSON.stringify(a)))
             }
             return Effect.tryPromise(() => sharp(Buffer.from(a.artifacts[0].base64, 'base64')).resize({
               width: 512,
@@ -148,10 +150,11 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             catch: error => new Error(`${error}`)
           })),
         Effect.andThen(a => a.json()),
+        Effect.tap(a => McpLogService.logTrace('sdMakeImageToImage:' + JSON.stringify(a).slice(0, 200))),
         Effect.andThen(a => a as { artifacts: { base64: string, finishReason: string, seed: number }[] }),
         Effect.flatMap(a => {
-          if (!a.artifacts || a.artifacts.some(b => b.finishReason !== 'SUCCESS') || a.artifacts.length === 0) {
-            return Effect.fail(new Error(`fail sd`))
+          if (!a.artifacts || a.artifacts.length === 0 || a.artifacts.some(b => b.finishReason !== 'SUCCESS')) {
+            return Effect.fail(new Error(`fail sd:${opt?.width},${opt?.height},` + JSON.stringify(a)))
           }
           return Effect.succeed(Buffer.from(a.artifacts[0].base64, 'base64'))
           // return Effect.tryPromise(() => sharp(Buffer.from(a.artifacts[0].base64, 'base64')).resize({
@@ -221,7 +224,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               try: () => pixAiClient.generateImage(body,
               ),
               catch: error => new Error(`generateImage fail:${error}`)
-            })
+            }).pipe(Effect.timeout('1 minute'))
           }),
           Effect.tap(a => McpLogService.logTrace(`generateImage ${a.status}`)),
           Effect.tapError(a => McpLogService.logError(`generateImage ${a}`)),
@@ -231,7 +234,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               catch: error => new Error(`getMediaFromTask fail:${error}`)
             })
           }),
-          Effect.tap(a => McpLogService.logTrace(`getMediaFromTask ${a}`)),
+          Effect.tap(() => McpLogService.logTrace(`getMediaFromTask`)),
           Effect.andThen(media => {
             if (!media) return Effect.fail(new Error(`media fail1:${media}`))
             if (Array.isArray(media)) return Effect.fail(new Error(`media fail2:${media}`))
@@ -293,7 +296,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           }),
           Effect.andThen(a => Effect.tryPromise(() => sharp(a).resize({
             width: 512,
-            height: 512
+            height: 384
           }).png().toBuffer()))
         )
       })
@@ -335,7 +338,6 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         const prompt = `${baseCharPrompt},${appendPrompt}`
         return yield* selectImageGenerator(selectGen, prompt).pipe(
           Effect.tap(a => {
-            // const data = Buffer.from(a, "base64");
             recentImage = a
             if (localDebug) {
               return Effect.async<void, Error>((resume) => fs.writeFile('tools/test/etcPict.png', a, err => {
@@ -348,7 +350,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           }),
           Effect.andThen(a => Effect.tryPromise(() => sharp(a).resize({
             width: 512,
-            height: 512
+            height: 384
           }).png().toBuffer()))
         )
       })
@@ -520,19 +522,21 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
      * @param basePhoto
      * @param selectGen
      * @param withAbort
+     * @param opt bodyAreaRatio アバター本体占有面積比率 0.042 以上, bodyHWRatio アバター縦横比率 2.3 以上,sideBias 貼り付け位置を左右に偏らせる,bodyWindowRatioW,bodyWindowRatioH アバター合成ウィンドウ比率
      * @param localDebug
-     * @param bodyAreaRatio アバター本体占有面積比率 0.042 以上
-     * @param bodyHWRatio アバター縦横比率 2.3 以上
-     * @param sideBias 貼り付け位置を左右に偏らせる
      */
     function makeRunnerImageV3(
       basePhoto: Buffer,
       selectGen: string,
       withAbort = false,
+      opt: {
+        sideBias?: boolean,
+        bodyAreaRatio?: number,// = 0.042,
+        bodyHWRatio?: number, // = 1.5, // 画像AIの精度が上がっているので2.3から少し減らす
+        bodyWindowRatioW?: number, // = {w: 0.5, h: 0.75}
+        bodyWindowRatioH?: number,
+      } = {bodyAreaRatio: 0.042, bodyHWRatio: 1.5, bodyWindowRatioW: 0.5, bodyWindowRatioH: 0.75},
       localDebug = false,
-      bodyAreaRatio = 0.042,
-      bodyHWRatio = 1.5, // 画像AIの精度が上がっているので2.3から少し減らす
-      sideBias = false
     ) {
       return Effect.gen(function* () {
           if (!Process.env.rembg_path) {
@@ -540,7 +544,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             return {
               buf: yield* Effect.tryPromise(() => sharp(basePhoto).resize({
                 width: 512,
-                height: 512
+                height: 384
               }).png().toBuffer()),
               shiftX: 0,
               shiftY: 0,
@@ -550,7 +554,13 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           }
           const outSize = {w: 1600, h: 1000};
           const innerSize = {w: 1600, h: 1600}
-          const windowSize = {w: 832, h: 1216}
+          //  TODO sdではサイズ制限がきつかったんだ
+          const windowSize = selectGen === 'sd' ? {w: 832, h: 1216} : {
+            w: Math.floor((innerSize.w * (opt?.bodyWindowRatioW || 0.5)) / 64) * 64,
+            h: Math.floor((innerSize.h * (opt?.bodyWindowRatioH || 0.75)) / 64) * 64
+          }
+          // const windowSize = {w: 832, h: 1216}
+          const sideBias = opt?.sideBias || false
           const cutPos = sideBias ? (Math.random() < 0.5 ? Math.random() * 0.3 : 0.7 + Math.random() * 0.3) : Math.random()
           const shiftX = Math.floor((innerSize.w - windowSize.w) * cutPos);  //  0～1で均等にランダム切り出しだったはず
           const innerImage = yield* Effect.tryPromise(() => sharp(basePhoto).resize({
@@ -608,6 +618,8 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             }),
             Effect.tap(avatarImage => {
               //  非透明度判定 0.02以上
+              const bodyAreaRatio = opt?.bodyAreaRatio || 0.042
+              const bodyHWRatio = opt?.bodyHWRatio || 2
               return checkPersonImage(avatarImage, windowSize).pipe(
                 Effect.tap(a => McpLogService.logTrace(
                   `check runner image:${retry},${JSON.stringify(a)},${a.number}<>${bodyAreaRatio},${a.alphaNum.rect.h / a.alphaNum.rect.w}<>${bodyHWRatio}`)),  //, retry, number, alphaNum.rect.w, alphaNum.rect.h\

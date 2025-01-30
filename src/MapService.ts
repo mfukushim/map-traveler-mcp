@@ -207,7 +207,7 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
             MapDef.EmptySchema.pipe(Schema.attachPropertySignature('kind', 'empty')),
           ))(a)),
           Effect.scoped,
-          Effect.tap(a => McpLogService.logTrace(`calcDomesticTravelRoute: ${JSON.stringify(a)}`)),
+          Effect.tap(a => McpLogService.logTrace(`calcDomesticTravelRoute: ${JSON.stringify(a).slice(0,10)}`)),
           Effect.tapError(e => McpLogService.logError(`calcDomesticTravelRoute error:${JSON.stringify(e)}`)),
           Effect.flatMap(a => {
             if (a.kind === 'routes') {
@@ -294,7 +294,7 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
           Effect.flatMap(client.execute),
           Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
           Effect.flatMap(a => a.text),
-          Effect.tap(a => McpLogService.logTrace(`getMapLocation:${a}`)),
+          Effect.tap(a => McpLogService.logTrace(`getMapLocation:${JSON.stringify(a).slice(0,10)}`)),
           Effect.flatMap(a => Schema.decode(Schema.parseJson(Schema.Union(
             MapDef.GmTextSearchSchema.pipe(Schema.attachPropertySignature('kind', 'places')),
             MapDef.ErrorSchema.pipe(Schema.attachPropertySignature('kind', 'error')),
@@ -361,7 +361,6 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
             MapDef.ErrorSchema.pipe(Schema.attachPropertySignature('kind', 'error')),
             MapDef.EmptySchema.pipe(Schema.attachPropertySignature('kind', 'empty')),
           ))(a)),
-          // Effect.flatMap(a => HttpClientResponse.schemaBodyJson(MapDef.GmTextSearchSchema)(a)),
           Effect.onError(cause => McpLogService.logError(`getNearly error:${JSON.stringify(cause)}`)),
           Effect.scoped,
         )
@@ -378,6 +377,9 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
      * @param height
      */
     function findStreetViewMeta(lat: number, lng: number, bearing: number, width: number, height: number) {
+      if (!key) {
+        return Effect.fail(new Error('no street view key'))
+      }
       return Effect.gen(function* () {
         const client = yield* HttpClient.HttpClient
         let result: { lat: number, lng: number } | undefined
@@ -413,7 +415,7 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
           }
         })
         return result ? result : yield* Effect.fail(new Error('no StreetView'));
-      })
+      });
     }
 
     /**

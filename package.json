@@ -1,6 +1,6 @@
 {
   "name": "@mfukushim/map-traveler-mcp",
-  "version": "0.0.22",
+  "version": "0.0.40",
   "type": "module",
   "bin": {
     "map-traveler-mcp": "build/esm/mapTraveler.js"
@@ -57,7 +57,8 @@
     "jimp": "^1.6.0",
     "jsonpath": "^1.1.1",
     "sharp": "^0.33.5",
-    "ws": "^8.18.0"
+    "ws": "^8.18.0",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@babel/cli": "^7.26.4",

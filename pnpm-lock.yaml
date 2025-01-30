@@ -65,6 +65,9 @@ importers:
       ws:
         specifier: ^8.18.0
         version: 8.18.0
+      zod:
+        specifier: ^3.24.1
+        version: 3.24.1
     devDependencies:
       '@babel/cli':
         specifier: ^7.26.4

@@ -1,10 +1,10 @@
-import {describe, expect, it} from "@effect/vitest"
+import {beforeAll, describe, expect, it} from "@effect/vitest"
 import {Effect, Logger, LogLevel} from "effect";
 import {ImageService, ImageServiceLive} from "../src/ImageService.js";
 import {runPromise} from "effect/Effect";
 import {FetchHttpClient} from "@effect/platform";
 import * as fs from "node:fs";
-import {DbServiceLive} from "../src/DbService.js";
+import {DbService, DbServiceLive} from "../src/DbService.js";
 import {NodeFileSystem} from "@effect/platform-node"
 // import {transparentBackground} from "transparent-background";
 import {McpLogService, McpLogServiceLive} from "../src/McpLogService.js";
@@ -12,17 +12,17 @@ import {McpLogService, McpLogServiceLive} from "../src/McpLogService.js";
 const inGitHubAction = process.env.GITHUB_ACTIONS === 'true';
 
 describe("Image", () => {
-  // beforeAll(async () => {
-  //   return await DbService.initSystemMode().pipe(
-  //       Effect.provide([DbServiceLive, McpLogServiceLive]),
-  //       Effect.runPromise
-  //   )
-  // });
+  beforeAll(async () => {
+    return await DbService.initSystemMode().pipe(
+        Effect.provide([DbServiceLive, McpLogServiceLive]),
+        Effect.runPromise
+    )
+  });
 
   it("makeHotelPictPixAi", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* ImageService.makeHotelPict("PixAi", 12)  //
+      return yield* ImageService.makeHotelPict("pixAi", 12)  //
     }).pipe(
       Effect.provide([DbServiceLive,ImageService.Default, FetchHttpClient.layer, McpLogServiceLive, NodeFileSystem.layer]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
@@ -133,22 +133,11 @@ describe("Image", () => {
     )
     expect(typeof res).toBe('string')
   })
-  // it("rembg", async () => {
-  //   //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
-  //   const buffer = fs.readFileSync('tools/testRembg.png');
-  //   const buf = await transparentBackground(buffer, "png", {
-  //     fast: false,
-  //   });
-  //   if (!inGitHubAction) {
-  //     fs.writeFileSync("tools/test/rembg.jpg", buf);
-  //   }
-  //   expect(buf).toBeInstanceOf(Buffer)
-  // })
   it("makeRunnerImageV3_i2iPixAI", async () => {
     //  vitest --run --testNamePattern=makeRunnerImageV3_i2i ImageService.test.ts
     const res = await Effect.gen(function* () {
       const buffer = fs.readFileSync('tools/test.jpg');
-      return yield* ImageService.makeRunnerImageV3(buffer, 'pixAi', false, true)  //
+      return yield* ImageService.makeRunnerImageV3(buffer, 'pixAi',false, {bodyWindowRatioW:0.7,bodyWindowRatioH:0.7,bodyAreaRatio:0.001,bodyHWRatio:0.3}, true)  //
     }).pipe(
       Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
@@ -168,7 +157,7 @@ describe("Image", () => {
     //  vitest --run --testNamePattern=makeRunnerImageV3_i2i ImageService.test.ts
     const res = await Effect.gen(function* () {
       const buffer = fs.readFileSync('tools/test.jpg');
-      return yield* ImageService.makeRunnerImageV3(buffer, 'sd', false, true)  //
+      return yield* ImageService.makeRunnerImageV3(buffer, 'sd', false,{}, true)  //
     }).pipe(
       Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]), //  layer
       Logger.withMinimumLogLevel(LogLevel.Trace),
