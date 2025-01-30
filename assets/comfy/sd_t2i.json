@@ -1,0 +1,119 @@
+{
+  "3": {
+    "inputs": {
+      "seed": "KSampler.inputs.seed",
+      "steps": "KSampler.inputs.steps",
+      "cfg": "KSampler.inputs.cfg",
+      "sampler_name": "KSampler.inputs.sampler_name",
+      "scheduler": "KSampler.inputs.scheduler",
+      "denoise": 1,
+      "model": [
+        "30",
+        0
+      ],
+      "positive": [
+        "6",
+        0
+      ],
+      "negative": [
+        "7",
+        0
+      ],
+      "latent_image": [
+        "16",
+        0
+      ]
+    },
+    "class_type": "KSampler"
+  },
+  "4": {
+    "inputs": {
+      "ckpt_name": "CheckpointLoaderSimple.inputs.ckpt_name"
+    },
+    "class_type": "CheckpointLoaderSimple"
+  },
+  "6": {
+    "inputs": {
+      "text": "CLIPTextEncode6.inputs.text",
+      "clip": [
+        "29",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode"
+  },
+  "7": {
+    "inputs": {
+      "text": "CLIPTextEncode7.inputs.text",
+      "clip": [
+        "29",
+        1
+      ]
+    },
+    "class_type": "CLIPTextEncode"
+  },
+  "8": {
+    "inputs": {
+      "samples": [
+        "3",
+        0
+      ],
+      "vae": [
+        "10",
+        0
+      ]
+    },
+    "class_type": "VAEDecode"
+  },
+  "9": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": [
+        "8",
+        0
+      ]
+    },
+    "class_type": "SaveImage"
+  },
+  "10": {
+    "inputs": {
+      "vae_name": "VAELoader.inputs.vae_name"
+    },
+    "class_type": "VAELoader"
+  },
+  "16": {
+    "inputs": {
+      "width": "EmptyLatentImage.inputs.width",
+      "height": "EmptyLatentImage.inputs.height",
+      "batch_size": "EmptyLatentImage.inputs.batch_size"
+    },
+    "class_type": "EmptyLatentImage"
+  },
+  "29": {
+    "inputs": {
+      "lora_name": "pytorch_lora_weights.safetensors",
+      "strength_model": 1,
+      "strength_clip": 1,
+      "model": [
+        "4",
+        0
+      ],
+      "clip": [
+        "4",
+        1
+      ]
+    },
+    "class_type": "LoraLoader"
+  },
+  "30": {
+    "inputs": {
+      "sampling": "lcm",
+      "zsnr": false,
+      "model": [
+        "29",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingDiscrete"
+  }
+}
