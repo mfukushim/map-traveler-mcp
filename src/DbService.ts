@@ -55,6 +55,7 @@ logSync(`db path:${dbPath}`)
 
 export type DbMode = 'memory' | 'file';
 export type PersonMode = 'third' | 'second';
+export type MoveMode = 'realtime' | 'skip';
 
 export const env = {
   travelerExist: true, //  まだ動的ツール切り替えはClaude desktopに入っていない。。
@@ -69,6 +70,7 @@ export const env = {
   fixedModelPrompt: false,
   promptChanged: false,
   noSnsPost: false,
+  moveMode: 'realtime' as MoveMode,
   loggingMode: false,
   filterTools: [] as string[],
 }
@@ -374,6 +376,9 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         }
         if (Process.env.ServerLog) {
           env.loggingMode = true
+        }
+        if (Process.env.moveMode === 'skip') {
+          env.moveMode = "skip"
         }
         //  デフォルトは三人称モード
         env.personMode = !setting.personMode ? 'third' : setting.personMode as PersonMode;
