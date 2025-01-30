@@ -10,7 +10,16 @@
     "assets",
     "drizzle/"
   ],
-  "keywords": ["MCP","GoogleMap","ImageGeneration","Claude","Effect","Traveler","TravelerEmulation","Bluesky"],
+  "keywords": [
+    "MCP",
+    "GoogleMap",
+    "ImageGeneration",
+    "Claude",
+    "Effect",
+    "Traveler",
+    "TravelerEmulation",
+    "Bluesky"
+  ],
   "packageManager": "pnpm@9.10.0",
   "license": "MIT",
   "description": "Virtual traveler library for MCP",
@@ -46,6 +55,7 @@
     "form-data": "^4.0.1",
     "geolib": "^3.3.4",
     "jimp": "^1.6.0",
+    "jsonpath": "^1.1.1",
     "sharp": "^0.33.5",
     "ws": "^8.18.0"
   },
@@ -57,6 +67,7 @@
     "@effect/build-utils": "^0.7.8",
     "@effect/language-service": "^0.2.0",
     "@effect/vitest": "^0.17.0",
+    "@types/jsonpath": "^0.2.4",
     "@types/node": "^22.10.7",
     "@types/ws": "^8.5.13",
     "babel-plugin-annotate-pure-calls": "^0.5.0",

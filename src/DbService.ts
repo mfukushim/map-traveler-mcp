@@ -20,7 +20,6 @@ import * as path from "node:path";
 import {logSync, McpLogService, McpLogServiceLive} from "./McpLogService.js";
 import {practiceData} from "./RunnerService.js";
 import {defaultBaseCharPrompt} from "./ImageService.js";
-// import {findSystemPython} from "transparent-background/lib/utils.js";
 
 
 const __filename = fileURLToPath(import.meta.url);

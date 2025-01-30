@@ -184,4 +184,24 @@ describe("Image", () => {
     )
     expect(typeof res).toBe('object')
   })
+  it("comfyApiMakeImage", async () => {
+    //  vitest --run --testNamePattern=makeRunnerImageV3_i2i ImageService.test.ts
+    const res = await Effect.gen(function* () {
+      const buffer = fs.readFileSync('tools/test.jpg');
+      return yield* ImageService.makeRunnerImageV3(buffer, 'sd', false, true)  //
+    }).pipe(
+      Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]), //  layer
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.tapError(e => Effect.logError(e.toString())),
+      Effect.tap(a => {
+        if (!inGitHubAction) {
+          fs.writeFileSync("tools/test/makeRunnerImageV3Sd.png", a.buf);
+        }
+      }),
+      Effect.catchIf(a => a.toString() === 'Error: no key', e => Effect.succeed({})),
+      // Effect.tap(a => Effect.log(a)),
+      runPromise
+    )
+    expect(typeof res).toBe('object')
+  })
 })
