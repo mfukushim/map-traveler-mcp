@@ -183,7 +183,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         Effect.andThen(takeOne),
         Effect.andThen(a => a.value))
     }
-    
+
     function getEnvOption(key: string) {
       return stub(db.select().from(env_kv).where(eq(env_kv.key, key))).pipe(
         Effect.map(a => a.length === 1 && a[0].value ? Option.some(a[0].value) : Option.none()),
@@ -218,7 +218,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
     const takeOne = <T>(list: T[]) => {
       return list.length === 1 ? Effect.succeed(list[0]) : Effect.fail(new Error(`no element`))
     }
-    
+
     function saveRunStatus(runStatus: RunStatusI) {
       const save = {
         ...runStatus,
@@ -404,8 +404,11 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
           yield* practiceRunStatus();
         }
         const files = yield *Effect.tryPromise(() => fs.promises.readdir(path.join(__pwd, `assets/comfy`)))
-        files.map(a => addScript(path.join(__pwd, `assets/comfy`,a)))
-        
+        if (Process.env.comfy_workflow_files) {
+          files.push(...Process.env.comfy_workflow_files.split(','))
+        }
+        files.map(a => addScript(path.join(__pwd, `assets/comfy`,a)));
+
         yield* McpLogService.logTrace(`initSystemMode end:${JSON.stringify(env)}`)
       })
     }

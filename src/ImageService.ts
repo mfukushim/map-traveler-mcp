@@ -756,7 +756,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     //   image?: Buffer;
     //   images?: { buf: Buffer; fileName: string, dir?: string }[];
     //   prompt_id: string
-    // } | undefined> 
+    // } | undefined>
     {
 
       const sc = Schema.Record({
@@ -841,7 +841,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
                             dir: image.subfolder
                           })
                         }
-      
+
                       }
                     }
                   }
@@ -872,12 +872,16 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       model?: string,
       negative_prompt?: string,
     }) {
+      if (!Process.env.comfy_url) {
+        return Effect.fail(new Error('no comfy_url'))
+      }
       return Effect.gen(function* () {
         const uploadFileName = inImage ? yield* comfyUploadImage(inImage, params).pipe(Effect.andThen(a => Effect.succeedSome(a))) : Option.none()
         //  uploadFileNameはプロンプトスクリプト内で置き換えなければならないので
-        const sdT2i = scriptTables.get('sd_i2i');
+        const scriptName = inImage ? (Process.env.comfy_i2i || 'i2i_sample'):(Process.env.comfy_t2i || 't2i_sample')
+        const sdT2i = scriptTables.get(scriptName);
         if (!sdT2i) {
-          return yield* Effect.fail(new Error('comfyText2ImageStubInner no script table'))
+          return yield* Effect.fail(new Error('comfyApiMakeImage no script table'))
         }
         const modelParams: any = {
           "KSampler.inputs.seed": params?.seed && params?.seed >= 0 ? params.seed : Math.floor(Math.random() * 999999999999999), // TODO randomは0か? どうもComfyは今randomの設定がないようだ。。。 負数なら15桁の9をベースに乱数とする
@@ -900,7 +904,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         return yield* downloadOutput(ret.prompt_id, 1).pipe(
           Effect.tap(a => a.length !== 1 && a.length !== 2 && Effect.fail(new Error('download fail'))),
           Effect.andThen(a => a[0]))
-      })
+      });
 
     }
 
