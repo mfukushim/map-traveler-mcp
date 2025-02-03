@@ -19,7 +19,6 @@ import * as os from "node:os";
 import * as fs from "node:fs";
 import {execSync} from "node:child_process";
 import {defaultAvatarId} from "./RunnerService.js";
-import jp from "jsonpath";
 
 export const defaultBaseCharPrompt = 'depth of field, cinematic composition, masterpiece, best quality,looking at viewer,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut'
 
@@ -32,7 +31,6 @@ const pixAiClient = new PixAIClient({
   apiKey: Process.env.pixAi_key || '',
   webSocketImpl: WebSocket
 })
-
 
 
 export class ImageService extends Effect.Service<ImageService>()("traveler/ImageService", {
@@ -433,19 +431,27 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       })
     }
 
-    const selectImageGenerator = (generatorId: string, prompt: string, inImage?: Buffer, opt?: {
-      width?: number,
-      height?: number,
-      sampler?: string,
-      samples?: number,
-      steps?: number,
-      cfg_scale?: number,
-    }) => {
+    const selectImageGenerator = (generatorId: string, prompt: string, inImage?: Buffer,opt?:Record<string,any>) => {
       switch (generatorId) {
         case 'pixAi':
-          return pixAiMakeImage(prompt, inImage, opt)
+          return pixAiMakeImage(prompt, inImage,opt)
+        case 'comfyUi': {
+          const optList = Process.env.comfy_params ? Process.env.comfy_params.split(',').map(a => {
+            const b = a.split('=');
+            const val = b[1].includes("'") ? b[1].replaceAll("'",""): Number.parseFloat(b[1])
+            return [b[0],val]
+          }): []
+          const optC:Record<string, any> = {...Object.fromEntries(optList),...opt}
+          if (!optC.width) {
+            optC.width = 1024
+          }
+          if (!optC.height) {
+            optC.height = 1024
+          }
+          return comfyApiMakeImage(prompt, inImage, optC);
+        }
         default:
-          return sdMakeImage(prompt, inImage, opt)
+          return sdMakeImage(prompt, inImage,opt)
       }
     };
 
@@ -621,7 +627,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               const bodyHWRatio = opt?.bodyHWRatio || 2
               return checkPersonImage(avatarImage, windowSize).pipe(
                 Effect.tap(a => McpLogService.logTrace(
-                  `check runner image:${retry},${JSON.stringify(a)},${a.number}<>${bodyAreaRatio},${a.alphaNum.rect.h / a.alphaNum.rect.w}<>${bodyHWRatio}`)),  //, retry, number, alphaNum.rect.w, alphaNum.rect.h\
+                  `check runner image:${retry},${JSON.stringify(a)},${a.number}${a.number > bodyAreaRatio ? '>':'<'}${bodyAreaRatio},${a.alphaNum.rect.h / a.alphaNum.rect.w}${a.alphaNum.rect.h / a.alphaNum.rect.w > bodyHWRatio ? '>':'<'}${bodyHWRatio}`)),  //, retry, number, alphaNum.rect.w, alphaNum.rect.h\
                 Effect.andThen(a => {
                   //  非透明度が0.02以上かつ範囲の縦と横の比率が3:1以上なら完了 counterfeit V3=0.015, counterfeit LX 0.03 にしてみる
                   //  比率値を3から2.5にしてみる。ダメ映像が増えたらまた調整する。。非透明率を0.015にしてみる
@@ -664,31 +670,20 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     }
 
 
-
-    function mergeParams(baseScript: any, map: Map<string, number>, params: any) {
+    function mergeParams(baseScript: any, map: Map<string, number>, params: Record<string, string | number>) {
+      let scr = JSON.stringify(baseScript)
       //  jsonPathで置き換えてるからbaseScriptのshallow copyは必要ないはず
       Object.keys(params).forEach(key => {
-        const keyList = key.split('.');
-        if (keyList.length > 0) {
-          const topKey = map.get(keyList[0]);
-          if (!topKey) {
-            console.log('sd mergeParams no top key')
-          } else {
-            keyList[0] = topKey.toString()
-            jp.value(baseScript, `$.${keyList.join('.')}`, params[key])
-          }
-        }
+        const val = params[key];
+        const reg = new RegExp(`"${key}"`, "g")
+        scr = scr.replaceAll(reg, typeof val === "number" ? val.toString() : `"${val.toString()}"`)
       })
-      return baseScript
+      return JSON.parse(scr)
     }
 
     function comfyUploadImage(inImage: Buffer, opt?: {
       width?: number,
       height?: number,
-      sampler?: string,
-      samples?: number,
-      steps?: number,
-      cfg_scale?: number,
     }) {
       //  TODO comfyの場合のファイルアップロード。。
       const nowMs = dayjs().valueOf()
@@ -701,7 +696,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           Effect.tryPromise({
             try: () => {
               const formData = new FormData()
-              formData.append('image', a,{filename:fileName})
+              formData.append('image', a, {filename: fileName})
               return fetch(
                 `${Process.env.comfy_url}/upload/image`,
                 {
@@ -718,17 +713,15 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             catch: error => new Error(`${error}`)
           })),
         Effect.andThen(a => a.json()),
-        Effect.andThen(a => a as {name:string,subfolder:string,type:string}),
-        Effect.andThen(a=>a.name),
+        Effect.andThen(a => a as { name: string, subfolder: string, type: string }),
+        Effect.andThen(a => a.name),
         Effect.tapError(cause => Effect.logError(cause)),
         Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("3 seconds")))),
       )
     }
 
-    function comfyUpExecPrompt(script: any, opt?: {
-      width?: number,
-      height?: number,
-    }) {
+
+    function comfyUpExecPrompt(script: any) {
       //  TODO comfyの場合のファイルアップロード。。
       return Effect.gen(function* () {
         const client = yield* HttpClient.HttpClient;
@@ -741,169 +734,107 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             prompt: script,
           }),
           Effect.flatMap(client.execute),
-          Effect.flatMap(HttpClientResponse.schemaBodyJson(Schema.Struct({prompt_id:Schema.String,number:Schema.Number,node_errors:Schema.Any}))),
-          // Effect.flatMap(a => a.json),
-          // Effect.andThen(a => a as {prompt_id:string}),
-          Effect.tapError(Effect.logError),
+          Effect.flatMap(a => a.json),
+          Effect.andThen((a: any) => {
+            //  TODO うまくSchema.decode出来なかったので雑にキャストする
+            if (a.error) {
+              return Effect.fail(new Error(`ComfyUI error:${JSON.stringify(a.node_errors)}`))
+            }
+            return Effect.succeed(a as { prompt_id: string })
+          }),
+          Effect.tapError(McpLogService.logError),
+          Effect.tap(a => McpLogService.logTrace(a)),
           Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
           Effect.scoped,
         )
       })
     }
 
-    function downloadOutput(prompt_id: string, needKeyNum: number = 1)
-    //   : Promise<{
-    //   image?: Buffer;
-    //   images?: { buf: Buffer; fileName: string, dir?: string }[];
-    //   prompt_id: string
-    // } | undefined>
-    {
+    function downloadOutput(prompt_id: string, needKeyNum: number = 1) {
 
       const sc = Schema.Record({
         key: Schema.String,
         value: Schema.Struct({
-          outputs: Schema.Struct({
-            images: Schema.Array(Schema.Struct({
-              filename: Schema.String,
-              subfolder: Schema.String,
-              type: Schema.String
-            }))
+          outputs: Schema.Record({
+            key: Schema.String,
+            value: Schema.Struct({
+              images: Schema.Array(Schema.Struct({
+                filename: Schema.String,
+                subfolder: Schema.String,
+                type: Schema.String
+              }))
+            })
+            
           })
         })
       })
       return HttpClient.get(`${Process.env.comfy_url}/history`).pipe(
-        Effect.andThen((response) => HttpClientResponse.schemaBodyJson(sc) (response)),
+        Effect.andThen((response) => HttpClientResponse.schemaBodyJson(sc)(response)),
         Effect.scoped,
         Effect.provide(FetchHttpClient.layer),
-        // Effect.andThen(a1 => Schema.decodeUnknown(Schema.parseJson())(a1)),
-        Effect.andThen(a1 => {
+        Effect.andThen((a1: any) => {
           const prOut = a1[prompt_id]
           if (!prOut) {
             //  TODO ここの書き方どうなるんだろう?
             return Effect.fail(new Error('wait not ready'))
           }
           const outputs = prOut.outputs
-          return Effect.loop(0, {
-            while: a => a < needKeyNum,
-            step: b => b + 1,
-            body: c => {
-              return HttpClient.get(`${Process.env.comfy_url}/view`, {urlParams: outputs.images[c]}).pipe(
+          const keys = Object.keys(outputs);
+          return Effect.forEach(keys,(a, i) => {
+            const imageList:{filename:string,subfolder:string,type:string}[] = outputs[a].images
+            return Effect.forEach(imageList,(a2, i1) => {
+              return HttpClient.get(`${Process.env.comfy_url}/view`, {urlParams: {filename:a2.filename,subfolder:a2.subfolder,type:a2.type}}).pipe(
                 Effect.andThen((response) => response.arrayBuffer),
                 Effect.scoped,
                 Effect.provide(FetchHttpClient.layer) //  TODO この後に削除が欲しいところだけど
               )
-            }
+            })
           })
         }),
-        Effect.retry(Schedule.recurs(44).pipe(Schedule.intersect(Schedule.spaced("30 seconds")))),
+        Effect.retry(Schedule.recurs(44).pipe(Schedule.intersect(Schedule.spaced("10 seconds")))),
+        Effect.andThen(a => a.flat())
       )
-      /*      let retry = 44
-            while (retry > 0) {
-              const response = await axios.get(`${this.comfyUrl}/history`);
-              const histList: any = response.data
-              const hist: any = histList[prompt_id]
-              // console.log('check0:',hist)
-              if (hist) {
-                const keys = Object.keys(hist.outputs);
-                //  TODO 今は出力する複数画像の対応は決め打ち。。。
-                const outImgList: { buf: Buffer; fileName: string, dir?: string }[] = []
-                if (keys.length === needKeyNum) {
-                  for (const key of keys) {
-                    const outKey: { filename: string, subfolder?: string, type?: string }[] = hist.outputs[key][dir];
-                    if (outKey) {
-                      for (const image of outKey) {
-                        const response = await axios.get(`${this.comfyUrl}/view`, {
-                          responseType: "arraybuffer",
-                          params: {
-                            filename: image.filename,
-                            subfolder: image.subfolder,
-                            type: image.type
-                          }
-                        });
-                        outImgList.push({
-                          buf: Buffer.from(response.data as ArrayBuffer),
-                          fileName: image.filename,
-                          dir: image.subfolder
-                        })
-                        if (appendForVideo) {
-                          //  ビデオ保存の場合同じ名前で拡張子がpngの画像があるようだ これを追加で引き上げる
-                          const response = await axios.get(`${this.comfyUrl}/view`, {
-                            responseType: "arraybuffer",
-                            params: {
-                              filename: path.basename(image.filename, `.${videoExt}`) + '.png',
-                              subfolder: image.subfolder,
-                              type: image.type  //  得られるのはpngだけどimage/webpで指定しないとダメらしい?
-                            }
-                          });
-                          outImgList.push({
-                            buf: Buffer.from(response.data as ArrayBuffer),
-                            fileName: image.filename,
-                            dir: image.subfolder
-                          })
-                        }
-
-                      }
-                    }
-                  }
-                  return {
-                    prompt_id,
-                    image: outImgList.length >= 1 ? outImgList[0].buf : undefined,
-                    images: outImgList
-                  }
-                }
-              }
-              retry--
-              await new Promise(resolve => setTimeout(resolve, 30 * 1000))
-            }
-            console.log('waitComfyOutput time out')
-            return undefined*/
     }
 
-    function comfyApiMakeImage(prompt: string, inImage?: Buffer, params?: {
-      width?: number,
-      height?: number,
-      sampler?: string,
-      samples?: number,
-      steps?: number,
-      cfg_scale?: number,
-      seed?: number,
-      scheduler?: string,
-      denoise?: number,
-      model?: string,
-      negative_prompt?: string,
-    }) {
+    function comfyApiMakeImage(prompt: string, inImage?: Buffer, params?: Record<string, any>) {
       if (!Process.env.comfy_url) {
         return Effect.fail(new Error('no comfy_url'))
       }
       return Effect.gen(function* () {
         const uploadFileName = inImage ? yield* comfyUploadImage(inImage, params).pipe(Effect.andThen(a => Effect.succeedSome(a))) : Option.none()
         //  uploadFileNameはプロンプトスクリプト内で置き換えなければならないので
-        const scriptName = inImage ? (Process.env.comfy_i2i || 'i2i_sample'):(Process.env.comfy_t2i || 't2i_sample')
+        const scriptName = inImage ? (Process.env.comfy_workflow_i2i ? 'i2i' : 'i2i_sample') : (Process.env.comfy_workflow_t2i ? 't2i' : 't2i_sample')
         const sdT2i = scriptTables.get(scriptName);
         if (!sdT2i) {
           return yield* Effect.fail(new Error('comfyApiMakeImage no script table'))
         }
-        const modelParams: any = {
-          "KSampler.inputs.seed": params?.seed && params?.seed >= 0 ? params.seed : Math.floor(Math.random() * 999999999999999), // TODO randomは0か? どうもComfyは今randomの設定がないようだ。。。 負数なら15桁の9をベースに乱数とする
-          "KSampler.inputs.steps": params?.steps || 8,  //  20->8
-          "KSampler.inputs.cfg": params?.cfg_scale || 1.5, //  8->1.5
-          "KSampler.inputs.sampler_name": params?.sampler || 'dpmpp_2s_ancestral',
-          "KSampler.inputs.scheduler": params?.scheduler || 'karras',
-          "KSampler.inputs.denoise": params?.denoise || 1, //0.63,
-          "CheckpointLoaderSimple.inputs.ckpt_name": params?.model || 'animagine-xl-3.1.safetensors', // TODO どうするか
-          "CLIPTextEncode:6.inputs.text": prompt,
-          "CLIPTextEncode:7.inputs.text": params?.negative_prompt || '',
-          // "LoadImage.inputs.image": uploadFileName,
+        const mappedRecord = params ? Object.fromEntries(
+          Object.entries(params).map(([key, value]) => [`%${key}`, value])
+        ) as Record<string, any>: {};
+        const modelParams: Record<string, string | number> = {
+          "%seed": params?.seed && params?.seed >= 0 ? params.seed : Math.floor(Math.random() * 999999999999999), // TODO randomは0か? どうもComfyは今randomの設定がないようだ。。。 負数なら15桁の9をベースに乱数とする
+          "%steps": params?.steps || 20,  //  20->8
+          "%cfg": params?.cfg || 6, //  8->1.5
+          "%sampler_name": params?.sampler_name || 'euler',
+          "%scheduler": params?.scheduler || 'normal',
+          "%denoise": params?.denoise || 0.7, //0.63,
+          "%ckpt_name": params?.ckpt_name || 'v1-5-pruned-emaonly-fp16.safetensors',
+          "%prompt": prompt,
+          "%negative_prompt": params?.negative_prompt || 'nsfw, text, watermark',
+          "%width":params?.width || 1024,
+          "%height":params?.height || 1024
         };
+        const outParam = {...mappedRecord,...modelParams}
+
         if (Option.isSome(uploadFileName)) {
-          modelParams["LoadImage.inputs.image"] = uploadFileName.value
+          outParam["%uploadFileName"] = uploadFileName.value
         }
-        const script = mergeParams(sdT2i.script, sdT2i.nodeNameToId, modelParams)
-        const ret = yield* comfyUpExecPrompt(script, params)
+        const script = mergeParams(sdT2i.script, sdT2i.nodeNameToId, outParam)
+        const ret = yield* comfyUpExecPrompt(script)
 
         return yield* downloadOutput(ret.prompt_id, 1).pipe(
           Effect.tap(a => a.length !== 1 && a.length !== 2 && Effect.fail(new Error('download fail'))),
-          Effect.andThen(a => a[0]))
+          Effect.andThen(a => Buffer.from(a[0])))
       });
 
     }

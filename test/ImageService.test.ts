@@ -53,6 +53,24 @@ describe("Image", () => {
     }
     expect(res).toBeInstanceOf(Buffer)
   })
+  it("makeHotelPictComfy", async () => {
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    const res = await Effect.gen(function* () {
+      return yield* ImageService.makeHotelPict("comfyUi", 12)  //
+    }).pipe(
+      Effect.provide([DbServiceLive,ImageService.Default, FetchHttpClient.layer, McpLogServiceLive, NodeFileSystem.layer]),
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
+      Effect.tap(a => McpLogService.log(a.length).pipe(Effect.provide(McpLogServiceLive))),
+      runPromise
+    )
+
+    if (!inGitHubAction) {
+      fs.writeFileSync("tools/test/makeHotelComfyUi.jpg", res);
+    }
+
+    expect(res).toBeInstanceOf(Buffer)
+  })
   it("pixAiMakeT2I", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
@@ -67,7 +85,7 @@ describe("Image", () => {
         return "succeed";
       }),
       Effect.tapError(e => Effect.logError(e.toString())),
-      Effect.catchIf(a => a.message === 'no key', e => Effect.succeed("noKey")),
+      Effect.catchIf(a => a instanceof Error && a.message === 'no key', e => Effect.succeed("noKey")),
       runPromise
     )
     expect(typeof res).toBe('string')
@@ -88,7 +106,7 @@ describe("Image", () => {
         return "succeed";
       }),
       Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
-      Effect.catchIf(a => a.message === 'no key', e => Effect.succeed("noKey")),
+      Effect.catchIf(a => a instanceof Error && a.message === 'no key', e => Effect.succeed("noKey")),
       runPromise
     )
     expect(typeof res).toBe('string')
@@ -107,7 +125,7 @@ describe("Image", () => {
         return "succeed";
       }),
       Effect.tapError(e => Effect.logError(e.toString())),
-      Effect.catchIf(a => a.message === 'no key', e => Effect.succeed("noKey")),
+      Effect.catchIf(a => a instanceof Error && a.message === 'no key', e => Effect.succeed("noKey")),
       runPromise
     )
     expect(typeof res).toBe('string')
@@ -128,7 +146,7 @@ describe("Image", () => {
         return "succeed";
       }),
       Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
-      Effect.catchIf(a => a.message === 'no key', e => Effect.succeed("noKey")),
+      Effect.catchIf(a => a instanceof Error && a.message === 'no key', e => Effect.succeed("noKey")),
       runPromise
     )
     expect(typeof res).toBe('string')
@@ -173,21 +191,60 @@ describe("Image", () => {
     )
     expect(typeof res).toBe('object')
   })
-  it("comfyApiMakeImage", async () => {
-    //  vitest --run --testNamePattern=comfyApiMakeImage ImageService.test.ts
+  it("makeRunnerImageV3_i2iComfy", async () => {
+    //  vitest --run --testNamePattern=makeRunnerImageV3_i2i ImageService.test.ts
     const res = await Effect.gen(function* () {
       const buffer = fs.readFileSync('tools/test.jpg');
-      return yield* ImageService.comfyApiMakeImage('1girl',buffer)  //
+      return yield* ImageService.makeRunnerImageV3(buffer, 'comfyUi', false,{}, true)  //
     }).pipe(
       Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]), //  layer
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => {
         if (!inGitHubAction) {
-          fs.writeFileSync("tools/test/makeRunnerImageV3Sd.png",Buffer.from(a));
+          fs.writeFileSync("tools/test/makeRunnerImageV3_i2iComfy.png", a.buf);
         }
       }),
-      Effect.catchIf(a => a.toString() === 'Error: no key', e => Effect.succeed(undefined)),
+      Effect.catchIf(a => a.toString() === 'Error: no key', e => Effect.succeed({})),
+      // Effect.tap(a => Effect.log(a)),
+      runPromise
+    )
+    expect(typeof res).toBe('object')
+  },10*60*1000)
+  it("comfyApiMakeImage_t2i", async () => {
+    //  vitest --run --testNamePattern=comfyApiMakeImage_t2i ImageService.test.ts
+    const res = await Effect.gen(function* () {
+      return yield* ImageService.comfyApiMakeImage('1girl',undefined,{ckpt_name:"animagineXL40_v40.safetensors"})  //
+    }).pipe(
+      Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]), //  layer
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.tapError(e => Effect.logError(e.toString())),
+      Effect.tap(a => {
+        if (!inGitHubAction) {
+          fs.writeFileSync("tools/test/comfyApiMakeImage_t2i.png",Buffer.from(a));
+        }
+      }),
+      Effect.catchIf(a => a.toString() === 'Error: no comfy_url', e => Effect.succeed({})),
+      // Effect.tap(a => Effect.log(a)),
+      runPromise
+    )
+    expect(typeof res).toBe('object')
+  })
+  it("comfyApiMakeImage_i2i", async () => {
+    //  vitest --run --testNamePattern=comfyApiMakeImage ImageService.test.ts
+    const res = await Effect.gen(function* () {
+      const buffer = fs.readFileSync('tools/test.jpg');
+      return yield* ImageService.comfyApiMakeImage('1girl',buffer,{ckpt_name:"animagineXL40_v40.safetensors"})  //
+    }).pipe(
+      Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]), //  layer
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.tapError(e => Effect.logError(e.toString())),
+      Effect.tap(a => {
+        if (!inGitHubAction) {
+          fs.writeFileSync("tools/test/comfyApiMakeImage_i2i.png",Buffer.from(a));
+        }
+      }),
+      Effect.catchIf(a => a.toString() === 'Error: no comfy_url', e => Effect.succeed({})),
       // Effect.tap(a => Effect.log(a)),
       runPromise
     )

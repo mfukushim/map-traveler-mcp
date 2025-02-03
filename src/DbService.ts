@@ -367,7 +367,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
           env.isPractice = false
           env.gmKeyExist = true
         }
-        if (Process.env.sd_key || Process.env.pixAi_key) {
+        if (Process.env.sd_key || Process.env.pixAi_key || Process.env.comfy_url) {
           env.anyImageAiExist = true
         }
         if (Process.env.rembg_path) {
@@ -392,6 +392,8 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         if (Process.env.filter_tools) {
           env.filterTools = Process.env.filter_tools.trim().split(',').map(value => value.trim())
         }
+        
+        logSync('comfy_params:',Process.env.comfy_params)
 
         env.promptChanged = !!setting.promptChanged
         yield* saveEnv('promptChanged', env.promptChanged ? '1' : '')
@@ -404,18 +406,21 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
           yield* practiceRunStatus();
         }
         const files = yield *Effect.tryPromise(() => fs.promises.readdir(path.join(__pwd, `assets/comfy`)))
-        if (Process.env.comfy_workflow_files) {
-          files.push(...Process.env.comfy_workflow_files.split(','))
-        }
         files.map(a => addScript(path.join(__pwd, `assets/comfy`,a)));
+        if (Process.env.comfy_workflow_i2i) {
+          addScript(Process.env.comfy_workflow_i2i,'i2i')
+        }
+        if (Process.env.comfy_workflow_t2i) {
+          addScript(Process.env.comfy_workflow_t2i,'t2i')
+        }
 
         yield* McpLogService.logTrace(`initSystemMode end:${JSON.stringify(env)}`)
       })
     }
 
-    function addScript(filePath: string) {
+    function addScript(filePath: string,tag?:string) {
       const script = loadScript(filePath);
-      scriptTables.set(script.name, {script: script.script, nodeNameToId: script.nodeNameToId})
+      scriptTables.set(tag || script.name, {script: script.script, nodeNameToId: script.nodeNameToId})
     }
 
     function loadScript(filePath: string) {

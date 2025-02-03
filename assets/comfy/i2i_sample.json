@@ -1,12 +1,12 @@
 {
   "3": {
     "inputs": {
-      "seed": 257667622239482,
-      "steps": 20,
-      "cfg": 8,
-      "sampler_name": "dpmpp_2m",
-      "scheduler": "normal",
-      "denoise": 0.8700000000000001,
+      "seed": "%seed",
+      "steps": "%steps",
+      "cfg": "%cfg",
+      "sampler_name": "%sampler_name",
+      "scheduler": "%scheduler",
+      "denoise": "%denoise",
       "model": [
         "14",
         0
@@ -31,7 +31,7 @@
   },
   "6": {
     "inputs": {
-      "text": "photograph of victorian woman with wings, sky clouds, meadow grass\n",
+      "text": "%prompt",
       "clip": [
         "14",
         1
@@ -44,7 +44,7 @@
   },
   "7": {
     "inputs": {
-      "text": "watermark, text\n",
+      "text": "%negative_prompt",
       "clip": [
         "14",
         1
@@ -86,7 +86,7 @@
   },
   "10": {
     "inputs": {
-      "image": "example.png",
+      "image": "%uploadFileName",
       "upload": "image"
     },
     "class_type": "LoadImage",
@@ -112,7 +112,7 @@
   },
   "14": {
     "inputs": {
-      "ckpt_name": "animagineXL40_v40.safetensors"
+      "ckpt_name": "%ckpt_name"
     },
     "class_type": "CheckpointLoaderSimple",
     "_meta": {
