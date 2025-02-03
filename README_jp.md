@@ -89,7 +89,7 @@ claude_desktop_config.json
     "traveler": {
       "command": "npx",
       "args": ["-y", "@mfukushim/map-traveler-mcp"],
-      "env":{
+      "env": {
         "GoogleMapApi_key":"(Google Map APIのキー)",
         "time_scale": "(オプション:道路での移動時間の尺度. default 4)",
         "sqlite_path":"(db保存ファイルのパス 例 %USERPROFILE%/Desktop/traveler.sqlite など)",
@@ -97,6 +97,10 @@ claude_desktop_config.json
         "pixAi_key":"(pixAi APIのキー)",
         "sd_key":"(またはStability.aiのAPIのキー",
         "pixAi_modelId": "(オプション: pixAiの場合の使用ModelId. 未設定の場合とりあえず 1648918127446573124 を使う",
+        "comfy_url": "(オプション: 指定urlのComfyUI APIで画像生成する 例 http://192.168.1.100:8188)",
+        "comfy_workflow_t2i": "(オプション: ComfyUIでtext to imageするときのAPIワークフローファイルのパス)",
+        "comfy_workflow_i2i": "(オプション: ComfyUIでimage to imageするときのAPIワークフローファイルのパス)",
+        "comfy_params": "(オプション: comfyUI APIでワークフローに送る変数値)",
         "fixed_model_prompt": "(オプション: 固定でアバターの姿指定プロンプトを設定する。会話でアバター姿を変更できなくなる。)",
         "bodyAreaRatio": "(オプション: 許容されるアバター面積比. default 0.042)",
         "bodyHWRatio": "(オプション: 許容されるアバター縦横比. default 1.5~2.3)",
@@ -183,6 +187,27 @@ claude_desktop_config.json
    ここまでで旅画像にアバターが合成されます。
 6. bluesky SNSのアドレス/パスワードを取得し、ハンドル名も取得します。claude_desktop_config.jsonのenvのbs_id,bs_pass,bs_handle にそれぞれ設定します。
 旅用知識プロンプト roleWithSns.txt を取り込むことで旅アクションをSNSに報告します(botとして自動ポストしますので専用にアカウントを割り当てることをお勧めします)
+
+#### 外付けのComfyUIを使用する場合(詳しい人向け)
+
+ローカルにあるComfyUIを画像生成サーバーとして使用することも出来ます。画像生成特性を自分で細かく設定し、APIコストを減らすことができます。
+ただし設定はかなり複雑になりますし、画像生成の時間も長くなる場合があります。
+
+1. ComfyUIをAPIモードで動くように設定してください。
+2. envのcomfy_urlにサーバーのurlを設定してください。
+3. envに使用するモデルなど細かい設定値をjson文字列の形で設定してください。  
+例
+```json
+{
+  "env": {
+    "comfy_url": "http://192.168.1.100:8188",
+    "comfy_workflow_t2i": "C:\\Documents\\t2itest.json",
+    "comfy_workflow_i2i":"C:\\Documents\\i2itest.json",
+    "comfy_params":"ckpt_name='animagineXL40_v40.safetensors',denoise=0.65"
+  }
+}
+```
+4. デフォルトのワークフローはパッケージ内のassets/comfy/t2i_sample.json,assets/comfy/i2i_sample.jsonを使うことが出来ます。この中で%を使って変数を指定し、その変数をcomfy_paramsで指定することができます。
 
 ## 設定ガイド
 

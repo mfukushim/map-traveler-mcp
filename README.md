@@ -105,6 +105,10 @@ claude_desktop_config.json
         "pixAi_key":"(pixAi API key)",
         "sd_key":"(or Stability.ai image generation API key",
         "pixAi_modelId": "(Optional: pixAi ModelId, if not set use default model 1648918127446573124 ",
+        "comfy_url": "(Option: Generate image using ComfyUI API at specified URL. Example: http://192.168.1.100:8188)",
+        "comfy_workflow_t2i": "(Optional: Path to API workflow file when using text to image with ComfyUI)",
+        "comfy_workflow_i2i": "(Optional: Path of API workflow file when image to image in ComfyUI)",
+        "comfy_params": "(Optional: Variable values to send to the workflow via comfyUI API)",
         "fixed_model_prompt": "(Optional: Fixed avatar generation prompt. You will no longer be able to change your avatar during conversations.)",
         "bodyAreaRatio": "(Optional: Acceptable avatar image area ratio. default 0.042)",
         "bodyHWRatio": "(Optional: Acceptable avatar image aspect ratios. default 1.5~2.3)",
@@ -200,6 +204,27 @@ claude_desktop_config.json
 6. Get the bluesky SNS address/password and handle name. Set these in bs_id, bs_pass, and bs_handle in env of claude_desktop_config.json, respectively.
    Import the travel knowledge prompt roleWithSns.txt to report travel actions to SNS (it will automatically post as a bot, so we recommend allocating a dedicated account)
 
+#### When using external ComfyUI (for more advanced users)
+
+You can also use a local ComfyUI as an image generation server. You can configure the image generation characteristics yourself in detail to reduce API costs.
+
+However, the configuration will be quite complicated and image generation may take longer.
+
+1. Configure ComfyUI to run in API mode.
+2. Set the server URL to comfy_url in env.
+3. Set detailed configuration values such as the model to be used in env in the form of a json string.
+example.
+```json
+{
+  "env": {
+    "comfy_url": "http://192.168.1.100:8188",
+    "comfy_workflow_t2i": "C:\\Documents\\t2itest.json",
+    "comfy_workflow_i2i":"C:\\Documents\\i2itest.json",
+    "comfy_params":"ckpt_name='animagineXL40_v40.safetensors',denoise=0.65"
+  }
+}
+```
+4. The default workflow can use assets/comfy/t2i_sample.json and assets/comfy/i2i_sample.json in the package. You can specify variables using % and specify the variables in comfy_params.
 
 ## Install guide (Japanese, but lots of photos)
 

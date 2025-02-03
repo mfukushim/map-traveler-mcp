@@ -25,7 +25,7 @@ dayjs.extend(utc)
 dayjs.extend(duration)
 dayjs.extend(relativeTime)
 
-export const useAiImageGen = (Process.env.pixAi_key ? 'pixAi' : Process.env.sd_key ? 'sd' : '')
+export const useAiImageGen = (Process.env.pixAi_key ? 'pixAi' : Process.env.sd_key ? 'sd' : Process.env.comfy_url ? 'comfyUi': '')
 
 export interface LocationDetail {
   status: TripStatus;

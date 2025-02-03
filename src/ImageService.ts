@@ -1,8 +1,8 @@
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
 
-import {Effect, Schedule} from "effect";
+import {Effect, Schedule, Option, Schema} from "effect";
 import sharp = require("sharp");
-import {FetchHttpClient, HttpClient, HttpClientRequest} from "@effect/platform";
+import {FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse} from "@effect/platform";
 import dayjs from "dayjs";
 import FormData from 'form-data';
 // import {transparentBackground} from "transparent-background";
@@ -12,7 +12,7 @@ import {type MediaBaseFragment, TaskBaseFragment} from "@pixai-art/client/types/
 import * as Process from "node:process";
 import 'dotenv/config'
 import {McpLogService, McpLogServiceLive} from "./McpLogService.js";
-import {__pwd, DbService, env} from "./DbService.js";
+import {__pwd, DbService, env, scriptTables} from "./DbService.js";
 import WebSocket from 'ws'
 import * as path from "path";
 import * as os from "node:os";
@@ -31,6 +31,7 @@ const pixAiClient = new PixAIClient({
   apiKey: Process.env.pixAi_key || '',
   webSocketImpl: WebSocket
 })
+
 
 export class ImageService extends Effect.Service<ImageService>()("traveler/ImageService", {
   accessors: true,
@@ -430,19 +431,27 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       })
     }
 
-    const selectImageGenerator = (generatorId: string, prompt: string, inImage?: Buffer, opt?: {
-      width?: number,
-      height?: number,
-      sampler?: string,
-      samples?: number,
-      steps?: number,
-      cfg_scale?: number,
-    }) => {
+    const selectImageGenerator = (generatorId: string, prompt: string, inImage?: Buffer,opt?:Record<string,any>) => {
       switch (generatorId) {
         case 'pixAi':
-          return pixAiMakeImage(prompt, inImage, opt)
+          return pixAiMakeImage(prompt, inImage,opt)
+        case 'comfyUi': {
+          const optList = Process.env.comfy_params ? Process.env.comfy_params.split(',').map(a => {
+            const b = a.split('=');
+            const val = b[1].includes("'") ? b[1].replaceAll("'",""): Number.parseFloat(b[1])
+            return [b[0],val]
+          }): []
+          const optC:Record<string, any> = {...Object.fromEntries(optList),...opt}
+          if (!optC.width) {
+            optC.width = 1024
+          }
+          if (!optC.height) {
+            optC.height = 1024
+          }
+          return comfyApiMakeImage(prompt, inImage, optC);
+        }
         default:
-          return sdMakeImage(prompt, inImage, opt)
+          return sdMakeImage(prompt, inImage,opt)
       }
     };
 
@@ -618,7 +627,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               const bodyHWRatio = opt?.bodyHWRatio || 2
               return checkPersonImage(avatarImage, windowSize).pipe(
                 Effect.tap(a => McpLogService.logTrace(
-                  `check runner image:${retry},${JSON.stringify(a)},${a.number}<>${bodyAreaRatio},${a.alphaNum.rect.h / a.alphaNum.rect.w}<>${bodyHWRatio}`)),  //, retry, number, alphaNum.rect.w, alphaNum.rect.h\
+                  `check runner image:${retry},${JSON.stringify(a)},${a.number}${a.number > bodyAreaRatio ? '>':'<'}${bodyAreaRatio},${a.alphaNum.rect.h / a.alphaNum.rect.w}${a.alphaNum.rect.h / a.alphaNum.rect.w > bodyHWRatio ? '>':'<'}${bodyHWRatio}`)),  //, retry, number, alphaNum.rect.w, alphaNum.rect.h\
                 Effect.andThen(a => {
                   //  非透明度が0.02以上かつ範囲の縦と横の比率が3:1以上なら完了 counterfeit V3=0.015, counterfeit LX 0.03 にしてみる
                   //  比率値を3から2.5にしてみる。ダメ映像が増えたらまた調整する。。非透明率を0.015にしてみる
@@ -661,6 +670,176 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     }
 
 
+    function mergeParams(baseScript: any, map: Map<string, number>, params: Record<string, string | number>) {
+      let scr = JSON.stringify(baseScript)
+      //  jsonPathで置き換えてるからbaseScriptのshallow copyは必要ないはず
+      Object.keys(params).forEach(key => {
+        const val = params[key];
+        const reg = new RegExp(`"${key}"`, "g")
+        scr = scr.replaceAll(reg, typeof val === "number" ? val.toString() : `"${val.toString()}"`)
+      })
+      return JSON.parse(scr)
+    }
+
+    function comfyUploadImage(inImage: Buffer, opt?: {
+      width?: number,
+      height?: number,
+    }) {
+      //  TODO comfyの場合のファイルアップロード。。
+      const nowMs = dayjs().valueOf()
+      const fileName = `trv${nowMs}`
+      return Effect.tryPromise(() => sharp(inImage).resize({
+        width: opt?.width || 1024,
+        height: opt?.height || 1024
+      }).png().toBuffer()).pipe(
+        Effect.andThen(a =>
+          Effect.tryPromise({
+            try: () => {
+              const formData = new FormData()
+              formData.append('image', a, {filename: fileName})
+              return fetch(
+                `${Process.env.comfy_url}/upload/image`,
+                {
+                  method: 'POST',
+                  headers: {
+                    ...formData.getHeaders(),
+                    Accept: 'application/json',
+                    // Authorization: `Bearer ${key}`,
+                  },
+                  body: formData.getBuffer(),
+                }
+              )
+            },
+            catch: error => new Error(`${error}`)
+          })),
+        Effect.andThen(a => a.json()),
+        Effect.andThen(a => a as { name: string, subfolder: string, type: string }),
+        Effect.andThen(a => a.name),
+        Effect.tapError(cause => Effect.logError(cause)),
+        Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("3 seconds")))),
+      )
+    }
+
+
+    function comfyUpExecPrompt(script: any) {
+      //  TODO comfyの場合のファイルアップロード。。
+      return Effect.gen(function* () {
+        const client = yield* HttpClient.HttpClient;
+        return yield* HttpClientRequest.post(`${Process.env.comfy_url}/prompt`).pipe(
+          HttpClientRequest.setHeaders({
+            // Authorization: `Bearer ${key}`,
+            Accept: "application/json",
+          }),
+          HttpClientRequest.bodyJson({
+            prompt: script,
+          }),
+          Effect.flatMap(client.execute),
+          Effect.flatMap(a => a.json),
+          Effect.andThen((a: any) => {
+            //  TODO うまくSchema.decode出来なかったので雑にキャストする
+            if (a.error) {
+              return Effect.fail(new Error(`ComfyUI error:${JSON.stringify(a.node_errors)}`))
+            }
+            return Effect.succeed(a as { prompt_id: string })
+          }),
+          Effect.tapError(McpLogService.logError),
+          Effect.tap(a => McpLogService.logTrace(a)),
+          Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
+          Effect.scoped,
+        )
+      })
+    }
+
+    function downloadOutput(prompt_id: string, needKeyNum: number = 1) {
+
+      const sc = Schema.Record({
+        key: Schema.String,
+        value: Schema.Struct({
+          outputs: Schema.Record({
+            key: Schema.String,
+            value: Schema.Struct({
+              images: Schema.Array(Schema.Struct({
+                filename: Schema.String,
+                subfolder: Schema.String,
+                type: Schema.String
+              }))
+            })
+            
+          })
+        })
+      })
+      return HttpClient.get(`${Process.env.comfy_url}/history`).pipe(
+        Effect.andThen((response) => HttpClientResponse.schemaBodyJson(sc)(response)),
+        Effect.scoped,
+        Effect.provide(FetchHttpClient.layer),
+        Effect.andThen((a1: any) => {
+          const prOut = a1[prompt_id]
+          if (!prOut) {
+            //  TODO ここの書き方どうなるんだろう?
+            return Effect.fail(new Error('wait not ready'))
+          }
+          const outputs = prOut.outputs
+          const keys = Object.keys(outputs);
+          return Effect.forEach(keys,(a, i) => {
+            const imageList:{filename:string,subfolder:string,type:string}[] = outputs[a].images
+            return Effect.forEach(imageList,(a2, i1) => {
+              return HttpClient.get(`${Process.env.comfy_url}/view`, {urlParams: {filename:a2.filename,subfolder:a2.subfolder,type:a2.type}}).pipe(
+                Effect.andThen((response) => response.arrayBuffer),
+                Effect.scoped,
+                Effect.provide(FetchHttpClient.layer) //  TODO この後に削除が欲しいところだけど
+              )
+            })
+          })
+        }),
+        Effect.retry(Schedule.recurs(44).pipe(Schedule.intersect(Schedule.spaced("10 seconds")))),
+        Effect.andThen(a => a.flat())
+      )
+    }
+
+    function comfyApiMakeImage(prompt: string, inImage?: Buffer, params?: Record<string, any>) {
+      if (!Process.env.comfy_url) {
+        return Effect.fail(new Error('no comfy_url'))
+      }
+      return Effect.gen(function* () {
+        const uploadFileName = inImage ? yield* comfyUploadImage(inImage, params).pipe(Effect.andThen(a => Effect.succeedSome(a))) : Option.none()
+        //  uploadFileNameはプロンプトスクリプト内で置き換えなければならないので
+        const scriptName = inImage ? (Process.env.comfy_workflow_i2i ? 'i2i' : 'i2i_sample') : (Process.env.comfy_workflow_t2i ? 't2i' : 't2i_sample')
+        const sdT2i = scriptTables.get(scriptName);
+        if (!sdT2i) {
+          return yield* Effect.fail(new Error('comfyApiMakeImage no script table'))
+        }
+        const mappedRecord = params ? Object.fromEntries(
+          Object.entries(params).map(([key, value]) => [`%${key}`, value])
+        ) as Record<string, any>: {};
+        const modelParams: Record<string, string | number> = {
+          "%seed": params?.seed && params?.seed >= 0 ? params.seed : Math.floor(Math.random() * 999999999999999), // TODO randomは0か? どうもComfyは今randomの設定がないようだ。。。 負数なら15桁の9をベースに乱数とする
+          "%steps": params?.steps || 20,  //  20->8
+          "%cfg": params?.cfg || 6, //  8->1.5
+          "%sampler_name": params?.sampler_name || 'euler',
+          "%scheduler": params?.scheduler || 'normal',
+          "%denoise": params?.denoise || 0.7, //0.63,
+          "%ckpt_name": params?.ckpt_name || 'v1-5-pruned-emaonly-fp16.safetensors',
+          "%prompt": prompt,
+          "%negative_prompt": params?.negative_prompt || 'nsfw, text, watermark',
+          "%width":params?.width || 1024,
+          "%height":params?.height || 1024
+        };
+        const outParam = {...mappedRecord,...modelParams}
+
+        if (Option.isSome(uploadFileName)) {
+          outParam["%uploadFileName"] = uploadFileName.value
+        }
+        const script = mergeParams(sdT2i.script, sdT2i.nodeNameToId, outParam)
+        const ret = yield* comfyUpExecPrompt(script)
+
+        return yield* downloadOutput(ret.prompt_id, 1).pipe(
+          Effect.tap(a => a.length !== 1 && a.length !== 2 && Effect.fail(new Error('download fail'))),
+          Effect.andThen(a => Buffer.from(a[0])))
+      });
+
+    }
+
+
     return {
       getRecentImageAndClear,
       makeHotelPict,
@@ -669,6 +848,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       selectImageGenerator,
       generatePrompt,
       getBasePrompt,
+      comfyApiMakeImage,
     }
   }),
   dependencies: [McpLogServiceLive]
