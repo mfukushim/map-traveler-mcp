@@ -20,7 +20,7 @@ import * as path from "node:path";
 import {logSync, McpLogService, McpLogServiceLive} from "./McpLogService.js";
 import {practiceData} from "./RunnerService.js";
 import {defaultBaseCharPrompt} from "./ImageService.js";
-// import {findSystemPython} from "transparent-background/lib/utils.js";
+import * as fs from "node:fs";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -75,6 +75,10 @@ export const env = {
   loggingMode: false,
   filterTools: [] as string[],
 }
+
+export const scriptTables = new Map<string, { script: any, nodeNameToId: Map<string, number> }>();
+
+
 
 export class DbService extends Effect.Service<DbService>()("traveler/DbService", {
   accessors: true,
@@ -179,7 +183,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         Effect.andThen(takeOne),
         Effect.andThen(a => a.value))
     }
-    
+
     function getEnvOption(key: string) {
       return stub(db.select().from(env_kv).where(eq(env_kv.key, key))).pipe(
         Effect.map(a => a.length === 1 && a[0].value ? Option.some(a[0].value) : Option.none()),
@@ -214,7 +218,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
     const takeOne = <T>(list: T[]) => {
       return list.length === 1 ? Effect.succeed(list[0]) : Effect.fail(new Error(`no element`))
     }
-    
+
     function saveRunStatus(runStatus: RunStatusI) {
       const save = {
         ...runStatus,
@@ -363,7 +367,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
           env.isPractice = false
           env.gmKeyExist = true
         }
-        if (Process.env.sd_key || Process.env.pixAi_key) {
+        if (Process.env.sd_key || Process.env.pixAi_key || Process.env.comfy_url) {
           env.anyImageAiExist = true
         }
         if (Process.env.rembg_path) {
@@ -388,6 +392,8 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         if (Process.env.filter_tools) {
           env.filterTools = Process.env.filter_tools.trim().split(',').map(value => value.trim())
         }
+        
+        logSync('comfy_params:',Process.env.comfy_params)
 
         env.promptChanged = !!setting.promptChanged
         yield* saveEnv('promptChanged', env.promptChanged ? '1' : '')
@@ -399,9 +405,50 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         if (env.isPractice) {
           yield* practiceRunStatus();
         }
+        const files = yield *Effect.tryPromise(() => fs.promises.readdir(path.join(__pwd, `assets/comfy`)))
+        files.map(a => addScript(path.join(__pwd, `assets/comfy`,a)));
+        if (Process.env.comfy_workflow_i2i) {
+          addScript(Process.env.comfy_workflow_i2i,'i2i')
+        }
+        if (Process.env.comfy_workflow_t2i) {
+          addScript(Process.env.comfy_workflow_t2i,'t2i')
+        }
+
         yield* McpLogService.logTrace(`initSystemMode end:${JSON.stringify(env)}`)
       })
     }
+
+    function addScript(filePath: string,tag?:string) {
+      const script = loadScript(filePath);
+      scriptTables.set(tag || script.name, {script: script.script, nodeNameToId: script.nodeNameToId})
+    }
+
+    function loadScript(filePath: string) {
+      const s = fs.readFileSync(filePath, {encoding: "utf8"});
+      const parse = JSON.parse(s);
+      const map: [string, number][] = Object.keys(parse).flatMap(key => {
+        const node = parse[key];
+        const clsName: string = node.class_type;
+        const number = Number.parseInt(key);
+        return [[clsName, number], [`${clsName}:${key}`, number]]
+      });
+      //  重複名が存在した場合、それはエラーとして記録するために0を入れることにする
+      const map1 = map.reduce((previousValue, currentValue: [string, number]) => {
+        if (previousValue.has(currentValue[0])) {
+          //  重複なので 0
+          previousValue.set(currentValue[0], 0)
+        } else {
+          previousValue.set(currentValue[0], currentValue[1])
+        }
+        return previousValue;
+      }, new Map<string, number>());
+      const name = path.basename(filePath, '.json');
+      return {name: name, script: parse, nodeNameToId: map1};
+    }
+
+
+
+
 
     return {
       init,
