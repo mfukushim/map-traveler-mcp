@@ -71,9 +71,11 @@ Claude Desktopでプロンプトを取り込むと、Claudeが旅人の立場の
 SNS対応版では旅会話をしながらSNSの入出力を制御します。
 
 - role.txt  
-Claudeが旅人の立場の役をします。
+  Claudeが旅人の立場の役をします。
 - roleWithSns.txt  
-Claudeが旅人の立場の役をします。合わせてSNSへの読み取りとポストを制御します。
+  Claudeが旅人の立場の役をします。合わせてSNSへの読み取りとポストを制御します。
+- carBattle.txt  
+  横浜から東京に向かって秘密文書を運ぶストーリーの小さなノベルゲームです。シーンは自動で生成します。遊ぶためにはmoveMode=skipを設定します。
 
 ## 設定
 
@@ -98,8 +100,8 @@ claude_desktop_config.json
         "sd_key":"(またはStability.aiのAPIのキー",
         "pixAi_modelId": "(オプション: pixAiの場合の使用ModelId. 未設定の場合とりあえず 1648918127446573124 を使う",
         "comfy_url": "(オプション: 指定urlのComfyUI APIで画像生成する 例 http://192.168.1.100:8188)",
-        "comfy_workflow_t2i": "(オプション: ComfyUIでtext to imageするときのAPIワークフローファイルのパス)",
-        "comfy_workflow_i2i": "(オプション: ComfyUIでimage to imageするときのAPIワークフローファイルのパス)",
+        "comfy_workflow_t2i": "(オプション: ComfyUIでtext to imageするときのAPIワークフローファイルのパス 未指定の場合 assets/comfy/t2i_sample.json)",
+        "comfy_workflow_i2i": "(オプション: ComfyUIでimage to imageするときのAPIワークフローファイルのパス 未指定の場合 assets/comfy/i2i_sample.json)",
         "comfy_params": "(オプション: comfyUI APIでワークフローに送る変数値)",
         "fixed_model_prompt": "(オプション: 固定でアバターの姿指定プロンプトを設定する。会話でアバター姿を変更できなくなる。)",
         "bodyAreaRatio": "(オプション: 許容されるアバター面積比. default 0.042)",
@@ -219,4 +221,6 @@ claude_desktop_config.json
    https://note.com/marble_walkers/n/nc7273724faea
 4. SNS設定  
    https://note.com/marble_walkers/n/na7c956befe7b
-5. 応用編 (準備中)
+5. 応用サンプル1編  
+   https://note.com/marble_walkers/n/n3c86edd8e817
+6. ComfyUI設定と応用サンプル2編 (準備中)

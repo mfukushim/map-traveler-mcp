@@ -74,6 +74,7 @@ export const env = {
   moveMode: 'realtime' as MoveMode,
   loggingMode: false,
   filterTools: [] as string[],
+  progressToken: undefined as string | number | undefined
 }
 
 export const scriptTables = new Map<string, { script: any, nodeNameToId: Map<string, number> }>();
@@ -346,6 +347,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       return Effect.gen(function* () {
         //  db有無の確認 dbサービスの初期化によって確認させる とコマンドon/off
         yield* init()
+        env.progressToken = undefined
         if (dbPath !== ':memory:') {
           env.dbMode = "file"
           env.dbFileExist = true
