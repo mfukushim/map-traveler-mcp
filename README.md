@@ -8,7 +8,7 @@ From an MCP client such as Claude Desktop, you can give instructions to the avat
 
 <img alt="img_5.png" src="tools/img_5.png" width="400"/>
 
-> **caution**  
+> **note**  
 Currently, it seems that it is not possible to take images using the PixAI API for some unclear reason.
 
 ## Functions
@@ -79,10 +79,12 @@ When you import a prompt with Claude Desktop, Claude will act as a traveler.
 The SNS-compatible version controls SNS input and output while having a travel conversation.
 
 - role.txt  
-Claude will act as a traveler.
+  Claude will act as a traveler.
 
 - roleWithSns.txt  
-Claude will act as a traveler. It also controls reading and posting to SNS.
+  Claude will act as a traveler. It also controls reading and posting to SNS.
+- carBattle.txt  
+  This is a small novel game about a story of transporting secret documents from Yokohama to Tokyo. Scenes are automatically generated. Set moveMode=skip to play.
 
 ## Setting
 
@@ -106,8 +108,8 @@ claude_desktop_config.json
         "sd_key":"(or Stability.ai image generation API key",
         "pixAi_modelId": "(Optional: pixAi ModelId, if not set use default model 1648918127446573124 ",
         "comfy_url": "(Option: Generate image using ComfyUI API at specified URL. Example: http://192.168.1.100:8188)",
-        "comfy_workflow_t2i": "(Optional: Path to API workflow file when using text to image with ComfyUI)",
-        "comfy_workflow_i2i": "(Optional: Path of API workflow file when image to image in ComfyUI)",
+        "comfy_workflow_t2i": "(Optional: Path to API workflow file when using text to image with ComfyUI. If not specified: assets/comfy/t2i_sample.json)",
+        "comfy_workflow_i2i": "(Optional: Path of API workflow file when image to image in ComfyUI. If not specified: assets/comfy/i2i_sample.json)",
         "comfy_params": "(Optional: Variable values to send to the workflow via comfyUI API)",
         "fixed_model_prompt": "(Optional: Fixed avatar generation prompt. You will no longer be able to change your avatar during conversations.)",
         "bodyAreaRatio": "(Optional: Acceptable avatar image area ratio. default 0.042)",
@@ -236,4 +238,6 @@ example.
    https://note.com/marble_walkers/n/nc7273724faea
 4. SNS integration
    https://note.com/marble_walkers/n/na7c956befe7b
-5. Application and Extension (in preparation)
+5. Application 1 
+   https://note.com/marble_walkers/n/n3c86edd8e817
+6. ComfyUI API, Application 2 and Extension (in preparation)

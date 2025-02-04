@@ -17,7 +17,7 @@ import {__pwd, DbService, DbServiceLive, env, PersonMode} from "./DbService.js";
 import {StoryService, StoryServiceLive} from "./StoryService.js";
 import {FetchHttpClient, HttpClient} from "@effect/platform";
 import {defaultBaseCharPrompt, ImageService, ImageServiceLive} from "./ImageService.js";
-import {McpLogService, McpLogServiceLive} from "./McpLogService.js";
+import {logSync, McpLogService, McpLogServiceLive} from "./McpLogService.js";
 import {AnswerError} from "./mapTraveler.js";
 import {AtPubNotification, SnsService, SnsServiceLive} from "./SnsService.js";
 import * as Process from "node:process";
@@ -46,29 +46,71 @@ const labelImage = (aiGen: string) => {
   return aiGen === 'pixAi' ? 'PixAi' : aiGen === 'sd' ? 'Stability.ai' : ''
 }
 
+const server = new Server(
+  {
+    name: "geo-less-traveler",
+    version: "0.1.0",
+  },
+  {
+    capabilities: {
+      resources: {
+        listChanged: true
+      },
+      tools: {
+        listChanged: true
+      },
+      prompts: {},
+      sampling: {},
+    },
+  }
+);
+
+export function sendProgressNotification(progressToken: string|number, total:number, progress:number) {
+  return Effect.tryPromise({
+    try: () => server.notification({
+      method: "notifications/progress",
+      params: {
+        progress: progress,
+        total: total,
+        progressToken,
+      },
+    }),
+    catch: error => {
+      logSync(`sendProgressNotification catch:${error}`)
+      return new Error(`sendProgressNotification error:${error}`)
+    }
+  }).pipe(Effect.tap(() => logSync('do sendProgressNotification')))
+}
+
+function sendToolListChanged() {
+  logSync('start sendToolListChanged')
+  return Effect.tryPromise({
+    try: () => server.sendToolListChanged(),
+    catch: error => {
+      //  MCPではstdoutは切られている
+      McpLogService.logError(`sendToolListChanged error:${error}`)
+      return new Error(`sendToolListChanged error:${error}`)
+    }
+  }).pipe(Effect.tap(() => logSync('sendToolListChanged put')))
+}
+
+function sendLoggingMessage(message: string, level = 'info') {
+  return Effect.tryPromise({
+    try: () => server.sendLoggingMessage({
+      level: level as "info" | "error" | "debug" | "notice" | "warning" | "critical" | "alert" | "emergency",
+      data: message,
+    }),
+    catch: error => {
+      McpLogService.logError(`sendLoggingMessage catch:${error}`)
+      return new Error(`sendLoggingMessage error:${error}`)
+    }
+  })
+}
+
+
 export class McpService extends Effect.Service<McpService>()("traveler/McpService", {
   accessors: true,
   effect: Effect.gen(function* () {
-      //  region initServer
-      const server = new Server(
-        {
-          name: "geo-less-traveler",
-          version: "0.1.0",
-        },
-        {
-          capabilities: {
-            resources: {
-              listChanged: true
-            },
-            tools: {
-              listChanged: true
-            },
-            prompts: {},
-            sampling: {},
-          },
-        }
-      );
-      //  endregion
 
       //  region tool定義
       const SETTING_COMMANDS: Tool[] = [
@@ -380,7 +422,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       }
       //  endregion
 
-      //  region tools関数
+    
+    //  region tools関数
       const tips = () => {
         return Effect.gen(function* () {
             const res = yield* StoryService.tips()
@@ -1001,7 +1044,11 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
 
         server.setRequestHandler(CallToolRequestSchema, async (request: z.infer<typeof CallToolRequestSchema>) => {
           return await McpLogService.logTrace(request.params.name).pipe(
-            Effect.andThen(toolSwitch(request)),
+            Effect.andThen(() => {
+              logSync('request.params:',JSON.stringify(request.params))
+              env.progressToken = request.params._meta?.progressToken
+              return toolSwitch(request)
+            }),
             Effect.provide([DbServiceLive, ImageServiceLive]),
             Effect.andThen(a => ({content: a})),
             Effect.catchIf(a => a instanceof AnswerError, e => {
@@ -1037,29 +1084,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           Effect.provide([DbServiceLive]))
       }
 
-      function sendToolListChanged() {
-        return Effect.tryPromise({
-          try: () => server.sendToolListChanged(),
-          catch: error => {
-            //  MCPではstdoutは切られている
-            McpLogService.logError(`sendToolListChanged error:${error}`)
-            return new Error(`sendToolListChanged error:${error}`)
-          }
-        }).pipe(Effect.tap(() => McpLogService.log('sendToolListChanged put')))
-      }
-
-      function sendLoggingMessage(message: string, level = 'info') {
-        return Effect.tryPromise({
-          try: () => server.sendLoggingMessage({
-            level: level as "info" | "error" | "debug" | "notice" | "warning" | "critical" | "alert" | "emergency",
-            data: message,
-          }),
-          catch: error => {
-            McpLogService.logError(`sendLoggingMessage catch:${error}`)
-            return new Error(`sendLoggingMessage error:${error}`)
-          }
-        })
-      }
 
       return {
         tips,
@@ -1079,7 +1103,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         replySnsWriter,
         toolSwitch,
         getEnvironment,
-        makeToolsDef
+        makeToolsDef,
       }
     }
   )

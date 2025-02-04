@@ -5,13 +5,12 @@ import sharp = require("sharp");
 import {FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse} from "@effect/platform";
 import dayjs from "dayjs";
 import FormData from 'form-data';
-// import {transparentBackground} from "transparent-background";
 import {Jimp} from "jimp";
 import {PixAIClient} from '@pixai-art/client'
 import {type MediaBaseFragment, TaskBaseFragment} from "@pixai-art/client/types/generated/graphql.js";
 import * as Process from "node:process";
 import 'dotenv/config'
-import {McpLogService, McpLogServiceLive} from "./McpLogService.js";
+import {logSync, McpLogService, McpLogServiceLive} from "./McpLogService.js";
 import {__pwd, DbService, env, scriptTables} from "./DbService.js";
 import WebSocket from 'ws'
 import * as path from "path";
@@ -19,6 +18,7 @@ import * as os from "node:os";
 import * as fs from "node:fs";
 import {execSync} from "node:child_process";
 import {defaultAvatarId} from "./RunnerService.js";
+import {sendProgressNotification} from "./McpService.js";
 
 export const defaultBaseCharPrompt = 'depth of field, cinematic composition, masterpiece, best quality,looking at viewer,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut'
 
@@ -45,6 +45,18 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         Effect.andThen(a => a.baseCharPrompt + ',anime'),
         Effect.orElseSucceed(() => defaultBaseCharPrompt));
     }
+
+    //  TODO notifications/progress を発行すべき
+    const progress = (total=1,progress=0) => {
+      logSync('progress:',env.progressToken,total,progress)
+      if (env.progressToken === undefined) {
+        return Effect.void
+      }
+      return sendProgressNotification(env.progressToken || '', total, progress).pipe(
+        Effect.repeat(Schedule.repeatForever.pipe(Schedule.intersect(Schedule.spaced("15 seconds")))),
+      );
+    }
+
 
     function sdMakeTextToImage(prompt: string, opt?: {
       width?: number,
@@ -584,14 +596,16 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           }
 
           /** 画像評価リトライ */
-          let retry = 4 //  5回リトライになってるな 現在初期値7 最小値2(でないと画像できない)
+          const retryMax = 4
+          let retry = retryMax //  5回リトライになってるな 現在初期値7 最小値2(でないと画像できない)
           const fixedThreshold = 2  //  バストショットに切り替える閾値 2,1の2回はバストショット生成を試みる
           let isFixedBody = false
           let appendPrompt: string | undefined
 
-          const avatarImage = yield* Effect.gen(function* () {
+        
+        const avatarImage = yield* Effect.gen(function* () {
             const baseCharPrompt = yield* getBasePrompt(defaultAvatarId)
-            const {prompt, append} = yield* generatePrompt(baseCharPrompt, retry < fixedThreshold, withAbort)
+          const {prompt, append} = yield* generatePrompt(baseCharPrompt, retry < fixedThreshold, withAbort)
             appendPrompt = append
             retry--
             if (retry < fixedThreshold) {
@@ -608,7 +622,9 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               yield* McpLogService.logTrace(`i2i:${retry}`)
               return yield* selectImageGenerator(selectGen, prompt, clopImage, {
                 width: windowSize.w,
-                height: windowSize.h
+                height: windowSize.h,
+                logTotal:retryMax,
+                logProgress:retryMax-retry
               })
             }
           }).pipe(
@@ -780,15 +796,20 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           }
           const outputs = prOut.outputs
           const keys = Object.keys(outputs);
-          return Effect.forEach(keys,(a, i) => {
+          return Effect.forEach(keys, a => {
             const imageList:{filename:string,subfolder:string,type:string}[] = outputs[a].images
-            return Effect.forEach(imageList,(a2, i1) => {
-              return HttpClient.get(`${Process.env.comfy_url}/view`, {urlParams: {filename:a2.filename,subfolder:a2.subfolder,type:a2.type}}).pipe(
+            return Effect.forEach(imageList, a2 =>
+              HttpClient.get(`${Process.env.comfy_url}/view`, {
+                urlParams: {
+                  filename: a2.filename,
+                  subfolder: a2.subfolder,
+                  type: a2.type
+                }
+              }).pipe(
                 Effect.andThen((response) => response.arrayBuffer),
                 Effect.scoped,
                 Effect.provide(FetchHttpClient.layer) //  TODO この後に削除が欲しいところだけど
-              )
-            })
+              ))
           })
         }),
         Effect.retry(Schedule.recurs(44).pipe(Schedule.intersect(Schedule.spaced("10 seconds")))),
@@ -801,6 +822,10 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         return Effect.fail(new Error('no comfy_url'))
       }
       return Effect.gen(function* () {
+        const logTotal = params?.logTotal
+        const logProgress = params?.logProgress
+        yield *Effect.fork(progress(logTotal || 1,logProgress || 0))
+        
         const uploadFileName = inImage ? yield* comfyUploadImage(inImage, params).pipe(Effect.andThen(a => Effect.succeedSome(a))) : Option.none()
         //  uploadFileNameはプロンプトスクリプト内で置き換えなければならないので
         const scriptName = inImage ? (Process.env.comfy_workflow_i2i ? 'i2i' : 'i2i_sample') : (Process.env.comfy_workflow_t2i ? 't2i' : 't2i_sample')
