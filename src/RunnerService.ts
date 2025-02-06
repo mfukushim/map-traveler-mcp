@@ -283,7 +283,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
     function makeView(runStatus: RunStatus, elapseRatio: number, showRunning: boolean, includePhoto: boolean, includeNearbyFacilities: boolean, practice = false, debugRoute?: string) {
       return Effect.gen(function* () {
         let loc: LocationDetail
-        let status: TripStatus;
+        let viewStatus: TripStatus;
         if (practice) {
           loc = {
             status: runStatus.status,
@@ -296,16 +296,20 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
             isEnd: true,
             landPathNo: -1,
           }
-          status = runStatus.status;
+          viewStatus = runStatus.status;
         } else {
           loc = yield* calcCurrentLoc(runStatus, elapseRatio, debugRoute); //  これは計算位置情報
-          status = loc.status;
+          viewStatus = loc.status;
           yield* McpLogService.logTrace(`getCurrentView:elapseRatio:${elapseRatio},start:${runStatus.startTime},end:${dayjs.unix(runStatus.tilEndEpoch)},status:${loc.status}`)
           if (showRunning) {
-            status = 'running'
+            viewStatus = 'running'
+          }
+          //  skip移動モードのときは例外的に画像情報はrunningにする(stop=ホテル画面ではなく、今の場所の画面を生成する)
+          if (env.moveMode === "skip" && viewStatus === "stop") {
+            viewStatus = 'running'
           }
         }
-        switch (status) {
+        switch (viewStatus) {
           case 'vehicle':
             return yield* vehicleView(loc, includePhoto);
           case 'stop':
