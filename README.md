@@ -8,9 +8,6 @@ From an MCP client such as Claude Desktop, you can give instructions to the avat
 
 <img alt="img_5.png" src="tools/img_5.png" width="400"/>
 
-> **note**  
-Currently, it seems that it is not possible to take images using the PixAI API for some unclear reason.
-
 ## Functions
 
 #### MCP server tools function
