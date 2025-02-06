@@ -10,9 +10,6 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 
 <img alt="img.png" src="tools/img.png" width="400"/>
 
-> **注意**  
-現在PixAIのAPIでよくわからない理由で画像が取れないようです。
-
 ## 機能
 
 #### MCP server tools function

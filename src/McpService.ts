@@ -1061,6 +1061,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             }),
             Effect.catchAll(e => {
               return McpLogService.logError(`catch all:${e.toString()},${JSON.stringify(e)}`).pipe(Effect.as({
+                  isError:true,
                   content: [{
                     type: "text",
                     text: "Sorry,unknown system error."
