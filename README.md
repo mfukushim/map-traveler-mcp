@@ -98,6 +98,7 @@ claude_desktop_config.json
       "args": ["-y", "@mfukushim/map-traveler-mcp"],
       "env":{
         "GoogleMapApi_key":"(Google Map API key)",
+        "mapApi_url": "(Optional: Map API custom endpoint. Example: direction=https://xxxx,places=https://yyyy )",
         "time_scale": "(Optional:Scale of travel time on real roads duration. default 4)",
         "sqlite_path":"(db save path: e.g. %USERPROFILE%/Desktop/traveler.sqlite ,$HOME/traveler.sqlite )",
         "rembg_path": "(absolute path of the installed rembg cli)",
@@ -237,4 +238,7 @@ example.
    https://note.com/marble_walkers/n/na7c956befe7b
 5. Application 1 
    https://note.com/marble_walkers/n/n3c86edd8e817
-6. ComfyUI API, Application 2 and Extension (in preparation)
+6. ComfyUI API  
+   https://note.com/marble_walkers/n/ncefc7c05d102  
+7. Application 2 and Extension (in preparation)
+
