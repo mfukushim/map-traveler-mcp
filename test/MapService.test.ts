@@ -1,14 +1,21 @@
-import {describe, expect, it} from "@effect/vitest"
+import {beforeAll, describe, expect, it} from "@effect/vitest"
 import {Effect, Logger, LogLevel, Option} from "effect";
 import {MapService, MapServiceLive} from "../src/MapService.js";
 import {runPromise} from "effect/Effect";
 import {FetchHttpClient} from "@effect/platform";
 import * as fs from "node:fs";
 import {McpLogServiceLive} from "../src/McpLogService.js";
+import {DbService, DbServiceLive} from "../src/DbService.js";
 
 const inGitHubAction = process.env.GITHUB_ACTIONS === 'true';
 
 describe("Map", () => {
+  beforeAll(async () => {
+    return await DbService.initSystemMode().pipe(
+      Effect.provide([DbServiceLive]),
+      Effect.runPromise
+    )
+  });
 
   it("getMapLocation", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
