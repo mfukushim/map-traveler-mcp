@@ -57,13 +57,14 @@ logSync(`db path:${dbPath}`)
 export type DbMode = 'memory' | 'file';
 export type PersonMode = 'third' | 'second';
 export type MoveMode = 'realtime' | 'skip';
+const MapEndpoint = ['directions', 'places', 'timezone', 'svMeta', 'streetView', 'nearby'] as const;
+export type MapEndpoint = (typeof MapEndpoint)[number];
 
 export const env = {
   travelerExist: true, //  まだ動的ツール切り替えはClaude desktopに入っていない。。
   dbMode: 'memory' as DbMode,
   dbFileExist: false,
   isPractice: false,
-  gmKeyExist: false,
   anyImageAiExist: false,
   enableRemBg: false,
   anySnsExist: false,
@@ -74,7 +75,8 @@ export const env = {
   moveMode: 'realtime' as MoveMode,
   loggingMode: false,
   filterTools: [] as string[],
-  progressToken: undefined as string | number | undefined
+  progressToken: undefined as string | number | undefined,
+  mapApis: new Map<MapEndpoint, string>(),
 }
 
 export const scriptTables = new Map<string, { script: any, nodeNameToId: Map<string, number> }>();
@@ -362,12 +364,11 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         const setting = yield* getEnvs(['personMode', 'promptChanged'])
 
         //  Google Map APIがなければ強制的に練習モード ある場合は設定に従う
-        if (!Process.env.GoogleMapApi_key) {
-          env.isPractice = true
-        } else {
+        if (Process.env.GoogleMapApi_key || Process.env.mapApi_url) {
           //  APIがあるなら通常モード
           env.isPractice = false
-          env.gmKeyExist = true
+        } else {
+          env.isPractice = true
         }
         if (Process.env.sd_key || Process.env.pixAi_key || Process.env.comfy_url) {
           env.anyImageAiExist = true
@@ -407,6 +408,20 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         if (env.isPractice) {
           yield* practiceRunStatus();
         }
+        if (Process.env.mapApi_url) {
+          const s = Process.env.mapApi_url.split(',')
+          s.forEach(value => {
+            const match = value.match(/(\w+)=([\w:\/.\-_]+)/);
+            if (match) {
+              const key = match[1]
+              const val = match[2]
+              if (MapEndpoint.includes(key as MapEndpoint)) {
+                env.mapApis.set(key as MapEndpoint,val)
+              }
+            }
+          })
+        }
+
         const files = yield *Effect.tryPromise(() => fs.promises.readdir(path.join(__pwd, `assets/comfy`)))
         files.map(a => addScript(path.join(__pwd, `assets/comfy`,a)));
         if (Process.env.comfy_workflow_i2i) {

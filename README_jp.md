@@ -90,6 +90,7 @@ claude_desktop_config.json
       "args": ["-y", "@mfukushim/map-traveler-mcp"],
       "env": {
         "GoogleMapApi_key":"(Google Map APIのキー)",
+        "mapApi_url": "(オプション: Map APIカスタムエンドポイント 例 direction=https://xxxx,search=https://yyyy )",
         "time_scale": "(オプション:道路での移動時間の尺度. default 4)",
         "sqlite_path":"(db保存ファイルのパス 例 %USERPROFILE%/Desktop/traveler.sqlite など)",
         "rembg_path": "(インストールしたrembg cliの絶対パス)",
@@ -220,4 +221,6 @@ claude_desktop_config.json
    https://note.com/marble_walkers/n/na7c956befe7b
 5. 応用サンプル1編  
    https://note.com/marble_walkers/n/n3c86edd8e817
-6. ComfyUI設定と応用サンプル2編 (準備中)
+6. ComfyUI設定編  
+   https://note.com/marble_walkers/n/ncefc7c05d102
+7. 応用サンプル2編 (準備中)
