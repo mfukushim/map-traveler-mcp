@@ -73,6 +73,7 @@ export const env = {
   promptChanged: false,
   noSnsPost: false,
   moveMode: 'realtime' as MoveMode,
+  useDocker: false,
   loggingMode: false,
   filterTools: [] as string[],
   progressToken: undefined as string | number | undefined,
@@ -388,6 +389,9 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         if (Process.env.moveMode === 'skip') {
           env.moveMode = "skip"
         }
+        if (Process.env.use_docker) {
+          env.useDocker = true
+        }
         //  デフォルトは三人称モード
         env.personMode = !setting.personMode ? 'third' : setting.personMode as PersonMode;
         yield* saveEnv('personMode', env.personMode as string)
@@ -395,7 +399,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         if (Process.env.filter_tools) {
           env.filterTools = Process.env.filter_tools.trim().split(',').map(value => value.trim())
         }
-        
+
         logSync('comfy_params:',Process.env.comfy_params)
 
         env.promptChanged = !!setting.promptChanged

@@ -497,7 +497,17 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       })
     }
 
+/*
     const rembg = (sdImage: Buffer) => {
+      // TODO Mac OSでなぜか現在使用不能。。。かつpython環境を内包するのでインストールが重い
+      return Effect.tryPromise({
+        try: () => transparentBackground(sdImage, "png", {fast: false}),
+        catch: error => `transparentBackground error:${error}`
+      })
+    }
+*/
+
+    const rembgCli = (sdImage: Buffer) => {
       return Effect.gen(function* () {
         //  TODO EffectのCommandをうまく書けなかったのでnodejsの素で
         const tempPath = os.tmpdir()
@@ -527,11 +537,36 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         }
         return fs.readFileSync(tempOut);
       }).pipe(Effect.scoped)
-      //  TODO Mac OSでなぜか現在使用不能。。。
-      // return Effect.tryPromise({
-      //   try: () => transparentBackground(sdImage, "png", {fast: false}),
-      //   catch: error => `transparentBackground error:${error}`
-      // })
+    }
+
+    const rembgDocker = (sdImage: Buffer) => {
+        return Effect.tryPromise({
+          try: () => {
+            const formData = new FormData()
+            formData.append("file", sdImage,{
+              filename: "input.png", // ファイル名を指定（必須）
+              contentType: "image/png" // 適切な Content-Type を指定
+            });
+            return fetch(
+              `http://localhost:7000/api/remove`,
+              {
+                method: 'POST',
+                headers: {
+                  ...formData.getHeaders(),
+                },
+                body: formData.getBuffer(),
+              }
+            )
+          },
+          catch: error => new Error(`${error}`)
+        }).pipe(Effect.andThen(
+          a => Effect.tryPromise(signal => a.arrayBuffer())),
+          Effect.andThen(a => Buffer.from(a))
+        )
+    }
+
+    const rembg = (sdImage: Buffer) => {
+      return env.useDocker ? rembgDocker(sdImage): rembgCli(sdImage)
     }
 
     /**
@@ -602,7 +637,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           let isFixedBody = false
           let appendPrompt: string | undefined
 
-        
+
         const avatarImage = yield* Effect.gen(function* () {
             const baseCharPrompt = yield* getBasePrompt(defaultAvatarId)
           const {prompt, append} = yield* generatePrompt(baseCharPrompt, retry < fixedThreshold, withAbort)
@@ -780,7 +815,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
                 type: Schema.String
               }))
             })
-            
+
           })
         })
       })
@@ -825,7 +860,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         const logTotal = params?.logTotal
         const logProgress = params?.logProgress
         yield *Effect.fork(progress(logTotal || 1,logProgress || 0))
-        
+
         const uploadFileName = inImage ? yield* comfyUploadImage(inImage, params).pipe(Effect.andThen(a => Effect.succeedSome(a))) : Option.none()
         //  uploadFileNameはプロンプトスクリプト内で置き換えなければならないので
         const scriptName = inImage ? (Process.env.comfy_workflow_i2i ? 'i2i' : 'i2i_sample') : (Process.env.comfy_workflow_t2i ? 't2i' : 't2i_sample')

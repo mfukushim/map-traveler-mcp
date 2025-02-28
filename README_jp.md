@@ -10,6 +10,10 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 
 <img alt="img.png" src="tools/img.png" width="400"/>
 
+::: info  
+librechat https://www.librechat.ai/ に対応しました。  
+:::
+
 ## 機能
 
 #### MCP server tools function
