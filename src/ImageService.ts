@@ -591,7 +591,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       localDebug = false,
     ) {
       return Effect.gen(function* () {
-          if (!Process.env.rembg_path) {
+          if (!Process.env.rembg_path && !env.useDocker) {
             //  rembg pathがない場合、画像合成しないままの画像を戻す
             return {
               buf: yield* Effect.tryPromise(() => sharp(basePhoto).resize({
