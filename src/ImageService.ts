@@ -47,8 +47,8 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     }
 
     //  TODO notifications/progress を発行すべき
-    const progress = (total=1,progress=0) => {
-      logSync('progress:',env.progressToken,total,progress)
+    const progress = (total = 1, progress = 0) => {
+      logSync('progress:', env.progressToken, total, progress)
       if (env.progressToken === undefined) {
         return Effect.void
       }
@@ -443,17 +443,17 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       })
     }
 
-    const selectImageGenerator = (generatorId: string, prompt: string, inImage?: Buffer,opt?:Record<string,any>) => {
+    const selectImageGenerator = (generatorId: string, prompt: string, inImage?: Buffer, opt?: Record<string, any>) => {
       switch (generatorId) {
         case 'pixAi':
-          return pixAiMakeImage(prompt, inImage,opt)
+          return pixAiMakeImage(prompt, inImage, opt)
         case 'comfyUi': {
           const optList = Process.env.comfy_params ? Process.env.comfy_params.split(',').map(a => {
             const b = a.split('=');
-            const val = b[1].includes("'") ? b[1].replaceAll("'",""): Number.parseFloat(b[1])
-            return [b[0],val]
-          }): []
-          const optC:Record<string, any> = {...Object.fromEntries(optList),...opt}
+            const val = b[1].includes("'") ? b[1].replaceAll("'", "") : Number.parseFloat(b[1])
+            return [b[0], val]
+          }) : []
+          const optC: Record<string, any> = {...Object.fromEntries(optList), ...opt}
           if (!optC.width) {
             optC.width = 1024
           }
@@ -463,7 +463,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           return comfyApiMakeImage(prompt, inImage, optC);
         }
         default:
-          return sdMakeImage(prompt, inImage,opt)
+          return sdMakeImage(prompt, inImage, opt)
       }
     };
 
@@ -497,15 +497,15 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       })
     }
 
-/*
-    const rembg = (sdImage: Buffer) => {
-      // TODO Mac OSでなぜか現在使用不能。。。かつpython環境を内包するのでインストールが重い
-      return Effect.tryPromise({
-        try: () => transparentBackground(sdImage, "png", {fast: false}),
-        catch: error => `transparentBackground error:${error}`
-      })
-    }
-*/
+    /*
+        const rembg = (sdImage: Buffer) => {
+          // TODO Mac OSでなぜか現在使用不能。。。かつpython環境を内包するのでインストールが重い
+          return Effect.tryPromise({
+            try: () => transparentBackground(sdImage, "png", {fast: false}),
+            catch: error => `transparentBackground error:${error}`
+          })
+        }
+    */
 
     const rembgCli = (sdImage: Buffer) => {
       return Effect.gen(function* () {
@@ -540,10 +540,12 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     }
 
     const rembgDocker = (sdImage: Buffer) => {
-        return Effect.tryPromise({
+      return Effect.gen(function *() {
+        yield *McpLogService.logTrace('in rembgDocker')
+        return yield *Effect.tryPromise({
           try: () => {
             const formData = new FormData()
-            formData.append("file", sdImage,{
+            formData.append("file", sdImage, {
               filename: "input.png", // ファイル名を指定（必須）
               contentType: "image/png" // 適切な Content-Type を指定
             });
@@ -560,13 +562,21 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           },
           catch: error => new Error(`${error}`)
         }).pipe(Effect.andThen(
-          a => Effect.tryPromise(signal => a.arrayBuffer())),
+            a => Effect.tryPromise(signal => a.arrayBuffer())),
           Effect.andThen(a => Buffer.from(a))
         )
+      })
+    }
+
+    const initRembgDocker = () => {
+      return Effect.gen(function* () {
+        const client = yield* HttpClient.HttpClient
+        return yield* client.get('http://localhost:7000/api').pipe(Effect.retry({times: 2}), Effect.scoped)
+      })
     }
 
     const rembg = (sdImage: Buffer) => {
-      return env.useDocker ? rembgDocker(sdImage): rembgCli(sdImage)
+      return env.useDocker ? rembgDocker(sdImage) : rembgCli(sdImage)
     }
 
     /**
@@ -604,6 +614,9 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               append: ''
             }
           }
+          if (env.useDocker) {
+            yield* initRembgDocker()  //  docker rembgは初回初期化がいる
+          }
           const outSize = {w: 1600, h: 1000};
           const innerSize = {w: 1600, h: 1600}
           //  TODO sdではサイズ制限がきつかったんだ
@@ -631,16 +644,16 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           }
 
           /** 画像評価リトライ */
-          const retryMax = 4
+          const retryMax = 3
           let retry = retryMax //  5回リトライになってるな 現在初期値7 最小値2(でないと画像できない)
           const fixedThreshold = 2  //  バストショットに切り替える閾値 2,1の2回はバストショット生成を試みる
           let isFixedBody = false
           let appendPrompt: string | undefined
 
 
-        const avatarImage = yield* Effect.gen(function* () {
+          const avatarImage = yield* Effect.gen(function* () {
             const baseCharPrompt = yield* getBasePrompt(defaultAvatarId)
-          const {prompt, append} = yield* generatePrompt(baseCharPrompt, retry < fixedThreshold, withAbort)
+            const {prompt, append} = yield* generatePrompt(baseCharPrompt, retry < fixedThreshold, withAbort)
             appendPrompt = append
             retry--
             if (retry < fixedThreshold) {
@@ -658,8 +671,8 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               return yield* selectImageGenerator(selectGen, prompt, clopImage, {
                 width: windowSize.w,
                 height: windowSize.h,
-                logTotal:retryMax,
-                logProgress:retryMax-retry
+                logTotal: retryMax,
+                logProgress: retryMax - retry
               })
             }
           }).pipe(
@@ -678,7 +691,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               const bodyHWRatio = opt?.bodyHWRatio || 2
               return checkPersonImage(avatarImage, windowSize).pipe(
                 Effect.tap(a => McpLogService.logTrace(
-                  `check runner image:${retry},${JSON.stringify(a)},${a.number}${a.number > bodyAreaRatio ? '>':'<'}${bodyAreaRatio},${a.alphaNum.rect.h / a.alphaNum.rect.w}${a.alphaNum.rect.h / a.alphaNum.rect.w > bodyHWRatio ? '>':'<'}${bodyHWRatio}`)),  //, retry, number, alphaNum.rect.w, alphaNum.rect.h\
+                  `check runner image:${retry},${JSON.stringify(a)},${a.number}${a.number > bodyAreaRatio ? '>' : '<'}${bodyAreaRatio},${a.alphaNum.rect.h / a.alphaNum.rect.w}${a.alphaNum.rect.h / a.alphaNum.rect.w > bodyHWRatio ? '>' : '<'}${bodyHWRatio}`)),  //, retry, number, alphaNum.rect.w, alphaNum.rect.h\
                 Effect.andThen(a => {
                   //  非透明度が0.02以上かつ範囲の縦と横の比率が3:1以上なら完了 counterfeit V3=0.015, counterfeit LX 0.03 にしてみる
                   //  比率値を3から2.5にしてみる。ダメ映像が増えたらまた調整する。。非透明率を0.015にしてみる
@@ -832,7 +845,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           const outputs = prOut.outputs
           const keys = Object.keys(outputs);
           return Effect.forEach(keys, a => {
-            const imageList:{filename:string,subfolder:string,type:string}[] = outputs[a].images
+            const imageList: { filename: string, subfolder: string, type: string }[] = outputs[a].images
             return Effect.forEach(imageList, a2 =>
               HttpClient.get(`${Process.env.comfy_url}/view`, {
                 urlParams: {
@@ -859,7 +872,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       return Effect.gen(function* () {
         const logTotal = params?.logTotal
         const logProgress = params?.logProgress
-        yield *Effect.fork(progress(logTotal || 1,logProgress || 0))
+        yield* Effect.fork(progress(logTotal || 1, logProgress || 0))
 
         const uploadFileName = inImage ? yield* comfyUploadImage(inImage, params).pipe(Effect.andThen(a => Effect.succeedSome(a))) : Option.none()
         //  uploadFileNameはプロンプトスクリプト内で置き換えなければならないので
@@ -870,7 +883,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         }
         const mappedRecord = params ? Object.fromEntries(
           Object.entries(params).map(([key, value]) => [`%${key}`, value])
-        ) as Record<string, any>: {};
+        ) as Record<string, any> : {};
         const modelParams: Record<string, string | number> = {
           "%seed": params?.seed && params?.seed >= 0 ? params.seed : Math.floor(Math.random() * 999999999999999), // TODO randomは0か? どうもComfyは今randomの設定がないようだ。。。 負数なら15桁の9をベースに乱数とする
           "%steps": params?.steps || 20,  //  20->8
@@ -881,10 +894,10 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           "%ckpt_name": params?.ckpt_name || 'v1-5-pruned-emaonly-fp16.safetensors',
           "%prompt": prompt,
           "%negative_prompt": params?.negative_prompt || 'nsfw, text, watermark',
-          "%width":params?.width || 1024,
-          "%height":params?.height || 1024
+          "%width": params?.width || 1024,
+          "%height": params?.height || 1024
         };
-        const outParam = {...mappedRecord,...modelParams}
+        const outParam = {...mappedRecord, ...modelParams}
 
         if (Option.isSome(uploadFileName)) {
           outParam["%uploadFileName"] = uploadFileName.value
@@ -909,6 +922,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       generatePrompt,
       getBasePrompt,
       comfyApiMakeImage,
+      rembgDocker,
     }
   }),
   dependencies: [McpLogServiceLive]
