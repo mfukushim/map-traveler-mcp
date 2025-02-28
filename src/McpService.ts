@@ -422,7 +422,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       }
       //  endregion
 
-    
+
     //  region tools関数
       const tips = () => {
         return Effect.gen(function* () {
@@ -1074,15 +1074,27 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         });
 
         const transport = new StdioServerTransport();
-        return DbService.initSystemMode().pipe(Effect.andThen(() => Effect.tryPromise({
+        const p = Effect.gen(function *() {
+          yield *Effect.forkDaemon(DbService.initSystemMode())
+          yield *Effect.tryPromise({
             try: () => {
               return server.connect(transport)
             },
             catch: error => {
               return new Error(`mcp server error:${error}`)
             }
-          })),
-          Effect.provide([DbServiceLive]))
+          })
+        }).pipe(Effect.provide(DbServiceLive))
+        return Effect.runFork(p)
+        // return DbService.initSystemMode().pipe(Effect.andThen(() => Effect.tryPromise({
+        //     try: () => {
+        //       return server.connect(transport)
+        //     },
+        //     catch: error => {
+        //       return new Error(`mcp server error:${error}`)
+        //     }
+        //   })),
+        //   Effect.provide([DbServiceLive]))
       }
 
 

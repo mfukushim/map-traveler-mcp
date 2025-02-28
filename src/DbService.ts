@@ -347,7 +347,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       //  noSns:いずれかのsnsのアカウントがない
       //  noBlueSky: 対話用bsアカウントがない
       //  filterTools: 使うツールのフィルタ undefinedなら可能なすべて
-      return Effect.gen(function* () {
+      const initial = Effect.gen(function* () {
         //  db有無の確認 dbサービスの初期化によって確認させる とコマンドon/off
         yield* init()
         env.progressToken = undefined
@@ -436,7 +436,8 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         }
 
         yield* McpLogService.logTrace(`initSystemMode end:${JSON.stringify(env)}`)
-      })
+      }).pipe(Effect.provide(McpLogServiceLive))
+     return initial
     }
 
     function addScript(filePath: string,tag?:string) {
