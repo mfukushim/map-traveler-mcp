@@ -73,7 +73,7 @@ export const env = {
   promptChanged: false,
   noSnsPost: false,
   moveMode: 'realtime' as MoveMode,
-  useDocker: false,
+  remBgUrl: undefined as string | undefined,
   loggingMode: false,
   filterTools: [] as string[],
   progressToken: undefined as string | number | undefined,
@@ -389,8 +389,8 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         if (Process.env.moveMode === 'skip') {
           env.moveMode = "skip"
         }
-        if (Process.env.use_docker) {
-          env.useDocker = true
+        if (Process.env.rembg_url) {
+          env.remBgUrl = Process.env.rembg_url
         }
         //  デフォルトは三人称モード
         env.personMode = !setting.personMode ? 'third' : setting.personMode as PersonMode;
