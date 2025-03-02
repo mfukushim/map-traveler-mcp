@@ -217,6 +217,7 @@ claude_desktop_config.json
 ## libreChatを使う
 
 libreChatで動作するように対応しました。使いやすくなりますが、一部追加の設定が必要になります。  
+また動かすPCはDockerが安定に動くなど、そこそこ性能があるPCでないと安定しないようです。
 
 #### libreChatをインストールする  
 公式サイトに書かれている方法で動作する状態にしてください。  
@@ -257,10 +258,54 @@ docker-compose.override.yml
 
 #### MCPサービスに map-traveler-mcp を追加する
 
-.env
+librechat.yaml 追記
+```yaml
+mcpServers:
+  traveler:
+    type: stdio
+    command: npx
+    args:
+      - -y
+      - "@mfukushim/map-traveler-mcp"
+```
+
+.env 追記(claude_desktop_config.jsonのenvと同様)
 ```env
+# map-traveler-mcp
+GoogleMapApi_key=(Google Map APIキー)
+sqlite_path=/home/run_test.sqlite (例 librechat コンテナ内の邪魔にならない場所か、マウントしt外部ディレクトリ内など)
+remBgUrl=http://localhost:7000 (rembg サービス APIのURL)
+pixAi_key=(画像生成AIの設定、PixAIキーなど、その他代わりにstablity.aiのAPIやComfyUIの設定でもよい)
 
 ```
+
+設定後、コンテナを再起動してください。  
+低速なPCだとmcpの初期化が失敗することがあります。複数再起動でうまくいくこともありますが実行は難しいかもです。  
+
+#### libreChat内設定
+
+libreChatでMCP機能を使うために、Agents機能を使います。
+
+1. 会話画面でAgentsを選びます。
+2. 画面右のパネルからエージェントビルダーを選び、エージェントの設定を行います。
+3. map-travelerを使うためにツールを追加を選びます。
+4. エージェントツールの画面が出ますのでmap-traveler-mcpのツールをすべて選んで追加します(もしmap-traveler-mcpのツールが出ていなければMCPの初期化を失敗していますので、コンテナの再起動またはログ等で設定を見直してください)
+5. 作成ボタンを押してエージェントを保存します。
+6. 
+
+<img alt="libre1.png" src="tools/libre1.png" width="200"/>
+
+![img.png](img.png)
+
+![img_1.png](img_1.png)
+
+![img_2.png](img_2.png)
+
+![img_3.png](img_3.png)
+
+![img_4.png](img_4.png)
+
+![img_5.png](img_5.png)
 
 ## 設定ガイド
 

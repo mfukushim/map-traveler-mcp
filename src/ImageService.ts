@@ -563,8 +563,19 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             )
           },
           catch: error => new Error(`${error}`)
-        }).pipe(Effect.andThen(
+        }).pipe(
+            Effect.scoped,
+            Effect.andThen(
                 a => Effect.tryPromise(() => a.arrayBuffer())),
+            Effect.tap(a => McpLogService.logTrace('rembgService out:',a.byteLength,a.toString())),
+            Effect.tap(a => {
+              if (a && a.byteLength) {
+                return Effect.succeed(a)
+              }
+              return Effect.fail(new Error())
+            }),
+            Effect.tapError(e => McpLogService.logTrace('rembgService err:',JSON.stringify(e))),
+            Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("2 seconds")))),
             Effect.andThen(a => Buffer.from(a))
         )
       })
@@ -572,20 +583,22 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
 
     const initRembgService = () => {
       return Effect.gen(function* () {
+        yield *McpLogService.logTrace('initRembgService in')
         if (!env.remBgUrl) {
           return yield* Effect.fail(new Error('no rembg url'))
         }
         const client = yield* HttpClient.HttpClient
-        return yield* client.get(`${env.remBgUrl}/api`).pipe(
-            Effect.retry({times: 2}),
-            Effect.scoped,
-            Effect.andThen(a => a.text),
-            Effect.tap(a => McpLogService.logTrace('initRembgService',a.slice(0,5))),
-            Effect.tapError(e => McpLogService.logTrace('initRembgService err:',e.toString())),
-            Effect.andThen(a => ({})),
-            Effect.orElseSucceed(() => ({}))  // ここはrembgに1回励起をさせるだけなのでエラーにはしない
-        )
-      });
+        const req = HttpClientRequest.get(`${env.remBgUrl}/api`)
+        const response = yield* client.execute(req)
+        return yield *response.text
+      }).pipe(
+          Effect.scoped,
+          Effect.retry({times: 2}),
+          Effect.tap(a => McpLogService.logTrace('initRembgService',a)),
+          Effect.tapError(e => McpLogService.logTrace('initRembgService err:',e.toString())),
+          Effect.andThen(() => ({})),
+          Effect.orElseSucceed(() => ({})),  // ここはrembgに1回励起をさせるだけなのでエラーにはしない
+      );
     }
 
     const rembg = (sdImage: Buffer) => {
