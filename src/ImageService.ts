@@ -515,10 +515,10 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         const tempOut = path.join(tempPath, `tr-${crypto.randomUUID()}.png`)
         fs.writeFileSync(tempIn, sdImage)
         let rembgPath
-        if (Process.env.rembg_path) {
-          rembgPath = Process.env.rembg_path
+        if (env.rembgPath) {
+          rembgPath = env.rembgPath
         } else {
-          yield* Effect.fail(new Error('rembg_path not set'))
+          yield* Effect.fail(new Error('rembgPath not set'))
         }
         yield* Effect.addFinalizer(() => McpLogService.logTrace(`rembg finalizer ${tempPath}`).pipe(Effect.andThen(() => {
           try {
@@ -606,7 +606,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         localDebug = false,
     ) {
       return Effect.gen(function* () {
-            if (!Process.env.rembg_path && !env.remBgUrl) {
+            if (!env.rembgPath && !env.remBgUrl) {
               //  rembg pathがない場合、画像合成しないままの画像を戻す
               return {
                 buf: yield* Effect.tryPromise(() => sharp(basePhoto).resize({

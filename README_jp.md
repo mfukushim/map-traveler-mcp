@@ -11,7 +11,8 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 <img alt="img.png" src="tools/img.png" width="400"/>
 
 ::: info  
-librechat https://www.librechat.ai/ に対応しました。  
+librechat https://www.librechat.ai/ に対応しました。
+
 :::
 
 ## 機能
@@ -212,6 +213,54 @@ claude_desktop_config.json
 }
 ```
 4. デフォルトのワークフローはパッケージ内のassets/comfy/t2i_sample.json,assets/comfy/i2i_sample.jsonを使うことが出来ます。この中で%を使って変数を指定し、その変数をcomfy_paramsで指定することができます。
+
+## libreChatを使う
+
+libreChatで動作するように対応しました。使いやすくなりますが、一部追加の設定が必要になります。  
+
+#### libreChatをインストールする  
+公式サイトに書かれている方法で動作する状態にしてください。  
+この際、追加設定のため docker構成を推奨します。  
+
+https://www.librechat.ai/docs/local/docker  
+
+公式の手順で librechat.yaml の設定を行う。  
+ローカルまたはAPIのLLMサービスを追加することになると思います。  
+
+https://www.librechat.ai/docs/configuration/librechat_yaml  
+
+ログイン用のユーザ追加を行います。  
+
+https://www.librechat.ai/docs/configuration/authentication#create-user-script  
+
+一般的なチャット会話が出来る状態に設定します。
+
+#### 追加設定で rembg コンテナを追加する
+
+rembg をdockerで使うために、rembg docker コンテナの組み込みと実行を追加します。
+
+docker-compose.override.yml
+```yml
+ services:
+   api:
+     volumes:
+       - type: bind
+         source: ./librechat.yaml
+         target: /app/librechat.yaml
+
+   rembg:
+     image: danielgatis/rembg:latest
+     restart: always
+     command: "s --host 0.0.0.0 --port 7000 --log_level info"
+
+```
+
+#### MCPサービスに map-traveler-mcp を追加する
+
+.env
+```env
+
+```
 
 ## 設定ガイド
 
