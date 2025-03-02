@@ -274,8 +274,8 @@ mcpServers:
 # map-traveler-mcp
 GoogleMapApi_key=(Google Map APIキー)
 sqlite_path=/home/run_test.sqlite (例 librechat コンテナ内の邪魔にならない場所か、マウントしt外部ディレクトリ内など)
-remBgUrl=http://localhost:7000 (rembg サービス APIのURL)
-pixAi_key=(画像生成AIの設定、PixAIキーなど、その他代わりにstablity.aiのAPIやComfyUIの設定でもよい)
+remBgUrl=http://rembg:7000 (rembg サービスAPIのURL,コンテナ間URL)
+(その他、画像生成AIの設定、PixAIキー、stablity.ai APIキー、ComfyUIの設定など)
 
 ```
 
@@ -286,26 +286,23 @@ pixAi_key=(画像生成AIの設定、PixAIキーなど、その他代わりにst
 
 libreChatでMCP機能を使うために、Agents機能を使います。
 
-1. 会話画面でAgentsを選びます。
+1. 会話画面でAgentsを選びます。  
+   <img alt="libre1.png" src="tools/libre1.png" width="200"/>
 2. 画面右のパネルからエージェントビルダーを選び、エージェントの設定を行います。
-3. map-travelerを使うためにツールを追加を選びます。
-4. エージェントツールの画面が出ますのでmap-traveler-mcpのツールをすべて選んで追加します(もしmap-traveler-mcpのツールが出ていなければMCPの初期化を失敗していますので、コンテナの再起動またはログ等で設定を見直してください)
-5. 作成ボタンを押してエージェントを保存します。
-6. 
-
-<img alt="libre1.png" src="tools/libre1.png" width="200"/>
-
-![img.png](img.png)
-
-![img_1.png](img_1.png)
-
-![img_2.png](img_2.png)
-
-![img_3.png](img_3.png)
-
-![img_4.png](img_4.png)
-
-![img_5.png](img_5.png)
+   <img alt="libre2.png" src="tools/libre2.png" width="200"/>
+3. map-travelerを使うためにツールを追加を選びます。  
+   <img alt="libre3.png" src="tools/libre3.png" width="200"/>
+4. エージェントツールの画面が出ますのでmap-traveler-mcpのツールをすべて選んで追加します(もしmap-traveler-mcpのツールが出ていなければMCPの初期化を失敗していますので、コンテナの再起動またはログ等で設定を見直してください)  
+   <img alt="libre4.png" src="tools/libre4.png" width="200"/>  
+   <img alt="libre5.png" src="tools/libre5.png" width="200"/>
+5. 指示文のエリアに追加スクリプトを入力します。  
+libreChatにはMCPのリソース機能がないため、代わりに  
+   https://github.com/mfukushim/map-traveler-mcp/blob/main/assets/scenario/role.txt  
+  の中身のテキストを指示文のエリアに入力します。  
+   <img alt="libre7.png" src="tools/libre7.png" width="200"/>
+6. 作成ボタンを押してエージェントを保存します。  
+   <img alt="libre6.png" src="tools/libre6.png" width="200"/>
+7. 新規チャットを開始してください。  
 
 ## 設定ガイド
 
