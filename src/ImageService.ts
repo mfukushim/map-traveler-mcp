@@ -576,7 +576,15 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           return yield* Effect.fail(new Error('no rembg url'))
         }
         const client = yield* HttpClient.HttpClient
-        return yield* client.get(`${env.remBgUrl}/api`).pipe(Effect.retry({times: 2}), Effect.scoped)
+        return yield* client.get(`${env.remBgUrl}/api`).pipe(
+            Effect.retry({times: 2}),
+            Effect.scoped,
+            Effect.andThen(a => a.text),
+            Effect.tap(a => McpLogService.logTrace('initRembgService',a.slice(0,5))),
+            Effect.tapError(e => McpLogService.logTrace('initRembgService err:',e.toString())),
+            Effect.andThen(a => ({})),
+            Effect.orElseSucceed(() => ({}))  // ここはrembgに1回励起をさせるだけなのでエラーにはしない
+        )
       });
     }
 
@@ -654,7 +662,6 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             const fixedThreshold = 2  //  バストショットに切り替える閾値 2,1の2回はバストショット生成を試みる
             let isFixedBody = false
             let appendPrompt: string | undefined
-
 
             const avatarImage = yield* Effect.gen(function* () {
               const baseCharPrompt = yield* getBasePrompt(defaultAvatarId)
