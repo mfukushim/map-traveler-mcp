@@ -19,7 +19,6 @@ import * as fs from "node:fs";
 import {execSync} from "node:child_process";
 import {defaultAvatarId} from "./RunnerService.js";
 import {sendProgressNotification} from "./McpService.js";
-import {GenericError} from "./domain/MarmaidApi.js";
 
 export const defaultBaseCharPrompt = 'depth of field, cinematic composition, masterpiece, best quality,looking at viewer,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut'
 
@@ -542,9 +541,9 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
 
     const rembgService = (sdImage: Buffer) => {
       return Effect.gen(function* () {
-        yield* McpLogService.logTrace('in rembgDocker')
+        yield* McpLogService.logTrace('in rembgService')
         if (!env.remBgUrl) {
-          return yield* Effect.fail(new GenericError({mes: 'no rembg url'}))
+          return yield* Effect.fail(new Error('no rembg url'))
         }
         return yield* Effect.tryPromise({
           try: () => {
@@ -565,7 +564,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           },
           catch: error => new Error(`${error}`)
         }).pipe(Effect.andThen(
-                a => Effect.tryPromise(signal => a.arrayBuffer())),
+                a => Effect.tryPromise(() => a.arrayBuffer())),
             Effect.andThen(a => Buffer.from(a))
         )
       })
@@ -574,7 +573,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     const initRembgService = () => {
       return Effect.gen(function* () {
         if (!env.remBgUrl) {
-          return yield* Effect.fail(new GenericError({mes: 'no rembg url'}))
+          return yield* Effect.fail(new Error('no rembg url'))
         }
         const client = yield* HttpClient.HttpClient
         return yield* client.get(`${env.remBgUrl}/api`).pipe(Effect.retry({times: 2}), Effect.scoped)
@@ -928,7 +927,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       generatePrompt,
       getBasePrompt,
       comfyApiMakeImage,
-      rembgDocker: rembgService,
+      rembgService,
     }
   }),
   dependencies: [McpLogServiceLive]
