@@ -8,6 +8,10 @@ From an MCP client such as Claude Desktop, you can give instructions to the avat
 
 <img alt="img_5.png" src="tools/img_5.png" width="400"/>
 
+> librechat https://www.librechat.ai/ に対応しました。
+
+<img alt="libre0.png" src="tools/libre0.png" width="400"/>
+
 ## Functions
 
 #### MCP server tools function
@@ -102,6 +106,7 @@ claude_desktop_config.json
         "time_scale": "(Optional:Scale of travel time on real roads duration. default 4)",
         "sqlite_path":"(db save path: e.g. %USERPROFILE%/Desktop/traveler.sqlite ,$HOME/traveler.sqlite )",
         "rembg_path": "(absolute path of the installed rembg cli)",
+        "remBgUrl": "(rembg API URL)",
         "pixAi_key":"(pixAi API key)",
         "sd_key":"(or Stability.ai image generation API key",
         "pixAi_modelId": "(Optional: pixAi ModelId, if not set use default model 1648918127446573124 ",
@@ -204,6 +209,16 @@ claude_desktop_config.json
 6. Get the bluesky SNS address/password and handle name. Set these in bs_id, bs_pass, and bs_handle in env of claude_desktop_config.json, respectively.
    Import the travel knowledge prompt roleWithSns.txt to report travel actions to SNS (it will automatically post as a bot, so we recommend allocating a dedicated account)
 
+Instead of preparing rembg with the cli, we have added a setting that allows you to handle rembg as a service API.  
+If you configure the following rembg service, you can use rembg by setting the URL in remBgUrl.  
+
+https://github.com/danielgatis/rembg?tab=readme-ov-file#rembg-s  
+
+Setup is simple if you use the Docker version to launch a container and access it.  
+
+https://github.com/danielgatis/rembg?tab=readme-ov-file#usage-as-a-docker  
+
+
 #### When using external ComfyUI (for more advanced users)
 
 You can also use a local ComfyUI as an image generation server. You can configure the image generation characteristics yourself in detail to reduce API costs.
@@ -226,6 +241,98 @@ example.
 ```
 4. The default workflow can use assets/comfy/t2i_sample.json and assets/comfy/i2i_sample.json in the package. You can specify variables using % and specify the variables in comfy_params.
 
+## Using libreChat
+
+It has been adapted to work with libreChat. This makes it easier to use, but some additional settings are required.  
+Also, it seems that it will not be stable unless the PC you use has a decent level of performance, such as one that can stably run Docker.
+
+#### Install libreChat  
+
+Please make sure it works as described on the official website.  
+In this case, we recommend using Docker configuration due to additional settings.
+
+https://www.librechat.ai/docs/local/docker  
+
+Configure librechat.yaml using the official procedure.  
+I think you will need to add a local or API LLM service.  
+
+https://www.librechat.ai/docs/configuration/librechat_yaml  
+
+Add a user for login.  
+
+https://www.librechat.ai/docs/configuration/authentication#create-user-script  
+
+Please set it so that you can have general chat conversations.  
+
+#### Add a rembg container with additional settings  
+
+To use rembg with Docker, add pulling and running the rembg Docker container.  
+
+docker-compose.override.yml
+```yml
+ services:
+   api:
+     volumes:
+       - type: bind
+         source: ./librechat.yaml
+         target: /app/librechat.yaml
+
+   rembg:
+     image: danielgatis/rembg:latest
+     restart: always
+     command: "s --host 0.0.0.0 --port 7000 --log_level info"
+
+```
+
+#### Add map-traveler-mcp to the MCP service  
+
+Add librechat.yaml
+```yaml
+mcpServers:
+  traveler:
+    type: stdio
+    command: npx
+    args:
+      - -y
+      - "@mfukushim/map-traveler-mcp"
+```
+
+Add .env (Same as env in claude_desktop_config.json)
+
+```env
+# map-traveler-mcp
+GoogleMapApi_key=(Google Map API key)
+sqlite_path=/home/run_test.sqlite (e.g. librechat in an unobtrusive location inside the container, or in an external directory that you don't want to mount.)
+remBgUrl=http://rembg:7000 (rembg Service API URL, container URL)
+(Other settings such as image generation AI settings, PixAI key, stability.ai API key, ComfyUI settings, etc.)
+
+```
+
+After setting, restart the container.  
+On slow PCs, mcp initialization may fail. Multiple restarts may work, but this may be difficult to run...
+
+#### llibreChat settings
+
+To use the MCP function in libreChat, use the Agents function.  
+
+1. On the conversation screen, select Agents.  
+   <img alt="libre1.png" src="tools/libre1.png" width="200"/>
+2. Select Agent Builder from the panel on the right side of the screen and configure your agent.  
+   <img alt="libre2.png" src="tools/libre2.png" width="200"/>
+3. Select Add Tools to use map-traveler.  
+   <img alt="libre3.png" src="tools/libre3.png" width="200"/>
+4. The agent tools screen will appear, so select and add all the map-traveler-mcp tools (if the map-traveler-mcp tools are not listed, MCP initialization has failed, so please restart the container or review the settings by checking the logs, etc.)  
+   <img alt="libre4.png" src="tools/libre4.png" width="200"/>  
+   <img alt="libre5.png" src="tools/libre5.png" width="200"/>  
+5. Enter additional script in the instruction area.  
+   Since libreChat does not have the MCP resource function, enter the content text of the following URL into the instruction area instead.   
+   https://github.com/mfukushim/map-traveler-mcp/blob/main/assets/scenario/role.txt  
+   <img alt="libre7.png" src="tools/libre7.png" width="200"/>  
+6. Click the Create button to save the agent.  
+   <img alt="libre6.png" src="tools/libre6.png" width="200"/>
+7. Start a new chat.
+
+
 ## Install guide (Japanese, but lots of photos)
 
 1. introduction and Practice mode
@@ -240,5 +347,7 @@ example.
    https://note.com/marble_walkers/n/n3c86edd8e817
 6. ComfyUI API  
    https://note.com/marble_walkers/n/ncefc7c05d102  
-7. Application 2 and Extension (in preparation)
+7. Application 2
+   https://note.com/marble_walkers/n/ne7584ed231c8
+8. LibreChat setting (in preparation)
 

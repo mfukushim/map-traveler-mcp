@@ -10,10 +10,11 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 
 <img alt="img.png" src="tools/img.png" width="400"/>
 
-::: info  
-librechat https://www.librechat.ai/ に対応しました。
+> librechat https://www.librechat.ai/ に対応しました。
 
-:::
+<img alt="libre0.png" src="tools/libre0.png" width="400"/>
+
+
 
 ## 機能
 
@@ -99,6 +100,7 @@ claude_desktop_config.json
         "time_scale": "(オプション:道路での移動時間の尺度. default 4)",
         "sqlite_path":"(db保存ファイルのパス 例 %USERPROFILE%/Desktop/traveler.sqlite など)",
         "rembg_path": "(インストールしたrembg cliの絶対パス)",
+        "remBgUrl": "(rembg APIのURL)",
         "pixAi_key":"(pixAi APIのキー)",
         "sd_key":"(またはStability.aiのAPIのキー",
         "pixAi_modelId": "(オプション: pixAiの場合の使用ModelId. 未設定の場合とりあえず 1648918127446573124 を使う",
@@ -192,6 +194,16 @@ claude_desktop_config.json
    ここまでで旅画像にアバターが合成されます。
 6. bluesky SNSのアドレス/パスワードを取得し、ハンドル名も取得します。claude_desktop_config.jsonのenvのbs_id,bs_pass,bs_handle にそれぞれ設定します。
 旅用知識プロンプト roleWithSns.txt を取り込むことで旅アクションをSNSに報告します(botとして自動ポストしますので専用にアカウントを割り当てることをお勧めします)
+
+rembgをcliで準備する代わりに、rembgをサービスAPIとして処理出来る設定を追加しました。  
+以下のrembg service を設定すれば remBgUrl にURLを設定することで、rembgを使うことが出来ます。
+
+https://github.com/danielgatis/rembg?tab=readme-ov-file#rembg-s  
+
+Docker版を使ってコンテナを立ち上げてそれをアクセスすれば設定はシンプルになります。  
+
+https://github.com/danielgatis/rembg?tab=readme-ov-file#usage-as-a-docker  
+
 
 #### 外付けのComfyUIを使用する場合(詳しい人向け)
 
@@ -318,4 +330,6 @@ libreChatにはMCPのリソース機能がないため、代わりに
    https://note.com/marble_walkers/n/n3c86edd8e817
 6. ComfyUI設定編  
    https://note.com/marble_walkers/n/ncefc7c05d102
-7. 応用サンプル2編 (準備中)
+7. 応用サンプル2編
+   https://note.com/marble_walkers/n/ne7584ed231c8
+8. LibreChat設定編 (準備中)
