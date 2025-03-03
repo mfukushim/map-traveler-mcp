@@ -8,7 +8,7 @@ From an MCP client such as Claude Desktop, you can give instructions to the avat
 
 <img alt="img_5.png" src="tools/img_5.png" width="400"/>
 
-> librechat https://www.librechat.ai/ に対応しました。
+> Now supports librechat https://www.librechat.ai/.
 
 <img alt="libre0.png" src="tools/libre0.png" width="400"/>
 
