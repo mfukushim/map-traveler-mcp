@@ -8,7 +8,7 @@ From an MCP client such as Claude Desktop, you can give instructions to the avat
 
 <img alt="img_5.png" src="tools/img_5.png" width="400"/>
 
-> librechat https://www.librechat.ai/ に対応しました。
+> Now supports librechat https://www.librechat.ai/.
 
 <img alt="libre0.png" src="tools/libre0.png" width="400"/>
 
@@ -335,19 +335,20 @@ To use the MCP function in libreChat, use the Agents function.
 
 ## Install guide (Japanese, but lots of photos)
 
-1. introduction and Practice mode
+1. introduction and Practice mode  
    https://note.com/marble_walkers/n/n7a8f79e4fb30
-2. DB, Google Map API, Image gen API
+2. DB, Google Map API, Image gen API  
    https://note.com/marble_walkers/n/n765257c27f3b
-3. Avatar prompt
+3. Avatar prompt  
    https://note.com/marble_walkers/n/nc7273724faea
-4. SNS integration
+4. SNS integration  
    https://note.com/marble_walkers/n/na7c956befe7b
-5. Application 1 
+5. Application 1  
    https://note.com/marble_walkers/n/n3c86edd8e817
 6. ComfyUI API  
    https://note.com/marble_walkers/n/ncefc7c05d102  
-7. Application 2
+7. Application 2  
    https://note.com/marble_walkers/n/ne7584ed231c8
-8. LibreChat setting (in preparation)
+8. LibreChat setting  
+   https://note.com/marble_walkers/n/n339bf7905324
 
