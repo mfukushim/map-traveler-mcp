@@ -15,7 +15,7 @@ const inGitHubAction = process.env.GITHUB_ACTIONS === 'true';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const __pwd = __dirname.endsWith('src') ? path.join(__dirname,'..'):path.join(__dirname,'../..')
-const logPath = path.join(__pwd,"mapTravelerLog.log")
+const logPath = Process.env.log_path || path.join(__pwd,"mapTravelerLog.log")
 
 const logLevel = Process.env.ServerLog ? (Process.env.ServerLog as string).split(','):[]
 
@@ -70,7 +70,7 @@ export class McpLogService extends Effect.Service<McpLogService>()("traveler/Mcp
       }
       return Effect.succeed(false)
     }
-    
+
     function logTraceToolsRes(res:ToolContentResponse[]) {
       return Effect.forEach(res,(a, i) => {
         if(a.type === 'text') {

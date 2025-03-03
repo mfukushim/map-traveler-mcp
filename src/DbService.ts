@@ -3,13 +3,7 @@
 import {Effect, Layer, Option} from "effect";
 import {drizzle} from 'drizzle-orm/libsql';
 import {migrate} from 'drizzle-orm/libsql/migrator';
-import {
-  anniversary,
-  avatar_model, avatar_sns, env_kv,
-  run_status,
-  runAvatar,
-  sns_posts, SnsType
-} from "./db/schema.js";
+import {anniversary, avatar_model, avatar_sns, env_kv, run_status, runAvatar, sns_posts, SnsType} from "./db/schema.js";
 import {and, desc, eq, inArray, or} from "drizzle-orm";
 import dayjs from "dayjs";
 import 'dotenv/config'
@@ -66,13 +60,14 @@ export const env = {
   dbFileExist: false,
   isPractice: false,
   anyImageAiExist: false,
-  enableRemBg: false,
   anySnsExist: false,
   personMode: 'third' as PersonMode,
   fixedModelPrompt: false,
   promptChanged: false,
   noSnsPost: false,
   moveMode: 'realtime' as MoveMode,
+  remBgUrl: undefined as string | undefined,
+  rembgPath: undefined as string | undefined,
   loggingMode: false,
   filterTools: [] as string[],
   progressToken: undefined as string | number | undefined,
@@ -332,6 +327,16 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
 
     }
 
+    const getVersion = () => {
+      const packageJsonPath = path.resolve(__pwd, 'package.json');
+      return Effect.async<string, Error>((resume) => {
+        fs.readFile(packageJsonPath, {encoding: "utf8"}, (err, data) => {
+          if (err) resume(Effect.fail(err))
+          else resume(Effect.succeed(data));
+        });
+      }).pipe(Effect.andThen(a => JSON.parse(a).version as string))
+    }
+
     const initSystemMode = () => {
       //  主要なモード
       //  noTraveler: traveler未呼び出し
@@ -347,92 +352,91 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       //  noBlueSky: 対話用bsアカウントがない
       //  filterTools: 使うツールのフィルタ undefinedなら可能なすべて
       return Effect.gen(function* () {
-        //  db有無の確認 dbサービスの初期化によって確認させる とコマンドon/off
-        yield* init()
-        env.progressToken = undefined
-        if (dbPath !== ':memory:') {
-          env.dbMode = "file"
-          env.dbFileExist = true
-        }
-        yield* getEnv('travelerExist').pipe(
-            Effect.andThen(a => {
-              env.travelerExist = a !== ''
-            }),
-            Effect.orElseSucceed(() => {
-              env.travelerExist = true // memoryモードで動くときはシンプルにコマンド存在にする
-            }))
-        const setting = yield* getEnvs(['personMode', 'promptChanged'])
+       //  db有無の確認 dbサービスの初期化によって確認させる とコマンドon/off
+       yield* init()
+       env.progressToken = undefined
+       if (dbPath !== ':memory:') {
+         env.dbMode = "file"
+         env.dbFileExist = true
+       }
+       yield* getEnv('travelerExist').pipe(
+           Effect.andThen(a => {
+             env.travelerExist = a !== ''
+           }),
+           Effect.orElseSucceed(() => {
+             env.travelerExist = true // memoryモードで動くときはシンプルにコマンド存在にする
+           }))
+       const setting = yield* getEnvs(['personMode', 'promptChanged'])
 
-        //  Google Map APIがなければ強制的に練習モード ある場合は設定に従う
-        if (Process.env.GoogleMapApi_key || Process.env.mapApi_url) {
-          //  APIがあるなら通常モード
-          env.isPractice = false
-        } else {
-          env.isPractice = true
-        }
-        if (Process.env.sd_key || Process.env.pixAi_key || Process.env.comfy_url) {
-          env.anyImageAiExist = true
-        }
-        if (Process.env.rembg_path) {
-          env.enableRemBg = true
-        }
-        if ((Process.env.bs_id && Process.env.bs_pass && Process.env.bs_handle)) {
-          env.anySnsExist = true
-        }
-        if (Process.env.no_sns_post) {
-          env.noSnsPost = true;
-        }
-        if (Process.env.ServerLog) {
-          env.loggingMode = true
-        }
-        if (Process.env.moveMode === 'skip') {
-          env.moveMode = "skip"
-        }
-        //  デフォルトは三人称モード
-        env.personMode = !setting.personMode ? 'third' : setting.personMode as PersonMode;
-        yield* saveEnv('personMode', env.personMode as string)
+       //  Google Map APIがなければ強制的に練習モード ある場合は設定に従う
+       //  APIがあるなら通常モード
+       env.isPractice = !(Process.env.GoogleMapApi_key || Process.env.mapApi_url);
+       if (Process.env.sd_key || Process.env.pixAi_key || Process.env.comfy_url) {
+         env.anyImageAiExist = true
+       }
+       if ((Process.env.bs_id && Process.env.bs_pass && Process.env.bs_handle)) {
+         env.anySnsExist = true
+       }
+       if (Process.env.no_sns_post) {
+         env.noSnsPost = true;
+       }
+       if (Process.env.ServerLog) {
+         env.loggingMode = true
+       }
+       if (Process.env.moveMode === 'skip') {
+         env.moveMode = "skip"
+       }
+       if (Process.env.remBgUrl) {
+         env.remBgUrl = Process.env.remBgUrl
+       }
+       if (Process.env.rembg_path || Process.env.rembgPath) {
+         env.rembgPath = Process.env.rembgPath || Process.env.rembg_path
+       }
+       //  デフォルトは三人称モード
+       env.personMode = !setting.personMode ? 'third' : setting.personMode as PersonMode;
+       yield* saveEnv('personMode', env.personMode as string)
 
-        if (Process.env.filter_tools) {
-          env.filterTools = Process.env.filter_tools.trim().split(',').map(value => value.trim())
-        }
-        
-        logSync('comfy_params:',Process.env.comfy_params)
+       if (Process.env.filter_tools) {
+         env.filterTools = Process.env.filter_tools.trim().split(',').map(value => value.trim())
+       }
 
-        env.promptChanged = !!setting.promptChanged
-        yield* saveEnv('promptChanged', env.promptChanged ? '1' : '')
+       logSync('comfy_params:', Process.env.comfy_params)
 
-        if (Process.env.fixed_model_prompt) {
-          env.fixedModelPrompt = true
-        }
+       env.promptChanged = !!setting.promptChanged
+       yield* saveEnv('promptChanged', env.promptChanged ? '1' : '')
 
-        if (env.isPractice) {
-          yield* practiceRunStatus();
-        }
-        if (Process.env.mapApi_url) {
-          const s = Process.env.mapApi_url.split(',')
-          s.forEach(value => {
-            const match = value.match(/(\w+)=([\w:\/.\-_]+)/);
-            if (match) {
-              const key = match[1]
-              const val = match[2]
-              if (MapEndpoint.includes(key as MapEndpoint)) {
-                env.mapApis.set(key as MapEndpoint,val)
-              }
-            }
-          })
-        }
+       if (Process.env.fixed_model_prompt) {
+         env.fixedModelPrompt = true
+       }
 
-        const files = yield *Effect.tryPromise(() => fs.promises.readdir(path.join(__pwd, `assets/comfy`)))
-        files.map(a => addScript(path.join(__pwd, `assets/comfy`,a)));
-        if (Process.env.comfy_workflow_i2i) {
-          addScript(Process.env.comfy_workflow_i2i,'i2i')
-        }
-        if (Process.env.comfy_workflow_t2i) {
-          addScript(Process.env.comfy_workflow_t2i,'t2i')
-        }
+       if (env.isPractice) {
+         yield* practiceRunStatus();
+       }
+       if (Process.env.mapApi_url) {
+         const s = Process.env.mapApi_url.split(',')
+         s.forEach(value => {
+           const match = value.match(/(\w+)=([\w:\/.\-_]+)/);
+           if (match) {
+             const key = match[1]
+             const val = match[2]
+             if (MapEndpoint.includes(key as MapEndpoint)) {
+               env.mapApis.set(key as MapEndpoint, val)
+             }
+           }
+         })
+       }
 
-        yield* McpLogService.logTrace(`initSystemMode end:${JSON.stringify(env)}`)
-      })
+       const files = yield* Effect.tryPromise(() => fs.promises.readdir(path.join(__pwd, `assets/comfy`)))
+       files.map(a => addScript(path.join(__pwd, `assets/comfy`, a)));
+       if (Process.env.comfy_workflow_i2i) {
+         addScript(Process.env.comfy_workflow_i2i, 'i2i')
+       }
+       if (Process.env.comfy_workflow_t2i) {
+         addScript(Process.env.comfy_workflow_t2i, 't2i')
+       }
+
+       yield* McpLogService.logTrace(`initSystemMode end:${JSON.stringify(env)}`)
+     }).pipe(Effect.provide(McpLogServiceLive))
     }
 
     function addScript(filePath: string,tag?:string) {
@@ -485,6 +489,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       getEnv,
       getEnvOption,
       saveEnv,
+      getVersion,
     }
   }),
   dependencies: [McpLogServiceLive]

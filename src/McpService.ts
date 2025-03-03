@@ -422,7 +422,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       }
       //  endregion
 
-    
+
     //  region tools関数
       const tips = () => {
         return Effect.gen(function* () {
@@ -481,19 +481,23 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         )
       }
       const getEnvironment = () => {
-        const envText = 'A json of current environment settings\n' +
-          Object.entries(env).map(([key, value]) => {
-            return `${key}= ${JSON.stringify(value)}`
-          }).join('\n')+
-          '\nList of Image settings\n' +
-          `bodyAreaRatio=${Process.env.bodyAreaRatio}\n` +
-          `bodyHWRatio=${Process.env.bodyHWRatio}\n` +
-          `bodyWindowRatioW=${Process.env.bodyWindowRatioW}\n` +
-          `bodyWindowRatioH=${Process.env.bodyWindowRatioH}\n`
-        return Effect.succeed([{
-          type: "text",
-          text: envText
-        } as ToolContentResponse])
+        return Effect.gen(function *() {
+          const version = yield *DbService.getVersion()
+          const envText = 'A json of current environment settings\n' +
+              Object.entries(env).map(([key, value]) => {
+                return `${key}= ${JSON.stringify(value)}`
+              }).join('\n')+
+              '\nList of Image settings\n' +
+              (Process.env.bodyAreaRatio ? `bodyAreaRatio=${Process.env.bodyAreaRatio}\n`:'') +
+              (Process.env.bodyHWRatio ? `bodyHWRatio=${Process.env.bodyHWRatio}\n`:'') +
+              (Process.env.bodyWindowRatioW ? `bodyWindowRatioW=${Process.env.bodyWindowRatioW}\n`:'') +
+              (Process.env.bodyWindowRatioH ? `bodyWindowRatioH=${Process.env.bodyWindowRatioH}\n`:'') +
+              `version=${version}\n`
+          return [{
+            type: "text",
+            text: envText
+          } as ToolContentResponse]
+        })
       }
       const setAvatarPrompt = (prompt: string) => {
         return DbService.updateBasePrompt(defaultAvatarId, prompt).pipe(
@@ -1074,15 +1078,27 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         });
 
         const transport = new StdioServerTransport();
-        return DbService.initSystemMode().pipe(Effect.andThen(() => Effect.tryPromise({
+        const p = Effect.gen(function *() {
+          yield *Effect.forkDaemon(DbService.initSystemMode())
+          yield *Effect.tryPromise({
             try: () => {
               return server.connect(transport)
             },
             catch: error => {
               return new Error(`mcp server error:${error}`)
             }
-          })),
-          Effect.provide([DbServiceLive]))
+          })
+        }).pipe(Effect.provide(DbServiceLive))
+        return Effect.runFork(p)
+        // return DbService.initSystemMode().pipe(Effect.andThen(() => Effect.tryPromise({
+        //     try: () => {
+        //       return server.connect(transport)
+        //     },
+        //     catch: error => {
+        //       return new Error(`mcp server error:${error}`)
+        //     }
+        //   })),
+        //   Effect.provide([DbServiceLive]))
       }
 
 

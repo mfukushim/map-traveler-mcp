@@ -250,4 +250,24 @@ describe("Image", () => {
     )
     expect(typeof res).toBe('object')
   })
+  it("rembgService", async () => {
+    //  vitest --run --testNamePattern=comfyApiMakeImage ImageService.test.ts
+    const res = await Effect.gen(function* () {
+      const buffer = fs.readFileSync('tools/testRembg.png');
+      return yield* ImageService.rembgService(buffer)  //
+    }).pipe(
+      Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]), //  layer
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.tapError(e => Effect.logError(e.toString())),
+      Effect.tap(a => {
+        if (!inGitHubAction) {
+          fs.writeFileSync("tools/test/rembgOut.png",Buffer.from(a));
+        }
+      }),
+      Effect.catchIf(a => a.toString() === 'Error: no rembg url', e => Effect.succeed({})),
+      // Effect.tap(a => Effect.log(a)),
+      runPromise
+    )
+    expect(typeof res).toBe('object')
+  })
 })

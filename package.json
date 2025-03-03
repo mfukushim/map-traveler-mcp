@@ -1,6 +1,6 @@
 {
   "name": "@mfukushim/map-traveler-mcp",
-  "version": "0.0.47",
+  "version": "0.0.57",
   "type": "module",
   "bin": {
     "map-traveler-mcp": "build/esm/mapTraveler.js"
@@ -88,5 +88,8 @@
         "**/*.ts"
       ]
     }
+  },
+  "volta": {
+    "node": "20.18.3"
   }
 }

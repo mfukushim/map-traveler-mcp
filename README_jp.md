@@ -10,6 +10,12 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 
 <img alt="img.png" src="tools/img.png" width="400"/>
 
+> librechat https://www.librechat.ai/ に対応しました。
+
+<img alt="libre0.png" src="tools/libre0.png" width="400"/>
+
+
+
 ## 機能
 
 #### MCP server tools function
@@ -94,6 +100,7 @@ claude_desktop_config.json
         "time_scale": "(オプション:道路での移動時間の尺度. default 4)",
         "sqlite_path":"(db保存ファイルのパス 例 %USERPROFILE%/Desktop/traveler.sqlite など)",
         "rembg_path": "(インストールしたrembg cliの絶対パス)",
+        "remBgUrl": "(rembg APIのURL)",
         "pixAi_key":"(pixAi APIのキー)",
         "sd_key":"(またはStability.aiのAPIのキー",
         "pixAi_modelId": "(オプション: pixAiの場合の使用ModelId. 未設定の場合とりあえず 1648918127446573124 を使う",
@@ -188,6 +195,16 @@ claude_desktop_config.json
 6. bluesky SNSのアドレス/パスワードを取得し、ハンドル名も取得します。claude_desktop_config.jsonのenvのbs_id,bs_pass,bs_handle にそれぞれ設定します。
 旅用知識プロンプト roleWithSns.txt を取り込むことで旅アクションをSNSに報告します(botとして自動ポストしますので専用にアカウントを割り当てることをお勧めします)
 
+rembgをcliで準備する代わりに、rembgをサービスAPIとして処理出来る設定を追加しました。  
+以下のrembg service を設定すれば remBgUrl にURLを設定することで、rembgを使うことが出来ます。
+
+https://github.com/danielgatis/rembg?tab=readme-ov-file#rembg-s  
+
+Docker版を使ってコンテナを立ち上げてそれをアクセスすれば設定はシンプルになります。  
+
+https://github.com/danielgatis/rembg?tab=readme-ov-file#usage-as-a-docker  
+
+
 #### 外付けのComfyUIを使用する場合(詳しい人向け)
 
 ローカルにあるComfyUIを画像生成サーバーとして使用することも出来ます。画像生成特性を自分で細かく設定し、APIコストを減らすことができます。
@@ -209,6 +226,96 @@ claude_desktop_config.json
 ```
 4. デフォルトのワークフローはパッケージ内のassets/comfy/t2i_sample.json,assets/comfy/i2i_sample.jsonを使うことが出来ます。この中で%を使って変数を指定し、その変数をcomfy_paramsで指定することができます。
 
+## libreChatを使う
+
+libreChatで動作するように対応しました。使いやすくなりますが、一部追加の設定が必要になります。  
+また動かすPCはDockerが安定に動くなど、そこそこ性能があるPCでないと安定しないようです。
+
+#### libreChatをインストールする  
+公式サイトに書かれている方法で動作する状態にしてください。  
+この際、追加設定のため docker構成を推奨します。  
+
+https://www.librechat.ai/docs/local/docker  
+
+公式の手順で librechat.yaml の設定を行う。  
+ローカルまたはAPIのLLMサービスを追加することになると思います。  
+
+https://www.librechat.ai/docs/configuration/librechat_yaml  
+
+ログイン用のユーザ追加を行います。  
+
+https://www.librechat.ai/docs/configuration/authentication#create-user-script  
+
+一般的なチャット会話が出来る状態に設定します。
+
+#### 追加設定で rembg コンテナを追加する
+
+rembg をdockerで使うために、rembg docker コンテナの組み込みと実行を追加します。
+
+docker-compose.override.yml
+```yml
+ services:
+   api:
+     volumes:
+       - type: bind
+         source: ./librechat.yaml
+         target: /app/librechat.yaml
+
+   rembg:
+     image: danielgatis/rembg:latest
+     restart: always
+     command: "s --host 0.0.0.0 --port 7000 --log_level info"
+
+```
+
+#### MCPサービスに map-traveler-mcp を追加する
+
+librechat.yaml 追記
+```yaml
+mcpServers:
+  traveler:
+    type: stdio
+    command: npx
+    args:
+      - -y
+      - "@mfukushim/map-traveler-mcp"
+```
+
+.env 追記(claude_desktop_config.jsonのenvと同様)
+```env
+# map-traveler-mcp
+GoogleMapApi_key=(Google Map APIキー)
+sqlite_path=/home/run_test.sqlite (例 librechat コンテナ内の邪魔にならない場所か、マウントしt外部ディレクトリ内など)
+remBgUrl=http://rembg:7000 (rembg サービスAPIのURL,コンテナ間URL)
+(その他、画像生成AIの設定、PixAIキー、stablity.ai APIキー、ComfyUIの設定など)
+
+```
+
+設定後、コンテナを再起動してください。  
+低速なPCだとmcpの初期化が失敗することがあります。複数再起動でうまくいくこともありますが実行は難しいかもです。  
+
+#### libreChat内設定
+
+libreChatでMCP機能を使うために、Agents機能を使います。
+
+1. 会話画面でAgentsを選びます。  
+   <img alt="libre1.png" src="tools/libre1.png" width="200"/>
+2. 画面右のパネルからエージェントビルダーを選び、エージェントの設定を行います。
+   <img alt="libre2.png" src="tools/libre2.png" width="200"/>
+3. map-travelerを使うためにツールを追加を選びます。  
+   <img alt="libre3.png" src="tools/libre3.png" width="200"/>
+4. エージェントツールの画面が出ますのでmap-traveler-mcpのツールをすべて選んで追加します(もしmap-traveler-mcpのツールが出ていなければMCPの初期化を失敗していますので、コンテナの再起動またはログ等で設定を見直してください)  
+   <img alt="libre4.png" src="tools/libre4.png" width="200"/>  
+   <img alt="libre5.png" src="tools/libre5.png" width="200"/>
+5. 指示文のエリアに追加スクリプトを入力します。  
+libreChatにはMCPのリソース機能がないため、代わりに  
+   https://github.com/mfukushim/map-traveler-mcp/blob/main/assets/scenario/role.txt  
+  の中身のテキストを指示文のエリアに入力します。  
+   <img alt="libre7.png" src="tools/libre7.png" width="200"/>
+6. 作成ボタンを押してエージェントを保存します。  
+   <img alt="libre6.png" src="tools/libre6.png" width="200"/>
+7. 新規チャットを開始してください。  
+
 ## 設定ガイド
 
 1. 紹介&練習設定編
@@ -223,4 +330,6 @@ claude_desktop_config.json
    https://note.com/marble_walkers/n/n3c86edd8e817
 6. ComfyUI設定編  
    https://note.com/marble_walkers/n/ncefc7c05d102
-7. 応用サンプル2編 (準備中)
+7. 応用サンプル2編
+   https://note.com/marble_walkers/n/ne7584ed231c8
+8. LibreChat設定編 (準備中)

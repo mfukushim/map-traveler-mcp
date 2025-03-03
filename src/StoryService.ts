@@ -220,12 +220,17 @@ or
 `
             )
           }
-          if (!env.enableRemBg) {
+          if (!env.rembgPath && !env.remBgUrl) {
             textList.push('In order to synthesize avatar images, your PC must be running Python and install rembg.' +
               ` Please install Python and rembg on your PC using information from the Internet.\n
 \`\`\`
-"env":{"rembg_path":"(absolute path to rembg cli)"}
+"env":{"rembgPath":"(absolute path to rembg cli)"}
 \`\`\`\n
+or 
+\`\`\`
+"env":{"rembgUrl":"(rembg service API url)"}
+\`\`\`\n
+
 To keep your pc environment clean, I recommend using a Python virtual environment such as venv.
 `)
           }
@@ -292,13 +297,7 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
           })
           return [langText, destText].join('\n')
         } else if (pathname.includes("/credit.txt")) {
-          const packageJsonPath = path.resolve(__pwd, 'package.json');
-          return yield *Effect.async<string, Error>((resume) => {
-            fs.readFile(packageJsonPath, {encoding: "utf8"}, (err, data) => {
-              if (err) resume(Effect.fail(err))
-              else resume(Effect.succeed(data));
-            });
-          }).pipe(Effect.andThen(a => `map-traveler.mcp version:${JSON.parse(a).version} https://akibakokoubou.jp/ `))
+          return yield *DbService.getVersion().pipe(Effect.andThen(a => `map-traveler.mcp version:${a} https://akibakokoubou.jp/ `))
         } else {
           return yield *Effect.fail(new Error(`resource not found`));
         }
