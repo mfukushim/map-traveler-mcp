@@ -318,11 +318,11 @@ libreChatにはMCPのリソース機能がないため、代わりに
 
 ## 設定ガイド
 
-1. 紹介&練習設定編
+1. 紹介&練習設定編  
    https://note.com/marble_walkers/n/n7a8f79e4fb30
-2. dbとGoogle APIと画像API設定編
+2. dbとGoogle APIと画像API設定編  
    https://note.com/marble_walkers/n/n765257c27f3b
-3. アバター設定
+3. アバター設定  
    https://note.com/marble_walkers/n/nc7273724faea
 4. SNS設定  
    https://note.com/marble_walkers/n/na7c956befe7b
@@ -330,6 +330,7 @@ libreChatにはMCPのリソース機能がないため、代わりに
    https://note.com/marble_walkers/n/n3c86edd8e817
 6. ComfyUI設定編  
    https://note.com/marble_walkers/n/ncefc7c05d102
-7. 応用サンプル2編
+7. 応用サンプル2編  
    https://note.com/marble_walkers/n/ne7584ed231c8
-8. LibreChat設定編 (準備中)
+8. LibreChat設定編  
+   https://note.com/marble_walkers/n/n339bf7905324
