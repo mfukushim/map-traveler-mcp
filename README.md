@@ -6,11 +6,11 @@ This is an MCP server that creates an environment for an avatar to virtually tra
 
 From an MCP client such as Claude Desktop, you can give instructions to the avatar and report on the progress of its journey with photos.
 
-<img alt="img_5.png" src="tools/img_5.png" width="400"/>
+<img alt="img_5.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/img_5.png" width="400"/>
 
 > Now supports librechat https://www.librechat.ai/.
 
-<img alt="libre0.png" src="tools/libre0.png" width="400"/>
+<img alt="libre0.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/libre0.png" width="400"/>
 
 ## Functions
 
@@ -123,8 +123,7 @@ claude_desktop_config.json
         "bs_pass":"(bluesky sns password)",
         "bs_handle":"(bluesky sns handle name: e.g. xxxxxxxx.bsky.social )",
         "filter_tools": "(Optional: Directly filter the tools to be used. All are available if not specified. e.g. tips,set_traveler_location)",
-        "moveMode": "(Option: Specify whether the movement mode is realtime or skip. default realtime)",
-        "image_width": "(Option: Output image width (pixels) Default is 512)"
+        "moveMode": "(Option: Specify whether the movement mode is realtime or skip. default realtime)"
       }
     }
   }
@@ -174,17 +173,17 @@ claude_desktop_config.json
 
 4. Restart Claude Desktop. It may take some time to set up (if an error occurs, try restarting Claude Desktop again. If it doesn't work, see the notes below). Make sure the following mark appears in the bottom right of the screen.
 
-  <img alt="img_1.png" src="tools/img_1.png" width="150"/>
+  <img alt="img_1.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/img_1.png" width="150"/>
 
 5. Ask "Where are you now?" and "Go on a journey." A conversation will begin. When using the API, a confirmation screen will appear, so select Allow.
 
-<img alt="img_4.png" src="tools/img_4.png" width="200"/>
+<img alt="img_4.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/img_4.png" width="200"/>
 
 6. Select Attach from MCP and select role.txt.
 
-<img alt="img_2.png" src="tools/img_2.png" width="200"/>
+<img alt="img_2.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/img_2.png" width="200"/>
 
-<img alt="img_3.png" src="tools/img_3.png" width="200"/>
+<img alt="img_3.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/img_3.png" width="200"/>
 
 7. A travel prompt has been built in, so feel free to talk to it.
 
@@ -317,20 +316,20 @@ On slow PCs, mcp initialization may fail. Multiple restarts may work, but this m
 To use the MCP function in libreChat, use the Agents function.  
 
 1. On the conversation screen, select Agents.  
-   <img alt="libre1.png" src="tools/libre1.png" width="200"/>
+   <img alt="libre1.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/libre1.png" width="200"/>
 2. Select Agent Builder from the panel on the right side of the screen and configure your agent.  
-   <img alt="libre2.png" src="tools/libre2.png" width="200"/>
+   <img alt="libre2.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/libre2.png" width="200"/>
 3. Select Add Tools to use map-traveler.  
-   <img alt="libre3.png" src="tools/libre3.png" width="200"/>
+   <img alt="libre3.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/libre3.png" width="200"/>
 4. The agent tools screen will appear, so select and add all the map-traveler-mcp tools (if the map-traveler-mcp tools are not listed, MCP initialization has failed, so please restart the container or review the settings by checking the logs, etc.)  
-   <img alt="libre4.png" src="tools/libre4.png" width="200"/>  
-   <img alt="libre5.png" src="tools/libre5.png" width="200"/>  
+   <img alt="libre4.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/libre4.png" width="200"/>  
+   <img alt="libre5.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/libre5.png" width="200"/>  
 5. Enter additional script in the instruction area.  
    Since libreChat does not have the MCP resource function, enter the content text of the following URL into the instruction area instead.   
    https://github.com/mfukushim/map-traveler-mcp/blob/main/assets/scenario/role.txt  
-   <img alt="libre7.png" src="tools/libre7.png" width="200"/>  
+   <img alt="libre7.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/libre7.png" width="200"/>  
 6. Click the Create button to save the agent.  
-   <img alt="libre6.png" src="tools/libre6.png" width="200"/>
+   <img alt="libre6.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/libre6.png" width="200"/>
 7. Start a new chat.
 
 
@@ -353,12 +352,3 @@ To use the MCP function in libreChat, use the Agents function.
 8. LibreChat setting  
    https://note.com/marble_walkers/n/n339bf7905324
 
-#### Additional about the source code  
-
-I use Effect.ts to simplify error management & for my own learning.  
-We also use the Effect Service, but due to the way MCP calls work, we believe that consolidating it using the Service was not optimal.  
-I think it would be simpler to handle the MCP calls directly in the Effect.  
-
-#### Notes on the latest updates  
-
-Added image_width to env. The default is 512. Setting it smaller may reduce the cost of LLM API.  
