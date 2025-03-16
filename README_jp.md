@@ -117,7 +117,8 @@ claude_desktop_config.json
         "bs_pass":"(bluesky snsのパスワード)",
         "bs_handle":"(bluesky snsのハンドル名 例 xxxxx.bsky.social など)",
         "filter_tools": "(オプション:使うツールを直に絞る 指定しなければ使えるすべて 例 tips,set_traveler_location)",
-        "moveMode": "(オプション:移動モードをrealtimeかskipにするか指定する default realtime)"
+        "moveMode": "(オプション:移動モードをrealtimeかskipにするか指定する default realtime)",
+        "image_width": "(オプション: 出力する画像の幅(pixel) デフォルトでは512)"
       }
     }
   }

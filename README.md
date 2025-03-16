@@ -123,7 +123,8 @@ claude_desktop_config.json
         "bs_pass":"(bluesky sns password)",
         "bs_handle":"(bluesky sns handle name: e.g. xxxxxxxx.bsky.social )",
         "filter_tools": "(Optional: Directly filter the tools to be used. All are available if not specified. e.g. tips,set_traveler_location)",
-        "moveMode": "(Option: Specify whether the movement mode is realtime or skip. default realtime)"
+        "moveMode": "(Option: Specify whether the movement mode is realtime or skip. default realtime)",
+        "image_width": "(Option: Output image width (pixels) Default is 512)"
       }
     }
   }
