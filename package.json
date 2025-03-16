@@ -1,6 +1,6 @@
 {
   "name": "@mfukushim/map-traveler-mcp",
-  "version": "0.0.58",
+  "version": "0.0.60",
   "type": "module",
   "bin": {
     "map-traveler-mcp": "build/esm/mapTraveler.js"
@@ -55,7 +55,6 @@
     "form-data": "^4.0.1",
     "geolib": "^3.3.4",
     "jimp": "^1.6.0",
-    "jsonpath": "^1.1.1",
     "sharp": "^0.33.5",
     "ws": "^8.18.0",
     "zod": "^3.24.1"
@@ -68,7 +67,6 @@
     "@effect/build-utils": "^0.7.8",
     "@effect/language-service": "^0.2.0",
     "@effect/vitest": "^0.17.0",
-    "@types/jsonpath": "^0.2.4",
     "@types/node": "^22.10.7",
     "@types/ws": "^8.5.13",
     "babel-plugin-annotate-pure-calls": "^0.5.0",
@@ -90,6 +88,6 @@
     }
   },
   "volta": {
-    "node": "20.18.3"
+    "node": "22.14.0"
   }
 }

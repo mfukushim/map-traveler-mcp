@@ -8,11 +8,11 @@ Google map上を仮想的に旅するアバターの環境を作るMCP serverで
 
 Claude DesktopなどのMCP clientから、アバターに指示をして、移動する旅の様子と写真を報告することができます。
 
-<img alt="img.png" src="tools/img.png" width="400"/>
+<img alt="img.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/img.png" width="400"/>
 
 > librechat https://www.librechat.ai/ に対応しました。
 
-<img alt="libre0.png" src="tools/libre0.png" width="400"/>
+<img alt="libre0.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/libre0.png" width="400"/>
 
 
 
@@ -117,7 +117,8 @@ claude_desktop_config.json
         "bs_pass":"(bluesky snsのパスワード)",
         "bs_handle":"(bluesky snsのハンドル名 例 xxxxx.bsky.social など)",
         "filter_tools": "(オプション:使うツールを直に絞る 指定しなければ使えるすべて 例 tips,set_traveler_location)",
-        "moveMode": "(オプション:移動モードをrealtimeかskipにするか指定する default realtime)"
+        "moveMode": "(オプション:移動モードをrealtimeかskipにするか指定する default realtime)",
+        "image_width": "(オプション: 出力する画像の幅(pixel) デフォルトでは512)"
       }
     }
   }
@@ -164,12 +165,12 @@ claude_desktop_config.json
 2. Claude Desktopを使える状況にします。
 3. claude_desktop_config.jsonに上記のいずれかの設定を反映します。
 4. Claude Desktopを再起動します。設定に少し時間がかかるかもしれません(エラーが出る場合は。再度Claude Desktopを再起動してみてください。上手くいかない場合は下記、注意を参照ください。)。以下のマークが画面右下に出ることを確認します。  
-   <img alt="img_1.png" src="tools/img_1.png" width="150"/>
+   <img alt="img_1.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/img_1.png" width="150"/>
 5. 「いまどこにいますか」「旅に出かけてください」と問いかけてください。会話が始まります。API使用時には確認画面が出るのでAllowを選んでください。
-   <img alt="img_4.png" src="tools/img_4.png" width="200"/>
+   <img alt="img_4.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/img_4.png" width="200"/>
 6. Attach from MCPを選択し、role.txtを選択してください。
-   <img alt="img_2.png" src="tools/img_2.png" width="200"/>
-   <img alt="img_3.png" src="tools/img_3.png" width="200"/>
+   <img alt="img_2.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/img_2.png" width="200"/>
+   <img alt="img_3.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/img_3.png" width="200"/>
 7. 旅用のプロンプトが組み込まれたので自由に会話してみてください。
 
 #### 本格的に使う
@@ -299,21 +300,21 @@ remBgUrl=http://rembg:7000 (rembg サービスAPIのURL,コンテナ間URL)
 libreChatでMCP機能を使うために、Agents機能を使います。
 
 1. 会話画面でAgentsを選びます。  
-   <img alt="libre1.png" src="tools/libre1.png" width="200"/>
+   <img alt="libre1.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/libre1.png" width="200"/>
 2. 画面右のパネルからエージェントビルダーを選び、エージェントの設定を行います。
-   <img alt="libre2.png" src="tools/libre2.png" width="200"/>
+   <img alt="libre2.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/libre2.png" width="200"/>
 3. map-travelerを使うためにツールを追加を選びます。  
-   <img alt="libre3.png" src="tools/libre3.png" width="200"/>
+   <img alt="libre3.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/libre3.png" width="200"/>
 4. エージェントツールの画面が出ますのでmap-traveler-mcpのツールをすべて選んで追加します(もしmap-traveler-mcpのツールが出ていなければMCPの初期化を失敗していますので、コンテナの再起動またはログ等で設定を見直してください)  
-   <img alt="libre4.png" src="tools/libre4.png" width="200"/>  
-   <img alt="libre5.png" src="tools/libre5.png" width="200"/>
+   <img alt="libre4.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/libre4.png" width="200"/>  
+   <img alt="libre5.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/libre5.png" width="200"/>
 5. 指示文のエリアに追加スクリプトを入力します。  
 libreChatにはMCPのリソース機能がないため、代わりに  
    https://github.com/mfukushim/map-traveler-mcp/blob/main/assets/scenario/role.txt  
   の中身のテキストを指示文のエリアに入力します。  
-   <img alt="libre7.png" src="tools/libre7.png" width="200"/>
+   <img alt="libre7.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/libre7.png" width="200"/>
 6. 作成ボタンを押してエージェントを保存します。  
-   <img alt="libre6.png" src="tools/libre6.png" width="200"/>
+   <img alt="libre6.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/libre6.png" width="200"/>
 7. 新規チャットを開始してください。  
 
 ## 設定ガイド
@@ -334,3 +335,13 @@ libreChatにはMCPのリソース機能がないため、代わりに
    https://note.com/marble_walkers/n/ne7584ed231c8
 8. LibreChat設定編  
    https://note.com/marble_walkers/n/n339bf7905324
+
+#### ソースコードについての追記  
+
+エラーマネージメントをシンプルにする&自身の学習のためにEffect tsを使用しています。  
+EffectのServiceも使っていますが、MCPの呼び出しの仕組み上、Serviceを使ってまとめたのは最適ではなかったと考えています。  
+MCPの呼び出しを直接Effectで処理するほうがシンプルになると思います。  
+
+#### 最新の更新についてのメモ
+
+envにimage_widthを追加しました。デフォルトは512です。小さくすることでLLM APIのコストを低減出来るかもしれません。

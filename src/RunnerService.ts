@@ -8,7 +8,7 @@ import dayjs = require("dayjs");
 import utc = require("dayjs/plugin/utc");
 import duration = require("dayjs/plugin/duration");
 import relativeTime = require("dayjs/plugin/relativeTime");
-import {ImageService} from "./ImageService.js";
+import {ImageService, widthOut, heightOut} from "./ImageService.js";
 import * as Process from "node:process";
 import {FacilityInfo, StoryService} from "./StoryService.js";
 import {TripStatus} from "./db/schema.js";
@@ -68,7 +68,6 @@ export const practiceData: { address: string; placesPath: string; sampleImagePat
   }
 ]
 
-
 export class RunnerService extends Effect.Service<RunnerService>()("traveler/RunnerService", {
   accessors: true,
   effect: Effect.gen(function* () {
@@ -97,6 +96,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
             }
             resume(Effect.succeed(data));
           })).pipe(
+          Effect.andThen(a => ImageService.shrinkImage(a)),
           Effect.andThen(a => Buffer.from(a)),
           Effect.orElseSucceed(() => undefined))) : undefined
         return {nearFacilities, image, locText: ''}
@@ -271,7 +271,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         return yield* runningReport(locText, nearFacilities, image, false, true).pipe(Effect.andThen(a => a.out))
       })
     }
-    
+
     function getCurrentView(now: dayjs.Dayjs, includePhoto: boolean, includeNearbyFacilities: boolean, practice = false) {
       return Effect.gen(function* () {
         const {runStatus, justArrive, elapseRatio} = yield* getRunStatusAndUpdateEnd(now);
@@ -561,7 +561,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       recent.currentPathNo = -1
       recent.currentStepNo = -1
     }
-    
+
     function setStart(runStatus:RunStatus,now:dayjs.Dayjs) {
       return Effect.gen(function* () {
         const dest = yield* DbService.getEnv('destination') //  これはプラン中の行き先
@@ -658,8 +658,8 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         return yield* ImageService.makeRunnerImageV3(baseImage, useAiImageGen, abort, {...bodyAreaRatio, ...bodyHWRatio, ...bodyWindowRatioW, ...bodyWindowRatioH}, localDebug).pipe(
           Effect.andThen(a => Effect.gen(function* () {
             const buf = yield* Effect.tryPromise(() => sharp(a.buf).resize({
-              width: 512,
-              height: 384
+              width: widthOut,
+              height: heightOut
             }).png().toBuffer())
             return {
               ...a,
@@ -667,16 +667,18 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
             }
           })),
           //  合成画像を失敗したらStreetViewだけでも出す
-          Effect.orElse(() => Effect.tryPromise(() => sharp(baseImage).resize({
-            width: 512,
-            height: 384
-          }).png().toBuffer()).pipe(Effect.andThen(a => ({
-            buf: a,
-            shiftX: 0,
-            shiftY: 0,
-            fit: false,
-            append: ''
-          })))));
+          Effect.orElse(() => {
+            return Effect.tryPromise(() => sharp(baseImage).resize({
+              width: widthOut,
+              height: heightOut
+            }).png().toBuffer()).pipe(Effect.andThen(a => ({
+              buf: a,
+              shiftX: 0,
+              shiftY: 0,
+              fit: false,
+              append: ''
+            })));
+          }));
       })
     }
 
@@ -684,8 +686,8 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       return MapService.findStreetViewMeta(loc.lat, loc.lng, loc.bearing, 640, 640).pipe(
         Effect.andThen(okLoc => MapService.getStreetViewImage(okLoc.lat, okLoc.lng, loc.bearing, 640, 640)),
         Effect.andThen(baseImage => Effect.tryPromise(() => sharp(baseImage).resize({
-          width: 512,
-          height: 512
+          width: widthOut,
+          height: heightOut
         }).png().toBuffer())),
       )
     }
