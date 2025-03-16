@@ -22,6 +22,10 @@ import {sendProgressNotification} from "./McpService.js";
 
 export const defaultBaseCharPrompt = 'depth of field, cinematic composition, masterpiece, best quality,looking at viewer,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut'
 
+export const widthOut = Number.parseInt(Process.env.image_width || "512") || 512;
+export const heightOut = Math.floor(widthOut*0.75);
+
+
 let recentImage: Buffer | undefined //  直近の1生成画像を保持する snsのpostに自動引用する
 
 const key: string = Process.env.sd_key || ''
@@ -304,8 +308,8 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               }
             }),
             Effect.andThen(a => Effect.tryPromise(() => sharp(a).resize({
-              width: 512,
-              height: 384
+              width: widthOut,
+              height: heightOut
             }).png().toBuffer()))
         )
       })
@@ -358,8 +362,8 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               }
             }),
             Effect.andThen(a => Effect.tryPromise(() => sharp(a).resize({
-              width: 512,
-              height: 384
+              width: widthOut,
+              height: heightOut
             }).png().toBuffer()))
         )
       })
@@ -631,8 +635,8 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               //  rembg pathがない場合、画像合成しないままの画像を戻す
               return {
                 buf: yield* Effect.tryPromise(() => sharp(basePhoto).resize({
-                  width: 512,
-                  height: 384
+                  width: widthOut,
+                  height: heightOut
                 }).png().toBuffer()),
                 shiftX: 0,
                 shiftY: 0,
@@ -937,6 +941,13 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
 
     }
 
+    function shrinkImage(image:Buffer) {
+      return Effect.tryPromise(() => sharp(image).resize({
+        width: widthOut,
+        height: heightOut
+      }).png().toBuffer())
+    }
+
 
     return {
       getRecentImageAndClear,
@@ -948,6 +959,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       getBasePrompt,
       comfyApiMakeImage,
       rembgService,
+      shrinkImage,
     }
   }),
   dependencies: [McpLogServiceLive]

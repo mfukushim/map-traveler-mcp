@@ -123,7 +123,8 @@ claude_desktop_config.json
         "bs_pass":"(bluesky sns password)",
         "bs_handle":"(bluesky sns handle name: e.g. xxxxxxxx.bsky.social )",
         "filter_tools": "(Optional: Directly filter the tools to be used. All are available if not specified. e.g. tips,set_traveler_location)",
-        "moveMode": "(Option: Specify whether the movement mode is realtime or skip. default realtime)"
+        "moveMode": "(Option: Specify whether the movement mode is realtime or skip. default realtime)",
+        "image_width": "(Option: Output image width (pixels) Default is 512)"
       }
     }
   }
@@ -352,3 +353,12 @@ To use the MCP function in libreChat, use the Agents function.
 8. LibreChat setting  
    https://note.com/marble_walkers/n/n339bf7905324
 
+#### Additional about the source code
+
+I use Effect.ts to simplify error management & for my own learning.  
+We also use the Effect Service, but due to the way MCP calls work, we believe that consolidating it using the Service was not optimal.  
+I think it would be simpler to handle the MCP calls directly in the Effect.
+
+#### Notes on the latest updates
+
+Added image_width to env. The default is 512. Setting it smaller may reduce the cost of LLM API.  

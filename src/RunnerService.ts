@@ -8,7 +8,7 @@ import dayjs = require("dayjs");
 import utc = require("dayjs/plugin/utc");
 import duration = require("dayjs/plugin/duration");
 import relativeTime = require("dayjs/plugin/relativeTime");
-import {ImageService} from "./ImageService.js";
+import {ImageService, widthOut, heightOut} from "./ImageService.js";
 import * as Process from "node:process";
 import {FacilityInfo, StoryService} from "./StoryService.js";
 import {TripStatus} from "./db/schema.js";
@@ -68,10 +68,6 @@ export const practiceData: { address: string; placesPath: string; sampleImagePat
   }
 ]
 
-const widthOut = Number.parseInt(Process.env.image_width || "512") || 512;
-const heightOut = Math.floor(widthOut*0.75);
-
-
 export class RunnerService extends Effect.Service<RunnerService>()("traveler/RunnerService", {
   accessors: true,
   effect: Effect.gen(function* () {
@@ -100,6 +96,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
             }
             resume(Effect.succeed(data));
           })).pipe(
+          Effect.andThen(a => ImageService.shrinkImage(a)),
           Effect.andThen(a => Buffer.from(a)),
           Effect.orElseSucceed(() => undefined))) : undefined
         return {nearFacilities, image, locText: ''}
@@ -661,8 +658,8 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         return yield* ImageService.makeRunnerImageV3(baseImage, useAiImageGen, abort, {...bodyAreaRatio, ...bodyHWRatio, ...bodyWindowRatioW, ...bodyWindowRatioH}, localDebug).pipe(
           Effect.andThen(a => Effect.gen(function* () {
             const buf = yield* Effect.tryPromise(() => sharp(a.buf).resize({
-              width: 512,
-              height: 384
+              width: widthOut,
+              height: heightOut
             }).png().toBuffer())
             return {
               ...a,
