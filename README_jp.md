@@ -335,3 +335,13 @@ libreChatにはMCPのリソース機能がないため、代わりに
    https://note.com/marble_walkers/n/ne7584ed231c8
 8. LibreChat設定編  
    https://note.com/marble_walkers/n/n339bf7905324
+
+#### ソースコードについての追記  
+
+エラーマネージメントをシンプルにする&自身の学習のためにEffect tsを使用しています。  
+EffectのServiceも使っていますが、MCPの呼び出しの仕組み上、Serviceを使ってまとめたのは最適ではなかったと考えています。  
+MCPの呼び出しを直接Effectで処理するほうがシンプルになると思います。  
+
+#### 最新の更新についてのメモ
+
+envにimage_widthを追加しました。デフォルトは512です。小さくすることでLLM APIのコストを低減出来るかもしれません。
