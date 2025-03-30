@@ -8,6 +8,7 @@ import {DbService, DbServiceLive} from "../src/DbService.js";
 import {NodeFileSystem} from "@effect/platform-node"
 // import {transparentBackground} from "transparent-background";
 import {McpLogService, McpLogServiceLive} from "../src/McpLogService.js";
+import sharp = require("sharp");
 
 const inGitHubAction = process.env.GITHUB_ACTIONS === 'true';
 
@@ -197,17 +198,38 @@ describe("Image", () => {
       const buffer = fs.readFileSync('tools/test.jpg');
       return yield* ImageService.makeRunnerImageV3(buffer, 'comfyUi', false,{}, true)  //
     }).pipe(
-      Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]), //  layer
-      Logger.withMinimumLogLevel(LogLevel.Trace),
-      Effect.tapError(e => Effect.logError(e.toString())),
-      Effect.tap(a => {
-        if (!inGitHubAction) {
-          fs.writeFileSync("tools/test/makeRunnerImageV3_i2iComfy.png", a.buf);
-        }
-      }),
-      Effect.catchIf(a => a.toString() === 'Error: no key', e => Effect.succeed({})),
-      // Effect.tap(a => Effect.log(a)),
-      runPromise
+        Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]), //  layer
+        Logger.withMinimumLogLevel(LogLevel.Trace),
+        Effect.tapError(e => Effect.logError(e.toString())),
+        Effect.tap(a => {
+          if (!inGitHubAction) {
+            fs.writeFileSync("tools/test/makeRunnerImageV3_i2iComfy.png", a.buf);
+          }
+        }),
+        Effect.catchIf(a => a.toString() === 'Error: no key', e => Effect.succeed({})),
+        // Effect.tap(a => Effect.log(a)),
+        runPromise
+    )
+    expect(typeof res).toBe('object')
+  },10*60*1000)
+  it("makeRunnerImageV3_i2iGemini2", async () => {
+    //  vitest --run --testNamePattern=makeRunnerImageV3_i2i ImageService.test.ts
+    const buffer = fs.readFileSync('tools/test.jpg');
+    const b2 = await sharp(buffer).png().toBuffer()
+    const res = await Effect.gen(function* () {
+      return yield* ImageService.makeRunnerImageV3(b2, 'gemini2', false,{}, true)  //
+    }).pipe(
+        Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]), //  layer
+        Logger.withMinimumLogLevel(LogLevel.Trace),
+        Effect.tapError(e => Effect.logError(e.toString())),
+        Effect.tap(a => {
+          if (!inGitHubAction) {
+            fs.writeFileSync("tools/test/makeRunnerImageV3_i2iGemini2.png", a.buf);
+          }
+        }),
+        Effect.catchIf(a => a.toString() === 'Error: no key', e => Effect.succeed({})),
+        // Effect.tap(a => Effect.log(a)),
+        runPromise
     )
     expect(typeof res).toBe('object')
   },10*60*1000)
@@ -273,7 +295,7 @@ describe("Image", () => {
     //  vitest --run --testNamePattern=comfyApiMakeImage ImageService.test.ts
     const res = await Effect.gen(function* () {
       const buffer = fs.readFileSync('tools/test.jpg'); //  gemini2はリアル女性ぽ追加i2iは許さなくなったらしい。。アニメならokなのか。
-      return yield* ImageService.gemini2MakeImage('1 anime girl',buffer,{})  //
+      return yield* ImageService.gemini2MakeImage('depth of field, cinematic composition, masterpiece, best quality,looking at viewer,solo,1 anime girl,school uniform,blue skirt,long socks,black pixie cut,anime,road,cowboy shot,grin,walking,looking sky',buffer,{})  //
     }).pipe(
         Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]), //  layer
         Logger.withMinimumLogLevel(LogLevel.Trace),
