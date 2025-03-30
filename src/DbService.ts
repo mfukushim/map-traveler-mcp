@@ -371,7 +371,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
        //  Google Map APIがなければ強制的に練習モード ある場合は設定に従う
        //  APIがあるなら通常モード
        env.isPractice = !(Process.env.GoogleMapApi_key || Process.env.mapApi_url);
-       if (Process.env.sd_key || Process.env.pixAi_key || Process.env.comfy_url) {
+       if (Process.env.sd_key || Process.env.pixAi_key || Process.env.comfy_url || Process.env.MT_GEMINI_API_KEY) {
          env.anyImageAiExist = true
        }
        if ((Process.env.bs_id && Process.env.bs_pass && Process.env.bs_handle)) {

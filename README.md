@@ -75,7 +75,7 @@ Example:
 
 #### MCP resources
 
-Has two custom prompt samples.
+Has three custom prompt samples.
 When you import a prompt with Claude Desktop, Claude will act as a traveler.
 The SNS-compatible version controls SNS input and output while having a travel conversation.
 
@@ -108,7 +108,8 @@ claude_desktop_config.json
         "rembg_path": "(absolute path of the installed rembg cli)",
         "remBgUrl": "(rembg API URL)",
         "pixAi_key":"(pixAi API key)",
-        "sd_key":"(or Stability.ai image generation API key",
+        "sd_key":"(or Stability.ai image generation API key)",
+        "MT_GEMINI_API_KEY": "(or Gemini 2.0 Flash Experimental API  key)",
         "pixAi_modelId": "(Optional: pixAi ModelId, if not set use default model 1648918127446573124 ",
         "comfy_url": "(Option: Generate image using ComfyUI API at specified URL. Example: http://192.168.1.100:8188)",
         "comfy_workflow_t2i": "(Optional: Path to API workflow file when using text to image with ComfyUI. If not specified: assets/comfy/t2i_sample.json)",
@@ -361,4 +362,6 @@ I think it would be simpler to handle the MCP calls directly in the Effect.
 
 #### Notes on the latest updates
 
-Added image_width to env. The default is 512. Setting it smaller may reduce the cost of LLM API.  
+- Added MT_GEMINI_API_KEY to env. Images will be generated using the Gemini 2.0 Flash Experimental API key.
+We plan to unify the env environment variables to standard uppercase snake case in the near future while maintaining compatibility.  
+- Added image_width to env. The default is 512. Setting it smaller may reduce the cost of LLM API.  
