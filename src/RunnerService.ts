@@ -8,7 +8,7 @@ import dayjs = require("dayjs");
 import utc = require("dayjs/plugin/utc");
 import duration = require("dayjs/plugin/duration");
 import relativeTime = require("dayjs/plugin/relativeTime");
-import {ImageService, widthOut, heightOut} from "./ImageService.js";
+import {ImageService, widthOut, heightOut, ImageGenModel} from "./ImageService.js";
 import * as Process from "node:process";
 import {FacilityInfo, StoryService} from "./StoryService.js";
 import {TripStatus} from "./db/schema.js";
@@ -25,7 +25,9 @@ dayjs.extend(utc)
 dayjs.extend(duration)
 dayjs.extend(relativeTime)
 
-export const useAiImageGen = (Process.env.pixAi_key ? 'pixAi' : Process.env.sd_key ? 'sd' : Process.env.comfy_url ? 'comfyUi': '')
+export const useAiImageGen:ImageGenModel =
+    (Process.env.MT_GEMINI_API_KEY ? 'gemini2' :Process.env.pixAi_key ? 'pixAi' :
+        Process.env.sd_key ? 'sd' : Process.env.comfy_url ? 'comfyUi': '')
 
 export interface LocationDetail {
   status: TripStatus;

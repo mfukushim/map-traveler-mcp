@@ -19,11 +19,14 @@ import * as fs from "node:fs";
 import {execSync} from "node:child_process";
 import {defaultAvatarId} from "./RunnerService.js";
 import {sendProgressNotification} from "./McpService.js";
+import {GoogleGenerativeAI, GenerateContentResult} from "@google/generative-ai";
 
 export const defaultBaseCharPrompt = 'depth of field, cinematic composition, masterpiece, best quality,looking at viewer,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut'
 
 export const widthOut = Number.parseInt(Process.env.image_width || "512") || 512;
 export const heightOut = Math.floor(widthOut*0.75);
+
+export type ImageGenModel = '' | 'pixAi' | 'sd' | 'comfyUi'| 'gemini2';
 
 
 let recentImage: Buffer | undefined //  直近の1生成画像を保持する snsのpostに自動引用する
@@ -36,6 +39,7 @@ const pixAiClient = new PixAIClient({
   webSocketImpl: WebSocket
 })
 
+const genAI = Process.env.MT_GEMINI_API_KEY ? new GoogleGenerativeAI(Process.env.MT_GEMINI_API_KEY): undefined;
 
 export class ImageService extends Effect.Service<ImageService>()("traveler/ImageService", {
   accessors: true,
@@ -269,7 +273,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
      * @param append
      * @param localDebug
      */
-    function makeHotelPict(selectGen: string, hour: number, append ?: string, localDebug = false) {
+    function makeHotelPict(selectGen: ImageGenModel, hour: number, append ?: string, localDebug = false) {
       return Effect.gen(function* () {
         if (!env.anyImageAiExist || env.isPractice) {
           //  画像生成AIがなければ固定ホテル画像を使う
@@ -323,7 +327,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
      * @param localDebug
      * @private
      */
-    function makeEtcTripImage(selectGen: string, vehiclePrompt: string, timeZoneId: string, localDebug = false) {
+    function makeEtcTripImage(selectGen: ImageGenModel, vehiclePrompt: string, timeZoneId: string, localDebug = false) {
       //  乗り物の旅行画像生成
       //  画像保存
       //  乗り物と緯度経度での日記生成
@@ -447,8 +451,10 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       })
     }
 
-    const selectImageGenerator = (generatorId: string, prompt: string, inImage?: Buffer, opt?: Record<string, any>) => {
+    const selectImageGenerator = (generatorId: ImageGenModel, prompt: string, inImage?: Buffer, opt?: Record<string, any>) => {
       switch (generatorId) {
+        case 'gemini2':
+          return gemini2MakeImage(prompt, inImage, opt)
         case 'pixAi':
           return pixAiMakeImage(prompt, inImage, opt)
         case 'comfyUi': {
@@ -466,6 +472,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           }
           return comfyApiMakeImage(prompt, inImage, optC);
         }
+        case 'sd':
         default:
           return sdMakeImage(prompt, inImage, opt)
       }
@@ -619,7 +626,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
      */
     function makeRunnerImageV3(
         basePhoto: Buffer,
-        selectGen: string,
+        selectGen: ImageGenModel,
         withAbort = false,
         opt: {
           sideBias?: boolean,
@@ -948,6 +955,47 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       }).png().toBuffer())
     }
 
+    function gemini2MakeImage(prompt: string, inImage?: Buffer, params?: Record<string, any>) {
+      if (!genAI) {
+        return Effect.fail(new Error('Gemini2 not key'))
+      }
+      const model = genAI.getGenerativeModel({
+        model: "gemini-2.0-flash-exp-image-generation",
+        generationConfig: {
+          // @ts-ignore
+          responseModalities: ['Text', 'Image'] //  TODO Googleの誤り?
+        },
+      });
+      const contents = inImage ? [
+        { text: prompt },
+        {
+          inlineData: {
+            mimeType: 'image/png',
+            data: inImage.toString('base64')
+          }
+        }
+      ]: prompt
+      return Effect.tryPromise(() => model.generateContent(contents)).pipe(
+          Effect.andThen((response:GenerateContentResult) => {
+            if (!response.response.candidates) {
+              return Effect.fail(new Error('Gemini2 error'))
+            }
+            for (const part of  response.response.candidates[0]?.content?.parts) {
+              // Based on the part type, either show the text or save the image
+              if (part.text) {
+                logSync(part.text);
+              } else if (part.inlineData) {
+                const imageData = part.inlineData.data;
+                const buffer = Buffer.from(imageData, 'base64');
+                return Effect.succeed(buffer)
+                // fs.writeFileSync('gemini-native-image.png', buffer);
+                // console.log('Image saved as gemini-native-image.png');
+              }
+            }
+            return Effect.fail(new Error('Gemini2 error2'))
+          }),
+      );
+    }
 
     return {
       getRecentImageAndClear,
@@ -958,6 +1006,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       generatePrompt,
       getBasePrompt,
       comfyApiMakeImage,
+      gemini2MakeImage,
       rembgService,
       shrinkImage,
     }

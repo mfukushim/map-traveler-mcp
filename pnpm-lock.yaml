@@ -26,6 +26,9 @@ importers:
       '@effect/sql-sqlite-node':
         specifier: ^0.27.1
         version: 0.27.1(@effect/experimental@0.33.7(@effect/platform-node@0.69.1(@effect/platform@0.73.1(effect@3.12.4))(effect@3.12.4))(@effect/platform@0.73.1(effect@3.12.4))(effect@3.12.4)(ws@8.18.0))(@effect/platform@0.73.1(effect@3.12.4))(@effect/sql@0.26.1(@effect/experimental@0.33.7(@effect/platform-node@0.69.1(@effect/platform@0.73.1(effect@3.12.4))(effect@3.12.4))(@effect/platform@0.73.1(effect@3.12.4))(effect@3.12.4)(ws@8.18.0))(@effect/platform@0.73.1(effect@3.12.4))(effect@3.12.4))(effect@3.12.4)
+      '@google/generative-ai':
+        specifier: ^0.24.0
+        version: 0.24.0
       '@libsql/client':
         specifier: ^0.14.0
         version: 0.14.0
@@ -849,6 +852,10 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
+
+  '@google/generative-ai@0.24.0':
+    resolution: {integrity: sha512-fnEITCGEB7NdX0BhoYZ/cq/7WPZ1QS5IzJJfC3Tg/OwkvBetMiVJciyaan297OvE4B9Jg1xvo0zIazX/9sGu1Q==}
+    engines: {node: '>=18.0.0'}
 
   '@img/sharp-darwin-arm64@0.33.5':
     resolution: {integrity: sha512-UT4p+iz/2H4twwAoLCqfA9UH5pI6DggwKEGuaPy7nCVQ8ZsiY5PIcrRvD1DzuY3qYL07NtIQcWnBSY/heikIFQ==}
@@ -2945,6 +2952,8 @@ snapshots:
 
   '@esbuild/win32-x64@0.23.1':
     optional: true
+
+  '@google/generative-ai@0.24.0': {}
 
   '@img/sharp-darwin-arm64@0.33.5':
     optionalDependencies:

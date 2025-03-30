@@ -216,17 +216,17 @@ describe("Image", () => {
     const res = await Effect.gen(function* () {
       return yield* ImageService.comfyApiMakeImage('1girl',undefined,{ckpt_name:"animagineXL40_v40.safetensors"})  //
     }).pipe(
-      Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]), //  layer
-      Logger.withMinimumLogLevel(LogLevel.Trace),
-      Effect.tapError(e => Effect.logError(e.toString())),
-      Effect.tap(a => {
-        if (!inGitHubAction) {
-          fs.writeFileSync("tools/test/comfyApiMakeImage_t2i.png",Buffer.from(a));
-        }
-      }),
-      Effect.catchIf(a => a.toString() === 'Error: no comfy_url', e => Effect.succeed({})),
-      // Effect.tap(a => Effect.log(a)),
-      runPromise
+        Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]), //  layer
+        Logger.withMinimumLogLevel(LogLevel.Trace),
+        Effect.tapError(e => Effect.logError(e.toString())),
+        Effect.tap(a => {
+          if (!inGitHubAction) {
+            fs.writeFileSync("tools/test/comfyApiMakeImage_t2i.png",Buffer.from(a));
+          }
+        }),
+        Effect.catchIf(a => a.toString() === 'Error: no comfy_url', e => Effect.succeed({})),
+        // Effect.tap(a => Effect.log(a)),
+        runPromise
     )
     expect(typeof res).toBe('object')
   })
@@ -236,17 +236,56 @@ describe("Image", () => {
       const buffer = fs.readFileSync('tools/test.jpg');
       return yield* ImageService.comfyApiMakeImage('1girl',buffer,{ckpt_name:"animagineXL40_v40.safetensors"})  //
     }).pipe(
-      Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]), //  layer
-      Logger.withMinimumLogLevel(LogLevel.Trace),
-      Effect.tapError(e => Effect.logError(e.toString())),
-      Effect.tap(a => {
-        if (!inGitHubAction) {
-          fs.writeFileSync("tools/test/comfyApiMakeImage_i2i.png",Buffer.from(a));
-        }
-      }),
-      Effect.catchIf(a => a.toString() === 'Error: no comfy_url', e => Effect.succeed({})),
-      // Effect.tap(a => Effect.log(a)),
-      runPromise
+        Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]), //  layer
+        Logger.withMinimumLogLevel(LogLevel.Trace),
+        Effect.tapError(e => Effect.logError(e.toString())),
+        Effect.tap(a => {
+          if (!inGitHubAction) {
+            fs.writeFileSync("tools/test/comfyApiMakeImage_i2i.png",Buffer.from(a));
+          }
+        }),
+        Effect.catchIf(a => a.toString() === 'Error: no comfy_url', e => Effect.succeed({})),
+        // Effect.tap(a => Effect.log(a)),
+        runPromise
+    )
+    expect(typeof res).toBe('object')
+  })
+  it("gemini2MakeImage_t2i", async () => {
+    //  vitest --run --testNamePattern=comfyApiMakeImage_t2i ImageService.test.ts
+    const res = await Effect.gen(function* () {
+      return yield* ImageService.gemini2MakeImage('1girl',undefined,{})  //
+    }).pipe(
+        Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]), //  layer
+        Logger.withMinimumLogLevel(LogLevel.Trace),
+        Effect.tapError(e => Effect.logError(e.toString())),
+        Effect.tap(a => {
+          if (!inGitHubAction) {
+            fs.writeFileSync("tools/test/gemini2MakeImage_t2i.png",Buffer.from(a));
+          }
+        }),
+        Effect.catchIf(a => a.toString() === 'Error: Gemini2 not key', e => Effect.succeed({})),
+        // Effect.tap(a => Effect.log(a)),
+        runPromise
+    )
+    expect(typeof res).toBe('object')
+  })
+  it("gemini2MakeImage_i2i", async () => {
+    //  vitest --run --testNamePattern=comfyApiMakeImage ImageService.test.ts
+    const res = await Effect.gen(function* () {
+      const buffer = fs.readFileSync('tools/test.jpg'); //  gemini2はリアル女性ぽ追加i2iは許さなくなったらしい。。アニメならokなのか。
+      return yield* ImageService.gemini2MakeImage('1 anime girl',buffer,{})  //
+    }).pipe(
+        Effect.provide([ImageServiceLive, FetchHttpClient.layer, DbServiceLive, NodeFileSystem.layer, McpLogServiceLive]), //  layer
+        Logger.withMinimumLogLevel(LogLevel.Trace),
+        Effect.tapError(e => Effect.logError(e.toString())),
+        Effect.tap(a => {
+          if (!inGitHubAction) {
+            fs.writeFileSync("tools/test/gemini2MakeImage_i2i.png",Buffer.from(a));
+          }
+        }),
+        Effect.catchIf(a => a.toString() === 'Error: Gemini2 not key', e => Effect.succeed({})),
+        // Effect.tap(a => Effect.log(a)),
+        runPromise
     )
     expect(typeof res).toBe('object')
   })
