@@ -9,7 +9,7 @@ import {Jimp} from "jimp";
 import * as Process from "node:process";
 import {McpLogService, McpLogServiceLive} from "./McpLogService.js";
 import {AnswerError} from "./mapTraveler.js";
-import {env} from "./DbService.js";
+import {env, getEnvironment} from "./DbService.js";
 
 /**
  * Google Map API定義
@@ -134,7 +134,7 @@ export class MapDef {
 export class MapService extends Effect.Service<MapService>()("traveler/MapService", {
   accessors: true,
   effect: Effect.gen(function* () {
-    const key: string = Process.env.GoogleMapApi_key || ''
+    const key: string = getEnvironment('GoogleMapApi_key') || ''
 
     /**
      * 座標からの単純距離計算

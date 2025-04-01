@@ -16,6 +16,41 @@ import {practiceData} from "./RunnerService.js";
 import {defaultBaseCharPrompt} from "./ImageService.js";
 import * as fs from "node:fs";
 
+const EnvMap: [string, string][] = [
+  ['GoogleMapApi_key', 'MT_GOOGLE_MAP_KEY'],
+  ['mapApi_url', 'MT_MAP_API_URL'],
+  ['time_scale', 'MT_TIME_SCALE'],
+  ['sqlite_path', 'MT_SQLITE_PATH'],
+  ['rembg_path','MT_REMBG_PATH'],
+  ['rembgPath','MT_REMBG_PATH'],
+  ['remBgUrl','MT_REMBG_URL'],
+  ['pixAi_key','MT_PIXAI_KEY'],
+  ['sd_key','MT_SD_KEY'],
+  ['pixAi_modelId','MT_PIXAI_MODEL_ID'],
+  ['comfy_url','MT_COMFY_URL'],
+  ['comfy_workflow_t2i','MT_COMFY_WORKFLOW_T2I'],
+  ['comfy_workflow_i2i','MT_COMFY_WORKFLOW_I2I'],
+  ['comfy_params','MT_COMFY_PARAMS'],
+  ['fixed_model_prompt','MT_FIXED_MODEL_PROMPT'],
+  ['bodyAreaRatio','MT_BODY_AREA_RATIO'],
+  ['bodyHWRatio','MT_BODY_HW_RATIO'],
+  ['bodyWindowRatioW','MT_BODY_WINDOW_RATIO_W'],
+  ['bodyWindowRatioH','MT_BODY_WINDOW_RATIO_H'],
+  ['bs_id','MT_BS_ID'],
+  ['bs_pass','MT_BS_PASS'],
+  ['bs_handle','MT_BS_HANDLE'],
+  ['filter_tools','MT_FILTER_TOOLS'],
+  ['moveMode','MT_MOVE_MODE'],
+  ['image_width','MT_IMAGE_WIDTH'],
+  ['no_sns_post','MT_NO_SNS_POST'],
+  ['ServerLog','MT_SERVER_LOG'],
+  ['log_path','MT_LOG_PATH'],
+]
+
+export function getEnvironment(name: string) {
+  const map = EnvMap.find(value => value[0] === name);
+  return map ? Process.env[map[1]] || Process.env[map[0]] : undefined;
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -26,7 +61,7 @@ export type RunStatusI = typeof run_status.$inferInsert
 
 function expandPath(envPath: string) {
   return envPath.replace(/\$([a-zA-Z_][a-zA-Z0-9_]*)/g, (match, name) => process.env[name] || match)
-      .replace(/%([a-zA-Z_][a-zA-Z0-9_]*)%/g, (match, name) => process.env[name] || match);
+    .replace(/%([a-zA-Z_][a-zA-Z0-9_]*)%/g, (match, name) => process.env[name] || match);
 }
 
 export function isValidFilePath(filePath: string) {
@@ -42,8 +77,9 @@ export function isValidFilePath(filePath: string) {
   }
 }
 
-export let dbPath = Process.env.sqlite_path && isValidFilePath(expandPath(Process.env.sqlite_path)) ?
-    'file:' + path.normalize(expandPath(Process.env.sqlite_path)).replaceAll('\\', '/') : ':memory:'
+const sq_path = getEnvironment('sqlite_path')
+export const dbPath = sq_path && isValidFilePath(expandPath(sq_path)) ?
+  'file:' + path.normalize(expandPath(sq_path)).replaceAll('\\', '/') : ':memory:'
 
 const db = drizzle(dbPath);
 logSync(`db path:${dbPath}`)
@@ -53,6 +89,7 @@ export type PersonMode = 'third' | 'second';
 export type MoveMode = 'realtime' | 'skip';
 const MapEndpoint = ['directions', 'places', 'timezone', 'svMeta', 'streetView', 'nearby'] as const;
 export type MapEndpoint = (typeof MapEndpoint)[number];
+
 
 export const env = {
   travelerExist: true, //  まだ動的ツール切り替えはClaude desktopに入っていない。。
@@ -77,7 +114,6 @@ export const env = {
 export const scriptTables = new Map<string, { script: any, nodeNameToId: Map<string, number> }>();
 
 
-
 export class DbService extends Effect.Service<DbService>()("traveler/DbService", {
   accessors: true,
   effect: Effect.gen(function* () {
@@ -95,53 +131,56 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         //  暫定のdb初期値
         const created = dayjs().toDate();
         yield* stub(db.select().from(avatar_model)).pipe(Effect.tap(a => {
-              if (a.length === 0) {
-                return stub(db.insert(avatar_model).values({
-                  id: 1,
-                  comment: '',
-                  baseCharPrompt: defaultBaseCharPrompt,
-                  created: created,
-                  modelName: '',
-                }).returning()).pipe(
-                    Effect.onError(cause => McpLogService.logError(`error init avatar:${cause}`)))
-              }
-            }),
-            Effect.andThen(a => McpLogService.logTrace(`init avatar:${JSON.stringify(a)}`))
+            if (a.length === 0) {
+              return stub(db.insert(avatar_model).values({
+                id: 1,
+                comment: '',
+                baseCharPrompt: defaultBaseCharPrompt,
+                created: created,
+                modelName: '',
+              }).returning()).pipe(
+                Effect.onError(cause => McpLogService.logError(`error init avatar:${cause}`)))
+            }
+          }),
+          Effect.andThen(a => McpLogService.logTrace(`init avatar:${JSON.stringify(a)}`))
         )
         yield* stub(db.select().from(runAvatar)).pipe(Effect.tap(a => {
-              if (a.length === 0) {
-                return stub(db.insert(runAvatar).values({
-                  name: 'traveler',
-                  modelId: 1,
-                  created: created,
-                  enable: true,
-                  nextStayTime: dayjs('9999-12-31').toDate(),
-                  lang: 'JP',
-                  currentRoute: ''
-                } as typeof runAvatar.$inferInsert).returning()).pipe(
-                    Effect.onError(cause => McpLogService.logError(`error init avatar:${cause}`)))
-              }
-            }),
-            Effect.andThen(a => McpLogService.logTrace(`init avatar:${JSON.stringify(a)}`))
+            if (a.length === 0) {
+              return stub(db.insert(runAvatar).values({
+                name: 'traveler',
+                modelId: 1,
+                created: created,
+                enable: true,
+                nextStayTime: dayjs('9999-12-31').toDate(),
+                lang: 'JP',
+                currentRoute: ''
+              } as typeof runAvatar.$inferInsert).returning()).pipe(
+                Effect.onError(cause => McpLogService.logError(`error init avatar:${cause}`)))
+            }
+          }),
+          Effect.andThen(a => McpLogService.logTrace(`init avatar:${JSON.stringify(a)}`))
         )
         yield* stub(db.select().from(avatar_sns)).pipe(Effect.tap(a => {
-              if (a.length === 0 && Process.env.bs_id && Process.env.bs_pass && Process.env.bs_handle) {
-                return stub(db.insert(avatar_sns).values({
-                  assignAvatarId: 1,
-                  snsType: "bs",
-                  snsHandleName: Process.env.bs_handle,
-                  snsId: Process.env.bs_id,
-                  feedSeenAt: 0,
-                  mentionSeenAt: 0,
-                  created: created,
-                  enable: true,
-                }).returning()).pipe(
-                    Effect.onError(cause => McpLogService.logError(`init bs sns:${cause}`)))
-              }
-            }),
-            Effect.andThen(a => McpLogService.logTrace(`init0:${JSON.stringify(a)}`))
+            const bs_id = getEnvironment('bs_id')
+            const bs_pass = getEnvironment('bs_pass')
+            const bs_handle = getEnvironment('bs_handle')
+            if (a.length === 0 && bs_id && bs_pass && bs_handle) {
+              return stub(db.insert(avatar_sns).values({
+                assignAvatarId: 1,
+                snsType: "bs",
+                snsHandleName: bs_handle,
+                snsId: bs_id,
+                feedSeenAt: 0,
+                mentionSeenAt: 0,
+                created: created,
+                enable: true,
+              }).returning()).pipe(
+                Effect.onError(cause => McpLogService.logError(`init bs sns:${cause}`)))
+            }
+          }),
+          Effect.andThen(a => McpLogService.logTrace(`init0:${JSON.stringify(a)}`))
         )
-        yield *stub(db.select().from(run_status)).pipe(Effect.tap(a => {
+        yield* stub(db.select().from(run_status)).pipe(Effect.tap(a => {
           if (a.length === 0) {
             return saveRunStatus({
               id: 1,  // 1レコードにする
@@ -186,7 +225,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       return stub(db.select().from(env_kv).where(eq(env_kv.key, key))).pipe(
         Effect.map(a => a.length === 1 && a[0].value ? Option.some(a[0].value) : Option.none()),
         Effect.orElseSucceed(() => Option.none<string>()),
-        )
+      )
     }
 
     function saveEnv(key: string, value: string) {
@@ -205,7 +244,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
           updated: now
         }
       }).returning()).pipe(Effect.andThen(a =>
-          a && Array.isArray(a) && a.length === 1 ? Effect.succeed(a[0]) : Effect.fail(new Error(`saveEnv fail:${run_status.id}`))));
+        a && Array.isArray(a) && a.length === 1 ? Effect.succeed(a[0]) : Effect.fail(new Error(`saveEnv fail:${run_status.id}`))));
     }
 
     function getAvatar(avatarId: number) {
@@ -226,7 +265,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         target: run_status.id,
         set: save
       }).returning()).pipe(Effect.andThen(a =>
-          a && Array.isArray(a) && a.length === 1 ? Effect.succeed(a[0]) : Effect.fail(new Error(`saveRunStatus fail:${run_status.id}`))));
+        a && Array.isArray(a) && a.length === 1 ? Effect.succeed(a[0]) : Effect.fail(new Error(`saveRunStatus fail:${run_status.id}`))));
     }
 
     function getAvatarModel(avatarId: number) {
@@ -235,12 +274,12 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
 
     function getTodayAnniversary(now: dayjs.Dayjs) {
       return stub(db.select().from(anniversary).where(
-              and(eq(anniversary.del, false),
-                  eq(anniversary.month, now.month() + 1),
-                  eq(anniversary.day, now.date()),
-                  or(eq(anniversary.year, now.year()),
-                      eq(anniversary.year, 0)))
-          )
+          and(eq(anniversary.del, false),
+            eq(anniversary.month, now.month() + 1),
+            eq(anniversary.day, now.date()),
+            or(eq(anniversary.year, now.year()),
+              eq(anniversary.year, 0)))
+        )
       )
     }
 
@@ -250,10 +289,10 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
 
     function getEnvs(keys: string[]) {
       return stub(db.select().from(env_kv).where(inArray(env_kv.key, keys))).pipe(
-          Effect.andThen(a => a.reduce((p, c) => {
-            p[c.key] = c.value
-            return p;
-          }, {} as { [key: string]: string })))
+        Effect.andThen(a => a.reduce((p, c) => {
+          p[c.key] = c.value
+          return p;
+        }, {} as { [key: string]: string })))
     }
 
     function saveSnsPost(snsPostId: string, sendUserId: string, postType = 0, snsType = 'bs') {
@@ -265,7 +304,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         createTime: dayjs().toDate(),
         del: false
       }).returning()).pipe(
-          Effect.andThen(a => a.length === 1 ? Effect.succeed(a[0].id) : Effect.fail(new Error('saveSnsPost'))))
+        Effect.andThen(a => a.length === 1 ? Effect.succeed(a[0].id) : Effect.fail(new Error('saveSnsPost'))))
     }
 
     function getAvatarSns(avatarId: number, snsType: SnsType) {
@@ -274,19 +313,19 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
 
     function updateSnsFeedSeenAt(avatarId: number, snsType: SnsType, timeEpoch: number) {
       return stub(db.update(avatar_sns).set({feedSeenAt: timeEpoch})
-          .where(and(eq(avatar_sns.assignAvatarId, avatarId), eq(avatar_sns.snsType, snsType))).returning()).pipe(
-          Effect.andThen(a =>
-              a.length === 1 ? Effect.succeed(a[0]) : Effect.fail(new Error('updateSnsFeedSeenAt'))),
-          Effect.tap(a => McpLogService.logTrace(`update feedSeenAt:${a.feedSeenAt}`)),
+        .where(and(eq(avatar_sns.assignAvatarId, avatarId), eq(avatar_sns.snsType, snsType))).returning()).pipe(
+        Effect.andThen(a =>
+          a.length === 1 ? Effect.succeed(a[0]) : Effect.fail(new Error('updateSnsFeedSeenAt'))),
+        Effect.tap(a => McpLogService.logTrace(`update feedSeenAt:${a.feedSeenAt}`)),
       )
     }
 
     function updateSnsMentionSeenAt(avatarId: number, snsType: SnsType, timeEpoch: number) {
       return stub(db.update(avatar_sns).set({mentionSeenAt: timeEpoch})
-          .where(and(eq(avatar_sns.assignAvatarId, avatarId), eq(avatar_sns.snsType, snsType))).returning()).pipe(
-          Effect.andThen(a =>
-              a.length === 1 ? Effect.succeed(a[0]) : Effect.fail(new Error('updateSnsMentionSeenAt'))),
-          Effect.tap(a => McpLogService.logTrace(`update mentionSeenAt:${a.mentionSeenAt}`)),
+        .where(and(eq(avatar_sns.assignAvatarId, avatarId), eq(avatar_sns.snsType, snsType))).returning()).pipe(
+        Effect.andThen(a =>
+          a.length === 1 ? Effect.succeed(a[0]) : Effect.fail(new Error('updateSnsMentionSeenAt'))),
+        Effect.tap(a => McpLogService.logTrace(`update mentionSeenAt:${a.mentionSeenAt}`)),
       )
     }
 
@@ -294,8 +333,8 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       return stub(db.update(avatar_model).set({
         baseCharPrompt: prompt
       }).where(eq(avatar_model.id, avatarId)).returning()).pipe(
-          Effect.andThen(a =>
-              a.length === 1 ? Effect.succeed(a[0].baseCharPrompt) : Effect.fail(new Error('updateBasePrompt')))
+        Effect.andThen(a =>
+          a.length === 1 ? Effect.succeed(a[0].baseCharPrompt) : Effect.fail(new Error('updateBasePrompt')))
       )
     }
 
@@ -352,94 +391,113 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       //  noBlueSky: 対話用bsアカウントがない
       //  filterTools: 使うツールのフィルタ undefinedなら可能なすべて
       return Effect.gen(function* () {
-       //  db有無の確認 dbサービスの初期化によって確認させる とコマンドon/off
-       yield* init()
-       env.progressToken = undefined
-       if (dbPath !== ':memory:') {
-         env.dbMode = "file"
-         env.dbFileExist = true
-       }
-       yield* getEnv('travelerExist').pipe(
-           Effect.andThen(a => {
-             env.travelerExist = a !== ''
-           }),
-           Effect.orElseSucceed(() => {
-             env.travelerExist = true // memoryモードで動くときはシンプルにコマンド存在にする
-           }))
-       const setting = yield* getEnvs(['personMode', 'promptChanged'])
+        //  db有無の確認 dbサービスの初期化によって確認させる とコマンドon/off
+        yield* init()
+        env.progressToken = undefined
+        if (dbPath !== ':memory:') {
+          env.dbMode = "file"
+          env.dbFileExist = true
+        }
+        yield* getEnv('travelerExist').pipe(
+          Effect.andThen(a => {
+            env.travelerExist = a !== ''
+          }),
+          Effect.orElseSucceed(() => {
+            env.travelerExist = true // memoryモードで動くときはシンプルにコマンド存在にする
+          }))
+        const setting = yield* getEnvs(['personMode', 'promptChanged'])
 
-       //  Google Map APIがなければ強制的に練習モード ある場合は設定に従う
-       //  APIがあるなら通常モード
-       env.isPractice = !(Process.env.GoogleMapApi_key || Process.env.mapApi_url);
-       if (Process.env.sd_key || Process.env.pixAi_key || Process.env.comfy_url) {
-         env.anyImageAiExist = true
-       }
-       if ((Process.env.bs_id && Process.env.bs_pass && Process.env.bs_handle)) {
-         env.anySnsExist = true
-       }
-       if (Process.env.no_sns_post) {
-         env.noSnsPost = true;
-       }
-       if (Process.env.ServerLog) {
-         env.loggingMode = true
-       }
-       if (Process.env.moveMode === 'skip') {
-         env.moveMode = "skip"
-       }
-       if (Process.env.remBgUrl) {
-         env.remBgUrl = Process.env.remBgUrl
-       }
-       if (Process.env.rembg_path || Process.env.rembgPath) {
-         env.rembgPath = Process.env.rembgPath || Process.env.rembg_path
-       }
-       //  デフォルトは三人称モード
-       env.personMode = !setting.personMode ? 'third' : setting.personMode as PersonMode;
-       yield* saveEnv('personMode', env.personMode as string)
+        //  Google Map APIがなければ強制的に練習モード ある場合は設定に従う
+        //  APIがあるなら通常モード
+        const GoogleMapApi_key = getEnvironment('GoogleMapApi_key')
+        const mapApi_url = getEnvironment('mapApi_url')
+        const sd_key = getEnvironment('sd_key')
+        const pixAi_key = getEnvironment('pixAi_key')
+        const comfy_url = getEnvironment('comfy_url')
+        const bs_id = getEnvironment('bs_id')
+        const bs_pass = getEnvironment('bs_pass')
+        const bs_handle = getEnvironment('bs_handle')
+        const no_sns_post = getEnvironment('no_sns_post')
+        const ServerLog = getEnvironment('ServerLog')
+        const moveMode = getEnvironment('moveMode')
+        const remBgUrl = getEnvironment('remBgUrl')
+        const rembg_path = getEnvironment('rembg_path')
+        const rembgPath = getEnvironment('rembgPath')
+        const filter_tools = getEnvironment('filter_tools')
+        const comfy_params = getEnvironment('comfy_params')
+        const fixed_model_prompt = getEnvironment('fixed_model_prompt')
+        const comfy_workflow_i2i = getEnvironment('comfy_workflow_i2i')
+        const comfy_workflow_t2i = getEnvironment('comfy_workflow_t2i')
+        env.isPractice = !(GoogleMapApi_key || mapApi_url);
+        if (sd_key || pixAi_key || comfy_url) {
+          env.anyImageAiExist = true
+        }
+        if ((bs_id && bs_pass && bs_handle)) {
+          env.anySnsExist = true
+        }
+        if (no_sns_post) {
+          env.noSnsPost = true;
+        }
+        if (ServerLog) {
+          env.loggingMode = true
+        }
+        if (moveMode === 'skip') {
+          env.moveMode = "skip"
+        }
+        if (remBgUrl) {
+          env.remBgUrl = remBgUrl
+        }
+        if (rembg_path || rembgPath) {
+          env.rembgPath = rembgPath || rembg_path
+        }
+        //  デフォルトは三人称モード
+        env.personMode = !setting.personMode ? 'third' : setting.personMode as PersonMode;
+        yield* saveEnv('personMode', env.personMode as string)
 
-       if (Process.env.filter_tools) {
-         env.filterTools = Process.env.filter_tools.trim().split(',').map(value => value.trim())
-       }
+        if (filter_tools) {
+          env.filterTools = filter_tools.trim().split(',').map(value => value.trim())
+        }
 
-       logSync('comfy_params:', Process.env.comfy_params)
+        logSync('comfy_params:', comfy_params)
 
-       env.promptChanged = !!setting.promptChanged
-       yield* saveEnv('promptChanged', env.promptChanged ? '1' : '')
+        env.promptChanged = !!setting.promptChanged
+        yield* saveEnv('promptChanged', env.promptChanged ? '1' : '')
 
-       if (Process.env.fixed_model_prompt) {
-         env.fixedModelPrompt = true
-       }
+        if (fixed_model_prompt) {
+          env.fixedModelPrompt = true
+        }
 
-       if (env.isPractice) {
-         yield* practiceRunStatus();
-       }
-       if (Process.env.mapApi_url) {
-         const s = Process.env.mapApi_url.split(',')
-         s.forEach(value => {
-           const match = value.match(/(\w+)=([\w:\/.\-_]+)/);
-           if (match) {
-             const key = match[1]
-             const val = match[2]
-             if (MapEndpoint.includes(key as MapEndpoint)) {
-               env.mapApis.set(key as MapEndpoint, val)
-             }
-           }
-         })
-       }
+        if (env.isPractice) {
+          yield* practiceRunStatus();
+        }
+        if (mapApi_url) {
+          const s = mapApi_url.split(',')
+          s.forEach(value => {
+            const match = value.match(/(\w+)=([\w:\/.\-_]+)/);
+            if (match) {
+              const key = match[1]
+              const val = match[2]
+              if (MapEndpoint.includes(key as MapEndpoint)) {
+                env.mapApis.set(key as MapEndpoint, val)
+              }
+            }
+          })
+        }
 
-       const files = yield* Effect.tryPromise(() => fs.promises.readdir(path.join(__pwd, `assets/comfy`)))
-       files.map(a => addScript(path.join(__pwd, `assets/comfy`, a)));
-       if (Process.env.comfy_workflow_i2i) {
-         addScript(Process.env.comfy_workflow_i2i, 'i2i')
-       }
-       if (Process.env.comfy_workflow_t2i) {
-         addScript(Process.env.comfy_workflow_t2i, 't2i')
-       }
+        const files = yield* Effect.tryPromise(() => fs.promises.readdir(path.join(__pwd, `assets/comfy`)))
+        files.map(a => addScript(path.join(__pwd, `assets/comfy`, a)));
+        if (comfy_workflow_i2i) {
+          addScript(comfy_workflow_i2i, 'i2i')
+        }
+        if (comfy_workflow_t2i) {
+          addScript(comfy_workflow_t2i, 't2i')
+        }
 
-       yield* McpLogService.logTrace(`initSystemMode end:${JSON.stringify(env)}`)
-     }).pipe(Effect.provide(McpLogServiceLive))
+        yield* McpLogService.logTrace(`initSystemMode end:${JSON.stringify(env)}`)
+      }).pipe(Effect.provide(McpLogServiceLive))
     }
 
-    function addScript(filePath: string,tag?:string) {
+    function addScript(filePath: string, tag?: string) {
       const script = loadScript(filePath);
       scriptTables.set(tag || script.name, {script: script.script, nodeNameToId: script.nodeNameToId})
     }
@@ -468,9 +526,6 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
     }
 
 
-
-
-
     return {
       init,
       initSystemMode,
@@ -496,4 +551,4 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
 }) {
 }
 
-export const DbServiceLive = Layer.merge(DbService.Default,McpLogServiceLive)
+export const DbServiceLive = Layer.merge(DbService.Default, McpLogServiceLive)

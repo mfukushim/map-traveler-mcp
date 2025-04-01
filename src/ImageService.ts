@@ -8,10 +8,9 @@ import FormData from 'form-data';
 import {Jimp} from "jimp";
 import {PixAIClient} from '@pixai-art/client'
 import {type MediaBaseFragment, TaskBaseFragment} from "@pixai-art/client/types/generated/graphql.js";
-import * as Process from "node:process";
 import 'dotenv/config'
 import {logSync, McpLogService, McpLogServiceLive} from "./McpLogService.js";
-import {__pwd, DbService, env, scriptTables} from "./DbService.js";
+import {__pwd, DbService, env, getEnvironment, scriptTables} from "./DbService.js";
 import WebSocket from 'ws'
 import * as path from "path";
 import * as os from "node:os";
@@ -22,17 +21,17 @@ import {sendProgressNotification} from "./McpService.js";
 
 export const defaultBaseCharPrompt = 'depth of field, cinematic composition, masterpiece, best quality,looking at viewer,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut'
 
-export const widthOut = Number.parseInt(Process.env.image_width || "512") || 512;
+export const widthOut = Number.parseInt(getEnvironment('env.image_width') || "512") || 512;
 export const heightOut = Math.floor(widthOut*0.75);
 
 
 let recentImage: Buffer | undefined //  直近の1生成画像を保持する snsのpostに自動引用する
 
-const key: string = Process.env.sd_key || ''
+const sdKey: string = getEnvironment('sd_key') || ''
 const defaultPixAiModelId = '1648918127446573124';
 
 const pixAiClient = new PixAIClient({
-  apiKey: Process.env.pixAi_key || '',
+  apiKey: getEnvironment('pixAi_key') || '',
   webSocketImpl: WebSocket
 })
 
@@ -42,8 +41,9 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
   effect: Effect.gen(function* () {
 
     const getBasePrompt = (avatarId: number) => {
-      if (env.fixedModelPrompt) {
-        return Effect.succeed(Process.env.fixed_model_prompt!!)
+      const fixed_model_prompt = getEnvironment('fixed_model_prompt')
+      if (fixed_model_prompt) {
+        return Effect.succeed(fixed_model_prompt)
       }
       return DbService.getAvatarModel(avatarId).pipe(
           Effect.andThen(a => a.baseCharPrompt + ',anime'),
@@ -91,7 +91,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         const client = yield* HttpClient.HttpClient;
         return yield* HttpClientRequest.post(`https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image`).pipe(
             HttpClientRequest.setHeaders({
-              Authorization: `Bearer ${key}`,
+              Authorization: `Bearer ${sdKey}`,
               Accept: "application/json",
             }),
             HttpClientRequest.bodyJson({
@@ -154,7 +154,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
                         headers: {
                           ...formData.getHeaders(),
                           Accept: 'application/json',
-                          Authorization: `Bearer ${key}`,
+                          Authorization: `Bearer ${sdKey}`,
                         },
                         body: formData.getBuffer(),
                       }
@@ -186,7 +186,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       steps?: number,
       cfg_scale?: number,
     }) {
-      if (!Process.env.sd_key) {
+      if (!sdKey) {
         return Effect.fail(new Error('no key'))
       }
       return inImage ? sdMakeImageToImage(prompt, inImage, opt) : sdMakeTextToImage(prompt, opt);
@@ -200,9 +200,10 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       steps?: number,
       cfg_scale?: number,
     }) {
-      if (!Process.env.pixAi_key) {
+      if (!getEnvironment('pixAi_key')) {
         return Effect.fail(new Error('no key'))
       }
+      const pixAi_modelId = getEnvironment('pixAi_modelId')
       return Effect.retry(
           Effect.gen(function* () {
             let mediaId
@@ -223,13 +224,13 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               Effect.andThen(a => {
                 const body = a ? {
                   prompts: prompt,
-                  modelId: Process.env.pixAi_modelId || defaultPixAiModelId,
+                  modelId: pixAi_modelId || defaultPixAiModelId,
                   width: opt?.width || 512,
                   height: opt?.height || 512,
                   mediaId: a
                 } : {
                   prompts: prompt,
-                  modelId: Process.env.pixAi_modelId || defaultPixAiModelId,
+                  modelId: pixAi_modelId || defaultPixAiModelId,
                   width: opt?.width || 512,
                   height: opt?.height || 512,
                 }
@@ -452,7 +453,8 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         case 'pixAi':
           return pixAiMakeImage(prompt, inImage, opt)
         case 'comfyUi': {
-          const optList = Process.env.comfy_params ? Process.env.comfy_params.split(',').map(a => {
+          const comfy_params = getEnvironment('comfy_params')
+          const optList = comfy_params ? comfy_params.split(',').map(a => {
             const b = a.split('=');
             const val = b[1].includes("'") ? b[1].replaceAll("'", "") : Number.parseFloat(b[1])
             return [b[0], val]
@@ -679,6 +681,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             const fixedThreshold = 2  //  バストショットに切り替える閾値 2,1の2回はバストショット生成を試みる
             let isFixedBody = false
             let appendPrompt: string | undefined
+            const ServerLog = getEnvironment('ServerLog')
 
             const avatarImage = yield* Effect.gen(function* () {
               const baseCharPrompt = yield* getBasePrompt(defaultAvatarId)
@@ -710,7 +713,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
                 Effect.andThen(sdImage => rembg(sdImage)),
                 Effect.tap(avatarImage => localDebug && fs.writeFileSync('tools/test/testOutRmBg.png', avatarImage)),
                 Effect.tap(avatarImage => {
-                  if (Process.env.ServerLog && Process.env.ServerLog.includes('trace')) {
+                  if (ServerLog && ServerLog.includes('trace')) {
                     fs.writeFileSync(path.join(os.tmpdir(), `trd-${crypto.randomUUID()}.png`), avatarImage, {flag: "w"});
                   }
                 }),
@@ -791,7 +794,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
                   const formData = new FormData()
                   formData.append('image', a, {filename: fileName})
                   return fetch(
-                      `${Process.env.comfy_url}/upload/image`,
+                      `${getEnvironment('comfy_url')}/upload/image`,
                       {
                         method: 'POST',
                         headers: {
@@ -818,7 +821,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       //  TODO comfyの場合のファイルアップロード。。
       return Effect.gen(function* () {
         const client = yield* HttpClient.HttpClient;
-        return yield* HttpClientRequest.post(`${Process.env.comfy_url}/prompt`).pipe(
+        return yield* HttpClientRequest.post(`${getEnvironment('comfy_url')}/prompt`).pipe(
             HttpClientRequest.setHeaders({
               // Authorization: `Bearer ${key}`,
               Accept: "application/json",
@@ -861,7 +864,8 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           })
         })
       })
-      return HttpClient.get(`${Process.env.comfy_url}/history`).pipe(
+      const comfy_url = getEnvironment('comfy_url')
+      return HttpClient.get(`${comfy_url}/history`).pipe(
           Effect.andThen((response) => HttpClientResponse.schemaBodyJson(sc)(response)),
           Effect.scoped,
           Effect.provide(FetchHttpClient.layer),
@@ -876,7 +880,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             return Effect.forEach(keys, a => {
               const imageList: { filename: string, subfolder: string, type: string }[] = outputs[a].images
               return Effect.forEach(imageList, a2 =>
-                  HttpClient.get(`${Process.env.comfy_url}/view`, {
+                  HttpClient.get(`${comfy_url}/view`, {
                     urlParams: {
                       filename: a2.filename,
                       subfolder: a2.subfolder,
@@ -895,7 +899,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     }
 
     function comfyApiMakeImage(prompt: string, inImage?: Buffer, params?: Record<string, any>) {
-      if (!Process.env.comfy_url) {
+      if (!getEnvironment('comfy_url')) {
         return Effect.fail(new Error('no comfy_url'))
       }
       return Effect.gen(function* () {
@@ -905,7 +909,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
 
         const uploadFileName = inImage ? yield* comfyUploadImage(inImage, params).pipe(Effect.andThen(a => Effect.succeedSome(a))) : Option.none()
         //  uploadFileNameはプロンプトスクリプト内で置き換えなければならないので
-        const scriptName = inImage ? (Process.env.comfy_workflow_i2i ? 'i2i' : 'i2i_sample') : (Process.env.comfy_workflow_t2i ? 't2i' : 't2i_sample')
+        const scriptName = inImage ? (getEnvironment('comfy_workflow_i2i') ? 'i2i' : 'i2i_sample') : (getEnvironment('comfy_workflow_t2i') ? 't2i' : 't2i_sample')
         const sdT2i = scriptTables.get(scriptName);
         if (!sdT2i) {
           return yield* Effect.fail(new Error('comfyApiMakeImage no script table'))

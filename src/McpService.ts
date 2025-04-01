@@ -13,7 +13,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js";
 import {defaultAvatarId, RunnerService, RunnerServiceLive, useAiImageGen} from "./RunnerService.js";
 import {MapService, MapServiceLive} from "./MapService.js";
-import {__pwd, DbService, DbServiceLive, env, PersonMode} from "./DbService.js";
+import {__pwd, DbService, DbServiceLive, env, getEnvironment, PersonMode} from "./DbService.js";
 import {StoryService, StoryServiceLive} from "./StoryService.js";
 import {FetchHttpClient, HttpClient} from "@effect/platform";
 import {defaultBaseCharPrompt, ImageService, ImageServiceLive} from "./ImageService.js";
@@ -480,7 +480,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           )
         )
       }
-      const getEnvironment = () => {
+      const getSetting = () => {
         return Effect.gen(function *() {
           const version = yield *DbService.getVersion()
           const envText = 'A json of current environment settings\n' +
@@ -488,10 +488,10 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 return `${key}= ${JSON.stringify(value)}`
               }).join('\n')+
               '\nList of Image settings\n' +
-              (Process.env.bodyAreaRatio ? `bodyAreaRatio=${Process.env.bodyAreaRatio}\n`:'') +
-              (Process.env.bodyHWRatio ? `bodyHWRatio=${Process.env.bodyHWRatio}\n`:'') +
-              (Process.env.bodyWindowRatioW ? `bodyWindowRatioW=${Process.env.bodyWindowRatioW}\n`:'') +
-              (Process.env.bodyWindowRatioH ? `bodyWindowRatioH=${Process.env.bodyWindowRatioH}\n`:'') +
+              (getEnvironment('bodyAreaRatio') ? `bodyAreaRatio=${getEnvironment('bodyAreaRatio')}\n`:'') +
+              (getEnvironment('bodyHWRatio') ? `bodyHWRatio=${getEnvironment('bodyHWRatio')}\n`:'') +
+              (getEnvironment('bodyWindowRatioW') ? `bodyWindowRatioW=${getEnvironment('bodyWindowRatioW')}\n`:'') +
+              (getEnvironment('bodyWindowRatioH') ? `bodyWindowRatioH=${getEnvironment('bodyWindowRatioH')}\n`:'') +
               `version=${version}\n`
           return [{
             type: "text",
@@ -753,7 +753,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         //  自身は除去する
         return Effect.gen(function* () {
           const posts = yield* SnsService.getFeed(feedUri, 4)
-          const detectFeeds = posts.filter(v => v.post.author.handle !== Process.env.bs_handle)
+          const bs_handle = getEnvironment('bs_handle')
+          const detectFeeds = posts.filter(v => v.post.author.handle !== bs_handle)
             .reduce((p, c) => {
               //  同一ハンドルの直近1件のみ
               if (!p.find(v => v.post.author.handle === c.post.author.handle)) {
@@ -910,7 +911,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           case "set_traveler_info":
             return setTravelerInfo(String(request.params.arguments?.settings))
           case "get_setting":
-            return getEnvironment()
+            return getSetting()
           case "set_avatar_prompt":
             return setAvatarPrompt(String(request.params.arguments?.prompt))
           case "reset_avatar_prompt":
@@ -1119,7 +1120,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         getSnsMentions,
         replySnsWriter,
         toolSwitch,
-        getEnvironment,
+        getSetting,
         makeToolsDef,
       }
     }
