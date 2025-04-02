@@ -4,9 +4,8 @@ import {Effect, Option, Schedule} from "effect";
 import dayjs from "dayjs";
 import timezone = require("dayjs/plugin/timezone")
 import {MapDef, MapService} from "./MapService.js";
-import {__pwd, DbService, env} from "./DbService.js";
+import {__pwd, bs_handle, bs_id, bs_pass, DbService, env} from "./DbService.js";
 import {McpLogService} from "./McpLogService.js";
-import * as Process from "node:process";
 import * as path from "node:path";
 import * as fs from "node:fs";
 
@@ -235,7 +234,7 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
 `)
           }
           //  基本動作状態
-          const bsEnable = Process.env.bs_id && Process.env.bs_pass && Process.env.bs_handle
+          const bsEnable = bs_id && bs_pass && bs_handle
           if (!bsEnable) {
             textList.push('Optional: Set up a Bluesky SNS account\n' +
               'By setting your registered address, password, and handle for Bluesky SNS, you can post travel information on the SNS and obtain and interact with other people\'s travel information.\n' +

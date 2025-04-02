@@ -6,19 +6,18 @@ import * as fs from "node:fs";
 import {fileURLToPath} from "url";
 import {dirname} from "path";
 import * as path from "node:path"
-import * as Process from "node:process";
 import dayjs from "dayjs";
 import {ToolContentResponse} from "./McpService.js";
-import {getEnvironment} from "./DbService.js";
+import {log_path, ServerLog} from "./DbService.js";
+
 
 const inGitHubAction = process.env.GITHUB_ACTIONS === 'true';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const __pwd = __dirname.endsWith('src') ? path.join(__dirname,'..'):path.join(__dirname,'../..')
-const logPath = getEnvironment('log_path') || path.join(__pwd,"mapTravelerLog.log")
+const logPath = log_path || path.join(__pwd,"mapTravelerLog.log")
 
-const ServerLog = getEnvironment('ServerLog')
 const logLevel = ServerLog ? (ServerLog as string).split(','):[]
 
 export function logSync(...message:any[]) {

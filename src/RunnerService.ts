@@ -2,14 +2,23 @@
 
 import {Effect, Option, Schema} from "effect";
 import {MapService, MapDef} from "./MapService.js";
-import {__pwd, DbService, DbServiceLive, env, RunStatus} from "./DbService.js";
+import {
+  __pwd, bodyAreaRatio, bodyHWRatio, bodyWindowRatioH, bodyWindowRatioW,
+  comfy_url,
+  DbService,
+  DbServiceLive,
+  env,
+  pixAi_key,
+  RunStatus,
+  sd_key,
+  time_scale
+} from "./DbService.js";
 import * as geolib from "geolib";
 import dayjs = require("dayjs");
 import utc = require("dayjs/plugin/utc");
 import duration = require("dayjs/plugin/duration");
 import relativeTime = require("dayjs/plugin/relativeTime");
 import {ImageService, widthOut, heightOut} from "./ImageService.js";
-import * as Process from "node:process";
 import {FacilityInfo, StoryService} from "./StoryService.js";
 import {TripStatus} from "./db/schema.js";
 import 'dotenv/config'
@@ -25,7 +34,7 @@ dayjs.extend(utc)
 dayjs.extend(duration)
 dayjs.extend(relativeTime)
 
-export const useAiImageGen = (Process.env.pixAi_key ? 'pixAi' : Process.env.sd_key ? 'sd' : Process.env.comfy_url ? 'comfyUi': '')
+export const useAiImageGen = (pixAi_key ? 'pixAi' : sd_key ? 'sd' : comfy_url ? 'comfyUi': '')
 
 export interface LocationDetail {
   status: TripStatus;
@@ -72,7 +81,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
   accessors: true,
   effect: Effect.gen(function* () {
     //  走行時間スケール 2で時速40kmくらい 4くらいにするか 20km/hくらい
-    const durationScale2 = (Process.env.time_scale && Number.parseFloat(Process.env.time_scale)) || 4
+    const durationScale2 = (time_scale && Number.parseFloat(time_scale)) || 4
 
     const isShips = (maneuver?: string) => ['ferry', 'airplane'].includes(maneuver || '')
     const maneuverIsShip = (step: typeof MapDef.GmStepSchema.Type) => isShips(step.maneuver)
@@ -651,11 +660,11 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       return Effect.gen(function* () {
         const okLoc = yield* MapService.findStreetViewMeta(loc.lat, loc.lng, loc.bearing, 640, 640)
         const baseImage = yield* MapService.getStreetViewImage(okLoc.lat, okLoc.lng, loc.bearing, 640, 640)
-        const bodyAreaRatio = Process.env.bodyAreaRatio ? {bodyAreaRatio: Number.parseFloat(Process.env.bodyAreaRatio)} : {}
-        const bodyHWRatio = Process.env.bodyHWRatio ? {bodyHWRatio: Number.parseFloat(Process.env.bodyHWRatio)} : {}
-        const bodyWindowRatioW = Process.env.bodyWindowRatioW ? {bodyWindowRatioW: Number.parseFloat(Process.env.bodyWindowRatioW)} : {}
-        const bodyWindowRatioH = Process.env.bodyWindowRatioH ? {bodyWindowRatioH: Number.parseFloat(Process.env.bodyWindowRatioH)} : {}
-        return yield* ImageService.makeRunnerImageV3(baseImage, useAiImageGen, abort, {...bodyAreaRatio, ...bodyHWRatio, ...bodyWindowRatioW, ...bodyWindowRatioH}, localDebug).pipe(
+        const bodyAreaRatioJ = bodyAreaRatio ? {bodyAreaRatio: Number.parseFloat(bodyAreaRatio)} : {}
+        const bodyHWRatioJ = bodyHWRatio ? {bodyHWRatio: Number.parseFloat(bodyHWRatio)} : {}
+        const bodyWindowRatioWJ = bodyWindowRatioW ? {bodyWindowRatioW: Number.parseFloat(bodyWindowRatioW)} : {}
+        const bodyWindowRatioHJ = bodyWindowRatioH ? {bodyWindowRatioH: Number.parseFloat(bodyWindowRatioH)} : {}
+        return yield* ImageService.makeRunnerImageV3(baseImage, useAiImageGen, abort, {...bodyAreaRatioJ, ...bodyHWRatioJ, ...bodyWindowRatioWJ, ...bodyWindowRatioHJ}, localDebug).pipe(
           Effect.andThen(a => Effect.gen(function* () {
             const buf = yield* Effect.tryPromise(() => sharp(a.buf).resize({
               width: widthOut,

@@ -47,10 +47,39 @@ const EnvMap: [string, string][] = [
   ['log_path','MT_LOG_PATH'],
 ]
 
-export function getEnvironment(name: string) {
+function getEnvironment(name: string) {
   const map = EnvMap.find(value => value[0] === name);
   return map ? Process.env[map[1]] || Process.env[map[0]] : undefined;
 }
+
+export const GoogleMapApi_key = getEnvironment('GoogleMapApi_key')
+export const mapApi_url = getEnvironment('mapApi_url')
+export const sd_key = getEnvironment('sd_key')
+export const pixAi_key = getEnvironment('pixAi_key')
+export const pixAi_modelId = getEnvironment('pixAi_modelId')
+export const comfy_url = getEnvironment('comfy_url')
+export const no_sns_post = getEnvironment('no_sns_post')
+export const ServerLog = getEnvironment('ServerLog')
+export const moveMode = getEnvironment('moveMode')
+export const remBgUrl = getEnvironment('remBgUrl')
+export const rembg_path = getEnvironment('rembg_path')
+export const rembgPath = getEnvironment('rembgPath')
+export const filter_tools = getEnvironment('filter_tools')
+export const comfy_params = getEnvironment('comfy_params')
+export const fixed_model_prompt = getEnvironment('fixed_model_prompt')
+export const comfy_workflow_i2i = getEnvironment('comfy_workflow_i2i')
+export const comfy_workflow_t2i = getEnvironment('comfy_workflow_t2i')
+export const bs_id = getEnvironment('bs_id')
+export const bs_pass = getEnvironment('bs_pass')
+export const bs_handle = getEnvironment('bs_handle')
+export const image_width = getEnvironment('image_width')
+export const log_path = getEnvironment('log_path')
+export const bodyAreaRatio = getEnvironment('bodyAreaRatio')
+export const bodyHWRatio = getEnvironment('bodyHWRatio')
+export const bodyWindowRatioW = getEnvironment('bodyWindowRatioW')
+export const bodyWindowRatioH = getEnvironment('bodyWindowRatioH')
+export const time_scale = getEnvironment('time_scale')
+export const sqlite_path = getEnvironment('sqlite_path')
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -77,9 +106,8 @@ export function isValidFilePath(filePath: string) {
   }
 }
 
-const sq_path = getEnvironment('sqlite_path')
-export const dbPath = sq_path && isValidFilePath(expandPath(sq_path)) ?
-  'file:' + path.normalize(expandPath(sq_path)).replaceAll('\\', '/') : ':memory:'
+export const dbPath = sqlite_path && isValidFilePath(expandPath(sqlite_path)) ?
+  'file:' + path.normalize(expandPath(sqlite_path)).replaceAll('\\', '/') : ':memory:'
 
 const db = drizzle(dbPath);
 logSync(`db path:${dbPath}`)
@@ -161,9 +189,6 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
           Effect.andThen(a => McpLogService.logTrace(`init avatar:${JSON.stringify(a)}`))
         )
         yield* stub(db.select().from(avatar_sns)).pipe(Effect.tap(a => {
-            const bs_id = getEnvironment('bs_id')
-            const bs_pass = getEnvironment('bs_pass')
-            const bs_handle = getEnvironment('bs_handle')
             if (a.length === 0 && bs_id && bs_pass && bs_handle) {
               return stub(db.insert(avatar_sns).values({
                 assignAvatarId: 1,
@@ -409,25 +434,6 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
 
         //  Google Map APIがなければ強制的に練習モード ある場合は設定に従う
         //  APIがあるなら通常モード
-        const GoogleMapApi_key = getEnvironment('GoogleMapApi_key')
-        const mapApi_url = getEnvironment('mapApi_url')
-        const sd_key = getEnvironment('sd_key')
-        const pixAi_key = getEnvironment('pixAi_key')
-        const comfy_url = getEnvironment('comfy_url')
-        const bs_id = getEnvironment('bs_id')
-        const bs_pass = getEnvironment('bs_pass')
-        const bs_handle = getEnvironment('bs_handle')
-        const no_sns_post = getEnvironment('no_sns_post')
-        const ServerLog = getEnvironment('ServerLog')
-        const moveMode = getEnvironment('moveMode')
-        const remBgUrl = getEnvironment('remBgUrl')
-        const rembg_path = getEnvironment('rembg_path')
-        const rembgPath = getEnvironment('rembgPath')
-        const filter_tools = getEnvironment('filter_tools')
-        const comfy_params = getEnvironment('comfy_params')
-        const fixed_model_prompt = getEnvironment('fixed_model_prompt')
-        const comfy_workflow_i2i = getEnvironment('comfy_workflow_i2i')
-        const comfy_workflow_t2i = getEnvironment('comfy_workflow_t2i')
         env.isPractice = !(GoogleMapApi_key || mapApi_url);
         if (sd_key || pixAi_key || comfy_url) {
           env.anyImageAiExist = true
