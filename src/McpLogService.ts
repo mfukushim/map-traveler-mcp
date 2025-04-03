@@ -6,18 +6,19 @@ import * as fs from "node:fs";
 import {fileURLToPath} from "url";
 import {dirname} from "path";
 import * as path from "node:path"
-import * as Process from "node:process";
 import dayjs from "dayjs";
 import {ToolContentResponse} from "./McpService.js";
+import {log_path, ServerLog} from "./EnvUtils.js";
+
 
 const inGitHubAction = process.env.GITHUB_ACTIONS === 'true';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const __pwd = __dirname.endsWith('src') ? path.join(__dirname,'..'):path.join(__dirname,'../..')
-const logPath = Process.env.log_path || path.join(__pwd,"mapTravelerLog.log")
+const logPath = log_path || path.join(__pwd,"mapTravelerLog.log")
 
-const logLevel = Process.env.ServerLog ? (Process.env.ServerLog as string).split(','):[]
+const logLevel = ServerLog ? (ServerLog as string).split(','):[]
 
 export function logSync(...message:any[]) {
   if(process.env.VITEST !== 'true' && logLevel.includes('sync')) {
@@ -31,7 +32,7 @@ export function logSync(...message:any[]) {
 }
 
 logSync(`pwd:${__pwd}`)
-logSync(`ServerLog:${Process.env.ServerLog}`)
+logSync(`ServerLog:${ServerLog}`)
 
 
 export class McpLogService extends Effect.Service<McpLogService>()("traveler/McpLogService", {

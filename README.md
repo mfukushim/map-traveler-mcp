@@ -101,35 +101,37 @@ claude_desktop_config.json
       "command": "npx",
       "args": ["-y", "@mfukushim/map-traveler-mcp"],
       "env":{
-        "GoogleMapApi_key":"(Google Map API key)",
-        "mapApi_url": "(Optional: Map API custom endpoint. Example: direction=https://xxxx,places=https://yyyy )",
-        "time_scale": "(Optional:Scale of travel time on real roads duration. default 4)",
-        "sqlite_path":"(db save path: e.g. %USERPROFILE%/Desktop/traveler.sqlite ,$HOME/traveler.sqlite )",
-        "rembg_path": "(absolute path of the installed rembg cli)",
-        "remBgUrl": "(rembg API URL)",
-        "pixAi_key":"(pixAi API key)",
-        "sd_key":"(or Stability.ai image generation API key",
-        "pixAi_modelId": "(Optional: pixAi ModelId, if not set use default model 1648918127446573124 ",
-        "comfy_url": "(Option: Generate image using ComfyUI API at specified URL. Example: http://192.168.1.100:8188)",
-        "comfy_workflow_t2i": "(Optional: Path to API workflow file when using text to image with ComfyUI. If not specified: assets/comfy/t2i_sample.json)",
-        "comfy_workflow_i2i": "(Optional: Path of API workflow file when image to image in ComfyUI. If not specified: assets/comfy/i2i_sample.json)",
-        "comfy_params": "(Optional: Variable values to send to the workflow via comfyUI API)",
-        "fixed_model_prompt": "(Optional: Fixed avatar generation prompt. You will no longer be able to change your avatar during conversations.)",
-        "bodyAreaRatio": "(Optional: Acceptable avatar image area ratio. default 0.042)",
-        "bodyHWRatio": "(Optional: Acceptable avatar image aspect ratios. default 1.5~2.3)",
-        "bodyWindowRatioW": "(Optional: Avatar composite window horizontal ratio. default 0.5)",
-        "bodyWindowRatioH": "(Optional: Avatar composite window aspect ratio. default 0.75)",
-        "bs_id":"(Bluesky sns registration address)",
-        "bs_pass":"(bluesky sns password)",
-        "bs_handle":"(bluesky sns handle name: e.g. xxxxxxxx.bsky.social )",
-        "filter_tools": "(Optional: Directly filter the tools to be used. All are available if not specified. e.g. tips,set_traveler_location)",
-        "moveMode": "(Option: Specify whether the movement mode is realtime or skip. default realtime)",
-        "image_width": "(Option: Output image width (pixels) Default is 512)"
+        "MT_GOOGLE_MAP_KEY":"(Google Map API key)",
+        "MT_MAP_API_URL": "(Optional: Map API custom endpoint. Example: direction=https://xxxx,places=https://yyyy )",
+        "MT_TIME_SCALE": "(Optional:Scale of travel time on real roads duration. default 4)",
+        "MT_SQLITE_PATH":"(db save path: e.g. %USERPROFILE%/Desktop/traveler.sqlite ,$HOME/traveler.sqlite )",
+        "MT_REMBG_PATH": "(absolute path of the installed rembg cli)",
+        "MT_REMBG_URL": "(rembg API URL)",
+        "MT_PIXAI_KEY":"(pixAi API key)",
+        "MT_SD_KEY":"(or Stability.ai image generation API key",
+        "MT_PIXAI_MODEL_ID": "(Optional: pixAi ModelId, if not set use default model 1648918127446573124 ",
+        "MT_COMFY_URL": "(Option: Generate image using ComfyUI API at specified URL. Example: http://192.168.1.100:8188)",
+        "MT_COMFY_WORKFLOW_T2I": "(Optional: Path to API workflow file when using text to image with ComfyUI. If not specified: assets/comfy/t2i_sample.json)",
+        "MT_COMFY_WORKFLOW_I2I": "(Optional: Path of API workflow file when image to image in ComfyUI. If not specified: assets/comfy/i2i_sample.json)",
+        "MT_COMFY_PARAMS": "(Optional: Variable values to send to the workflow via comfyUI API)",
+        "MT_FIXED_MODEL_PROMPT": "(Optional: Fixed avatar generation prompt. You will no longer be able to change your avatar during conversations.)",
+        "MT_BODY_AREA_RATIO": "(Optional: Acceptable avatar image area ratio. default 0.042)",
+        "MT_BODY_HW_RATIO": "(Optional: Acceptable avatar image aspect ratios. default 1.5~2.3)",
+        "MT_BODY_WINDOW_RATIO_W": "(Optional: Avatar composite window horizontal ratio. default 0.5)",
+        "MT_BODY_WINDOW_RATIO_H": "(Optional: Avatar composite window aspect ratio. default 0.75)",
+        "MT_BS_ID":"(Bluesky sns registration address)",
+        "MT_BS_PASS":"(bluesky sns password)",
+        "MT_BS_HANDLE":"(bluesky sns handle name: e.g. xxxxxxxx.bsky.social )",
+        "MT_FILTER_TOOLS": "(Optional: Directly filter the tools to be used. All are available if not specified. e.g. tips,set_traveler_location)",
+        "MT_MOVE_MODE": "(Option: Specify whether the movement mode is realtime or skip. default realtime)",
+        "MT_IMAGE_WIDTH": "(Option: Output image width (pixels) Default is 512)"
       }
     }
   }
 }
 ```
+> NOTE: The environment variables have been renamed to standard snake case. The MT_ prefix is ​​added because they may be used in conjunction with other environment variables, such as in librechat. The old names can still be used for backward compatibility.  
+
 Please set the following three Credentials for Google Map API.  
 - Street View Static API
 - Places API (New)

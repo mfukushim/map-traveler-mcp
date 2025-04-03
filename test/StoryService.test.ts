@@ -10,7 +10,7 @@ import {StoryService, StoryServiceLive} from "../src/StoryService.js";
 
 describe("Story", () => {
   it("info", async () => {
-    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    //  vitest --run --testNamePattern=info StoryService.test.ts
     const res = await Effect.gen(function* () {
       return yield* StoryService.tips()
     }).pipe(

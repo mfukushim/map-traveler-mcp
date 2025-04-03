@@ -20,7 +20,7 @@ describe("Image", () => {
   });
 
   it("makeHotelPictPixAi", async () => {
-    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    //  vitest --run --testNamePattern=makeHotelPictPixAi ImageService.test.ts
     const res = await Effect.gen(function* () {
       return yield* ImageService.makeHotelPict("pixAi", 12)  //
     }).pipe(
