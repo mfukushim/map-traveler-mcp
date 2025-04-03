@@ -95,35 +95,37 @@ claude_desktop_config.json
       "command": "npx",
       "args": ["-y", "@mfukushim/map-traveler-mcp"],
       "env": {
-        "GoogleMapApi_key":"(Google Map APIのキー)",
-        "mapApi_url": "(オプション: Map APIカスタムエンドポイント 例 direction=https://xxxx,search=https://yyyy )",
-        "time_scale": "(オプション:道路での移動時間の尺度. default 4)",
-        "sqlite_path":"(db保存ファイルのパス 例 %USERPROFILE%/Desktop/traveler.sqlite など)",
-        "rembg_path": "(インストールしたrembg cliの絶対パス)",
-        "remBgUrl": "(rembg APIのURL)",
-        "pixAi_key":"(pixAi APIのキー)",
-        "sd_key":"(またはStability.aiのAPIのキー",
-        "pixAi_modelId": "(オプション: pixAiの場合の使用ModelId. 未設定の場合とりあえず 1648918127446573124 を使う",
-        "comfy_url": "(オプション: 指定urlのComfyUI APIで画像生成する 例 http://192.168.1.100:8188)",
-        "comfy_workflow_t2i": "(オプション: ComfyUIでtext to imageするときのAPIワークフローファイルのパス 未指定の場合 assets/comfy/t2i_sample.json)",
-        "comfy_workflow_i2i": "(オプション: ComfyUIでimage to imageするときのAPIワークフローファイルのパス 未指定の場合 assets/comfy/i2i_sample.json)",
-        "comfy_params": "(オプション: comfyUI APIでワークフローに送る変数値)",
-        "fixed_model_prompt": "(オプション: 固定でアバターの姿指定プロンプトを設定する。会話でアバター姿を変更できなくなる。)",
-        "bodyAreaRatio": "(オプション: 許容されるアバター面積比. default 0.042)",
-        "bodyHWRatio": "(オプション: 許容されるアバター縦横比. default 1.5~2.3)",
-        "bodyWindowRatioW": "(オプション: アバター合成ウィンドウ横比率. default 0.5)",
-        "bodyWindowRatioH": "(オプション: アバター合成ウィンドウ縦比率. default 0.75)",
-        "bs_id":"(bluesky snsの登録アドレス)",
-        "bs_pass":"(bluesky snsのパスワード)",
-        "bs_handle":"(bluesky snsのハンドル名 例 xxxxx.bsky.social など)",
-        "filter_tools": "(オプション:使うツールを直に絞る 指定しなければ使えるすべて 例 tips,set_traveler_location)",
-        "moveMode": "(オプション:移動モードをrealtimeかskipにするか指定する default realtime)",
-        "image_width": "(オプション: 出力する画像の幅(pixel) デフォルトでは512)"
+        "MT_GOOGLE_MAP_KEY":"(Google Map APIのキー)",
+        "MT_MAP_API_URL": "(オプション: Map APIカスタムエンドポイント 例 direction=https://xxxx,search=https://yyyy )",
+        "MT_TIME_SCALE": "(オプション:道路での移動時間の尺度. default 4)",
+        "MT_SQLITE_PATH":"(db保存ファイルのパス 例 %USERPROFILE%/Desktop/traveler.sqlite など)",
+        "MT_REMBG_PATH": "(インストールしたrembg cliの絶対パス)",
+        "MT_REMBG_URL": "(rembg APIのURL)",
+        "MT_PIXAI_KEY":"(pixAi APIのキー)",
+        "MT_SD_KEY":"(またはStability.aiのAPIのキー",
+        "MT_PIXAI_MODEL_ID": "(オプション: pixAiの場合の使用ModelId. 未設定の場合とりあえず 1648918127446573124 を使う",
+        "MT_COMFY_URL": "(オプション: 指定urlのComfyUI APIで画像生成する 例 http://192.168.1.100:8188)",
+        "MT_COMFY_WORKFLOW_T2I": "(オプション: ComfyUIでtext to imageするときのAPIワークフローファイルのパス 未指定の場合 assets/comfy/t2i_sample.json)",
+        "MT_COMFY_WORKFLOW_I2I": "(オプション: ComfyUIでimage to imageするときのAPIワークフローファイルのパス 未指定の場合 assets/comfy/i2i_sample.json)",
+        "MT_COMFY_PARAMS": "(オプション: comfyUI APIでワークフローに送る変数値)",
+        "MT_FIXED_MODEL_PROMPT": "(オプション: 固定でアバターの姿指定プロンプトを設定する。会話でアバター姿を変更できなくなる。)",
+        "MT_BODY_AREA_RATIO": "(オプション: 許容されるアバター面積比. default 0.042)",
+        "MT_BODY_HW_RATIO": "(オプション: 許容されるアバター縦横比. default 1.5~2.3)",
+        "MT_BODY_WINDOW_RATIO_W": "(オプション: アバター合成ウィンドウ横比率. default 0.5)",
+        "MT_BODY_WINDOW_RATIO_H": "(オプション: アバター合成ウィンドウ縦比率. default 0.75)",
+        "MT_BS_ID":"(bluesky snsの登録アドレス)",
+        "MT_BS_PASS":"(bluesky snsのパスワード)",
+        "MT_BS_HANDLE":"(bluesky snsのハンドル名 例 xxxxx.bsky.social など)",
+        "MT_FILTER_TOOLS": "(オプション:使うツールを直に絞る 指定しなければ使えるすべて 例 tips,set_traveler_location)",
+        "MT_MOVE_MODE": "(オプション:移動モードをrealtimeかskipにするか指定する default realtime)",
+        "MT_IMAGE_WIDTH": "(オプション: 出力する画像の幅(pixel) デフォルトでは512)"
       }
     }
   }
 }
 ```
+> 注意:環境変数の名称を一般的なスネークケースに変更しました。librechatなどで他の環境変数と合わせて使う場合があるため、接頭語としてMT_を付けています。従来の名称も後方互換性のために使うことができます。  
+
 Google Map APIは以下の4つの権限を設定してください。  
 - Street View Static API
 - Places API (New)

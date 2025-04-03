@@ -15,9 +15,6 @@ import {defaultAvatarId, RunnerService, RunnerServiceLive, useAiImageGen} from "
 import {MapService, MapServiceLive} from "./MapService.js";
 import {
   __pwd,
-  bodyAreaRatio,
-  bodyHWRatio, bodyWindowRatioH,
-  bodyWindowRatioW, bs_handle,
   DbService,
   DbServiceLive,
   env,
@@ -34,6 +31,7 @@ import * as path from "path";
 import * as fs from "node:fs";
 import {z} from "zod";
 import dayjs from "dayjs";
+import {bodyAreaRatio, bodyHWRatio, bodyWindowRatioH, bodyWindowRatioW, bs_handle} from "./EnvUtils.js";
 
 //  Toolのcontentの定義だがzodから持ってくると重いのでここで定義
 export interface ToolContentResponse {

@@ -8,7 +8,8 @@ import * as querystring from "querystring";
 import {Jimp} from "jimp";
 import {McpLogService, McpLogServiceLive} from "./McpLogService.js";
 import {AnswerError} from "./mapTraveler.js";
-import {env, GoogleMapApi_key} from "./DbService.js";
+import {env} from "./DbService.js";
+import {GoogleMapApi_key} from "./EnvUtils.js";
 
 /**
  * Google Map API定義

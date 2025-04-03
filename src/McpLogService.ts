@@ -8,7 +8,7 @@ import {dirname} from "path";
 import * as path from "node:path"
 import dayjs from "dayjs";
 import {ToolContentResponse} from "./McpService.js";
-import {log_path, ServerLog} from "./DbService.js";
+import {log_path, ServerLog} from "./EnvUtils.js";
 
 
 const inGitHubAction = process.env.GITHUB_ACTIONS === 'true';

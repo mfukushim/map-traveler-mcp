@@ -5,8 +5,9 @@ import {RichText} from '@atproto/api'
 import {AtpAgent} from '@atproto/api'
 import dayjs from "dayjs";
 import {McpLogService} from "./McpLogService.js";
-import {bs_handle, bs_id, bs_pass, DbService} from "./DbService.js";
+import {DbService} from "./DbService.js";
 import {AnswerError} from "./mapTraveler.js";
+import {bs_handle, bs_id, bs_pass} from "./EnvUtils.js";
 
 
 type SnsType = "bs" | "tw" | "md" | "sk";

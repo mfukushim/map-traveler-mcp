@@ -11,15 +11,10 @@ import {type MediaBaseFragment, TaskBaseFragment} from "@pixai-art/client/types/
 import 'dotenv/config'
 import {logSync, McpLogService, McpLogServiceLive} from "./McpLogService.js";
 import {
-  __pwd, comfy_params, comfy_url, comfy_workflow_i2i, comfy_workflow_t2i,
+  __pwd,
   DbService,
   env,
-  fixed_model_prompt,
-  image_width,
-  pixAi_key,
-  pixAi_modelId,
   scriptTables,
-  sd_key, ServerLog
 } from "./DbService.js";
 import WebSocket from 'ws'
 import * as path from "path";
@@ -28,6 +23,15 @@ import * as fs from "node:fs";
 import {execSync} from "node:child_process";
 import {defaultAvatarId} from "./RunnerService.js";
 import {sendProgressNotification} from "./McpService.js";
+import {
+  comfy_params, comfy_url, comfy_workflow_i2i, comfy_workflow_t2i,
+  fixed_model_prompt,
+  image_width,
+  pixAi_key,
+  pixAi_modelId,
+  sd_key,
+  ServerLog
+} from "./EnvUtils.js";
 
 export const defaultBaseCharPrompt = 'depth of field, cinematic composition, masterpiece, best quality,looking at viewer,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut'
 

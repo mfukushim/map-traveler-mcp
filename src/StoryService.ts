@@ -4,10 +4,11 @@ import {Effect, Option, Schedule} from "effect";
 import dayjs from "dayjs";
 import timezone = require("dayjs/plugin/timezone")
 import {MapDef, MapService} from "./MapService.js";
-import {__pwd, bs_handle, bs_id, bs_pass, DbService, env} from "./DbService.js";
+import {__pwd, DbService, env} from "./DbService.js";
 import {McpLogService} from "./McpLogService.js";
 import * as path from "node:path";
 import * as fs from "node:fs";
+import {bs_handle, bs_id, bs_pass} from "./EnvUtils.js";
 
 dayjs.extend(timezone)
 

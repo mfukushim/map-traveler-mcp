@@ -3,15 +3,11 @@
 import {Effect, Option, Schema} from "effect";
 import {MapService, MapDef} from "./MapService.js";
 import {
-  __pwd, bodyAreaRatio, bodyHWRatio, bodyWindowRatioH, bodyWindowRatioW,
-  comfy_url,
+  __pwd,
   DbService,
   DbServiceLive,
   env,
-  pixAi_key,
   RunStatus,
-  sd_key,
-  time_scale
 } from "./DbService.js";
 import * as geolib from "geolib";
 import dayjs = require("dayjs");
@@ -28,6 +24,16 @@ import * as path from "path";
 import {ToolContentResponse} from "./McpService.js";
 import sharp = require("sharp");
 import * as fs from "node:fs";
+import {
+  bodyAreaRatio,
+  bodyHWRatio,
+  bodyWindowRatioH,
+  bodyWindowRatioW,
+  comfy_url,
+  pixAi_key,
+  sd_key,
+  time_scale
+} from "./EnvUtils.js";
 
 
 dayjs.extend(utc)
