@@ -354,10 +354,10 @@ describe("Mcp", () => {
     )
     expect(res).toBeInstanceOf(Array)
   })
-  it("getEnvironment", async () => {
+  it("getSetting", async () => {
     //  vitest --run --testNamePattern=replySnsWriter McpService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* McpService.getEnvironment()
+      return yield* McpService.getSetting()
     }).pipe(
       Effect.provide([McpServiceLive, SnsServiceLive, McpLogServiceLive, DbServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
