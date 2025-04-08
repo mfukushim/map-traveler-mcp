@@ -67,4 +67,4 @@ export const bodyWindowRatioW = getEnvironment('bodyWindowRatioW')
 export const bodyWindowRatioH = getEnvironment('bodyWindowRatioH')
 export const time_scale = getEnvironment('time_scale')
 export const sqlite_path = getEnvironment('sqlite_path')
-export const noImageOut = getEnvironment('noImageOut')
+export const noImageOut = getEnvironment('noImageOut') === 'true'

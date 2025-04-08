@@ -497,7 +497,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               (bodyAreaRatio ? `bodyAreaRatio=${bodyAreaRatio}\n`:'') +
               (bodyHWRatio ? `bodyHWRatio=${bodyHWRatio}\n`:'') +
               (bodyWindowRatioW ? `bodyWindowRatioW=${bodyWindowRatioW}\n`:'') +
-              (bodyWindowRatioH ? `bodyWindowRatioH=${bodyWindowRatioH}\n`:'') +
+            (bodyWindowRatioH ? `bodyWindowRatioH=${bodyWindowRatioH}\n`:'') +
+            (noImageOut ? `noImage=true\n`:'') +
               `version=${version}\n`
           return [{
             type: "text",

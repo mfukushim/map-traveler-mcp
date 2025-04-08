@@ -124,7 +124,8 @@ claude_desktop_config.json
         "MT_BS_HANDLE":"(bluesky sns handle name: e.g. xxxxxxxx.bsky.social )",
         "MT_FILTER_TOOLS": "(Optional: Directly filter the tools to be used. All are available if not specified. e.g. tips,set_traveler_location)",
         "MT_MOVE_MODE": "(Option: Specify whether the movement mode is realtime or skip. default realtime)",
-        "MT_IMAGE_WIDTH": "(Option: Output image width (pixels) Default is 512)"
+        "MT_IMAGE_WIDTH": "(Option: Output image width (pixels) Default is 512)",
+        "MT_NO_IMAGE": "(Options: true = do not output image, not specified = output image if possible, default is not specified)"
       }
     }
   }
@@ -364,3 +365,24 @@ I think it would be simpler to handle the MCP calls directly in the Effect.
 #### Notes on the latest updates
 
 Added image_width to env. The default is 512. Setting it smaller may reduce the cost of LLM API.  
+Added an env setting that does not output images for MCP clients that do not have image input/output.  
+"MT_NO_IMAGE": "true" will not generate or output any images. Other image-related settings can be omitted.  
+```
+{
+  
+  "env": {
+    "MT_NO_IMAGE": "true"
+  }
+  
+}
+or
+{
+  
+  "env": {
+    "GoogleMapApi_key": "xxxx",
+    "MT_NO_IMAGE": "true"
+  }
+  
+}
+
+```
