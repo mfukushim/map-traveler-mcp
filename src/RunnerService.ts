@@ -29,7 +29,7 @@ import {
   bodyHWRatio,
   bodyWindowRatioH,
   bodyWindowRatioW,
-  comfy_url,
+  comfy_url, noImageOut,
   pixAi_key,
   sd_key,
   time_scale
@@ -125,10 +125,10 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           lng: loc.lng,
           bearing: 0
         })
-        const image = includePhoto && env.anyImageAiExist ? (yield* getStreetImage(loc, abort, localDebug).pipe(
+        const image = includePhoto && env.anyImageAiExist && !noImageOut ? (yield* getStreetImage(loc, abort, localDebug).pipe(
             Effect.andThen(a => a.buf),
             Effect.orElseSucceed(() => undefined))) :
-          includePhoto ? (yield* getStreetImageOnly(loc).pipe(Effect.orElseSucceed(() => undefined))) : undefined
+          includePhoto && !noImageOut ? (yield* getStreetImageOnly(loc).pipe(Effect.orElseSucceed(() => undefined))) : undefined
         return {
           nearFacilities,
           image,
@@ -174,7 +174,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           text: `I'm on the ${maneuver} now. Longitude and Latitude is almost ${loc.lat},${loc.lng}`
         },
       ]
-      if (includePhoto && env.anyImageAiExist) {
+      if (includePhoto && env.anyImageAiExist && !noImageOut) {
         return ImageService.makeEtcTripImage(useAiImageGen, vehiclePrompt, loc.timeZoneId).pipe(
           Effect.andThen(image => {
             out.push({type: "image", data: image.toString("base64"), mimeType: 'image/png'})
