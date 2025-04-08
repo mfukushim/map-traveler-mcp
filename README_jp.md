@@ -118,7 +118,8 @@ claude_desktop_config.json
         "MT_BS_HANDLE":"(bluesky snsのハンドル名 例 xxxxx.bsky.social など)",
         "MT_FILTER_TOOLS": "(オプション:使うツールを直に絞る 指定しなければ使えるすべて 例 tips,set_traveler_location)",
         "MT_MOVE_MODE": "(オプション:移動モードをrealtimeかskipにするか指定する default realtime)",
-        "MT_IMAGE_WIDTH": "(オプション: 出力する画像の幅(pixel) デフォルトでは512)"
+        "MT_IMAGE_WIDTH": "(オプション: 出力する画像の幅(pixel) デフォルトでは512)",
+        "MT_NO_IMAGE": "(オプション: true=画像を出力しない 未指定=画像出力可能なら画像を出力する デフォルトでは未指定)"
       }
     }
   }
@@ -347,3 +348,24 @@ MCPの呼び出しを直接Effectで処理するほうがシンプルになる�
 #### 最新の更新についてのメモ
 
 envにimage_widthを追加しました。デフォルトは512です。小さくすることでLLM APIのコストを低減出来るかもしれません。
+画像入出力がないMCPクライアント向けに画像を出力しないenv設定を追加しました。  
+"MT_NO_IMAGE": "true" で一切画像生成と出力をしません。その他の画像関係の設定を省略できます。  
+```
+{
+  
+  "env": {
+    "MT_NO_IMAGE": "true"
+  }
+  
+}
+または
+{
+  
+  "env": {
+    "GoogleMapApi_key": "xxxx",
+    "MT_NO_IMAGE": "true"
+  }
+  
+}
+
+```

@@ -31,7 +31,7 @@ import * as path from "path";
 import * as fs from "node:fs";
 import {z} from "zod";
 import dayjs from "dayjs";
-import {bodyAreaRatio, bodyHWRatio, bodyWindowRatioH, bodyWindowRatioW, bs_handle} from "./EnvUtils.js";
+import {bodyAreaRatio, bodyHWRatio, bodyWindowRatioH, bodyWindowRatioW, bs_handle, noImageOut} from "./EnvUtils.js";
 
 //  Toolのcontentの定義だがzodから持ってくると重いのでここで定義
 export interface ToolContentResponse {
@@ -497,7 +497,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               (bodyAreaRatio ? `bodyAreaRatio=${bodyAreaRatio}\n`:'') +
               (bodyHWRatio ? `bodyHWRatio=${bodyHWRatio}\n`:'') +
               (bodyWindowRatioW ? `bodyWindowRatioW=${bodyWindowRatioW}\n`:'') +
-              (bodyWindowRatioH ? `bodyWindowRatioH=${bodyWindowRatioH}\n`:'') +
+            (bodyWindowRatioH ? `bodyWindowRatioH=${bodyWindowRatioH}\n`:'') +
+            (noImageOut ? `noImage=true\n`:'') +
               `version=${version}\n`
           return [{
             type: "text",
@@ -1059,6 +1060,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               env.progressToken = request.params._meta?.progressToken
               return toolSwitch(request)
             }),
+            Effect.andThen(a => noImageOut ? a.filter(v => v.type !== 'image'):a),
             Effect.provide([DbServiceLive, ImageServiceLive]),
             Effect.andThen(a => ({content: a})),
             Effect.catchIf(a => a instanceof AnswerError, e => {
