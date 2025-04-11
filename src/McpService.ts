@@ -26,7 +26,7 @@ import {defaultBaseCharPrompt, ImageService, ImageServiceLive} from "./ImageServ
 import {logSync, McpLogService, McpLogServiceLive} from "./McpLogService.js";
 import {AnswerError} from "./mapTraveler.js";
 import {AtPubNotification, SnsService, SnsServiceLive} from "./SnsService.js";
-import {FeedViewPost} from "@atproto/api/dist/client/types/app/bsky/feed/defs.js";
+import {PostView} from "@atproto/api/dist/client/types/app/bsky/feed/defs.js";
 import * as path from "path";
 import * as fs from "node:fs";
 import {z} from "zod";
@@ -768,21 +768,21 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         //  特定タグを含むものしか読み取れない。現在から一定期間しか読み取れない。最大件数がある。その他固定フィルタ機能を置く
         //  自身は除去する
         return Effect.gen(function* () {
-          const posts = yield* SnsService.getFeed(feedUri, 4)
-          const detectFeeds = posts.filter(v => v.post.author.handle !== bs_handle)
+          const posts = isEnableFeedTag ? yield * SnsService.searchPosts(feedTag, 4): yield* SnsService.getFeed(feedUri, 4).pipe(Effect.andThen(a => a.map(v => v.post)));
+          const detectFeeds = posts.filter(v => v.author.handle !== bs_handle)
             .reduce((p, c) => {
               //  同一ハンドルの直近1件のみ
-              if (!p.find(v => v.post.author.handle === c.post.author.handle)) {
+              if (!p.find(v => v.author.handle === c.author.handle)) {
                 p.push(c)
               }
               return p
-            }, [] as FeedViewPost[])
+            }, [] as PostView[])
           const select = detectFeeds.map(v => {
-            const im = (v.post.embed as any)?.images as any[]
+            const im = (v.embed as any)?.images as any[]
             return ({
-              id: v.post.uri + '-' + v.post.cid,
-              authorHandle: v.post.author.displayName || v.post.author.handle, //  LLMには可読名を返す。id管理は面倒なので正しくなくても可読名で記事の対応を取る
-              body: (v.post.record as any).text || '',
+              id: v.uri + '-' + v.cid,
+              authorHandle: v.author.displayName || v.author.handle, //  LLMには可読名を返す。id管理は面倒なので正しくなくても可読名で記事の対応を取る
+              body: (v.record as any).text || '',
               imageUri: im ? im[0].thumb as string : undefined
             });
           })
