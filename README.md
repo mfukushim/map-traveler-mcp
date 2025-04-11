@@ -125,7 +125,8 @@ claude_desktop_config.json
         "MT_FILTER_TOOLS": "(Optional: Directly filter the tools to be used. All are available if not specified. e.g. tips,set_traveler_location)",
         "MT_MOVE_MODE": "(Option: Specify whether the movement mode is realtime or skip. default realtime)",
         "MT_IMAGE_WIDTH": "(Option: Output image width (pixels) Default is 512)",
-        "MT_NO_IMAGE": "(Options: true = do not output image, not specified = output image if possible, default is not specified)"
+        "MT_NO_IMAGE": "(Options: true = do not output image, not specified = output image if possible, default is not specified)",
+        "MT_FEED_TAG": "(Optional: Specify the feed tag when posting to SNS (#required, 5 characters or more) Default is #geo_less_traveler)"
       }
     }
   }
@@ -385,4 +386,5 @@ or
   
 }
 
-```
+```  
+You can now specify the tag name to be added when posting to SNS (Bluesky). #Required and must be at least 5 characters. If not specified, it will become "#geo_less_traveler".  

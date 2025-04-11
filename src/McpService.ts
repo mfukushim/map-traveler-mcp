@@ -31,7 +31,15 @@ import * as path from "path";
 import * as fs from "node:fs";
 import {z} from "zod";
 import dayjs from "dayjs";
-import {bodyAreaRatio, bodyHWRatio, bodyWindowRatioH, bodyWindowRatioW, bs_handle, noImageOut} from "./EnvUtils.js";
+import {
+  bodyAreaRatio,
+  bodyHWRatio,
+  bodyWindowRatioH,
+  bodyWindowRatioW,
+  bs_handle, extfeedTag,
+  GoogleMapApi_key, isEnableFeedTag,
+  noImageOut
+} from "./EnvUtils.js";
 
 //  Toolのcontentの定義だがzodから持ってくると重いのでここで定義
 export interface ToolContentResponse {
@@ -43,13 +51,14 @@ export interface ToolContentResponse {
 }
 
 //  bluesky SNS用固定feed
-const feedTag = "#geo_less_traveler"
+const feedTag = isEnableFeedTag && extfeedTag ? extfeedTag : "#geo_less_traveler"
 const feedUri = "at://did:plc:ygcsenazbvhyjmxeltz4fgw4/app.bsky.feed.generator/marble_square25"
 
 const LabelGoogleMap = 'Google Map'
-const LabelClaude = 'Claude'
+const aiGenerated = 'AI generated,';
+
 const labelImage = (aiGen: string) => {
-  return aiGen === 'pixAi' ? 'PixAi' : aiGen === 'sd' ? 'Stability.ai' : ''
+  return aiGen === 'pixAi' ? 'PixAi' : aiGen === 'sd' ? 'Stability.ai' : aiGen
 }
 
 const server = new Server(
@@ -853,9 +862,9 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           if (!id2) {
             return yield* Effect.fail(new AnswerError('id is invalid'))
           }
-          const appendLicence = 'powered ' + LabelClaude  //  追加ライセンスの文字列をclient LLMに制御させることは信頼できないので、直近の生成行為に対する文字列を強制付加する
+          //  追加ライセンスの文字列をclient LLMに制御させることは信頼できないので、直近の生成行為に対する文字列を強制付加する
           //  @メンションは今は表示名に対して付けているので邪魔にはなっていない ただ除去したほうが無難な可能性がある
-          return yield* SnsService.snsReply(message.replaceAll("@", ""), `${appendLicence} ${feedTag} `, id2).pipe(
+          return yield* SnsService.snsReply(message.replaceAll("@", ""), `${aiGenerated} ${feedTag} `, id2).pipe(
             Effect.andThen(() => [
                 {
                   type: "text",
@@ -882,12 +891,14 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             return yield* Effect.succeed(noMes).pipe(Effect.tap(() => env.loggingMode && McpLogService.logTrace(message)))
           }
           const img = yield* ImageService.getRecentImageAndClear().pipe(Effect.tap(a => McpLogService.logTrace(`sns image:${a !== undefined}`)))
-          //  TODO 汎化の検討は必要
-          const recentUseLabels = [LabelClaude]
-          if (useAiImageGen) {
-            recentUseLabels.push(LabelGoogleMap, labelImage(useAiImageGen))
+          const recentUseLabels = []
+          if (GoogleMapApi_key) {
+            recentUseLabels.push(LabelGoogleMap)
           }
-          const appendLicence = 'powered ' + recentUseLabels.join(',')  //  追加ライセンスの文字列をclient LLMに制御させることは信頼できないので、直近の生成行為に対する文字列を強制付加する
+          if (useAiImageGen) {
+            recentUseLabels.push(labelImage(useAiImageGen));
+          }
+          const appendLicence = aiGenerated + recentUseLabels.join(',')  //  追加ライセンスの文字列をclient LLMに制御させることは信頼できないので、直近の生成行為に対する文字列を強制付加する
           //  @メンションは今は表示名に対して付けているので邪魔にはなっていない ただ除去したほうが表示的に邪魔にならないだろう
           return yield* SnsService.snsPost(message.replaceAll("@", ""), `${appendLicence} ${feedTag} `, img ? {
             buf: img,
@@ -896,7 +907,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             Effect.andThen(() => [
                 {
                   type: "text",
-                  text: "posted"
+                  text: "posted" + (extfeedTag && !isEnableFeedTag ? '. But the feed tag is posted by default.':'')
                 }
               ] as ToolContentResponse[]
             ),
