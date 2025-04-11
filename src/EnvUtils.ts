@@ -69,5 +69,5 @@ export const bodyWindowRatioH = getEnvironment('bodyWindowRatioH')
 export const time_scale = getEnvironment('time_scale')
 export const sqlite_path = getEnvironment('sqlite_path')
 export const extfeedTag = getEnvironment('feedTag')
-export const isEnableFeedTag = extfeedTag && extfeedTag.length > 4 && extfeedTag[0] === '#'
+export const isEnableFeedTag = extfeedTag && extfeedTag.length > 14 && extfeedTag[0] === '#' //  拡張タグは安全のため15文字以上を強制する
 export const noImageOut = getEnvironment('noImageOut') === 'true'

@@ -252,7 +252,7 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
             )
           } else {
             if (extfeedTag && !isEnableFeedTag) {
-              textList.push('I detected an external feed tag "MT_FEED_TAG", but it was not used. external feed tags must start with a # and be at least 5 characters long.\n')
+              textList.push('I detected an external feed tag "MT_FEED_TAG", but it was not used. external feed tags must start with a # and be at least 15 characters long.\n')
             }
           }
           if (!env.promptChanged && !env.fixedModelPrompt) {
