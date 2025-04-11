@@ -120,7 +120,7 @@ claude_desktop_config.json
         "MT_MOVE_MODE": "(オプション:移動モードをrealtimeかskipにするか指定する default realtime)",
         "MT_IMAGE_WIDTH": "(オプション: 出力する画像の幅(pixel) デフォルトでは512)",
         "MT_NO_IMAGE": "(オプション: true=画像を出力しない 未指定=画像出力可能なら画像を出力する デフォルトでは未指定)",
-        "MT_FEED_TAG": "(オプション: SNSポスト時のフィードタグを指定する(#必須5文字以上) デフォルトでは#geo_less_traveler)"
+        "MT_FEED_TAG": "(オプション: SNSポスト時のフィードタグを指定する(#必須15文字以上) デフォルトでは#geo_less_traveler)"
       }
     }
   }
@@ -370,5 +370,5 @@ envにimage_widthを追加しました。デフォルトは512です。小さく
 }
 
 ```
-SNS(Bluesky)ポスト時に付加するタグ名を指定できるようにしました。#必須で5文字以上です。未指定だと"#geo_less_traveler"になります。  
+SNS(Bluesky)ポスト時に付加するタグ名を指定できるようにしました。#必須で15文字以上です。未指定だと"#geo_less_traveler"になります。  
 
