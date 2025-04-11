@@ -37,7 +37,7 @@ import {
   bodyWindowRatioH,
   bodyWindowRatioW,
   bs_handle, extfeedTag,
-  GoogleMapApi_key,
+  GoogleMapApi_key, isEnableFeedTag,
   noImageOut
 } from "./EnvUtils.js";
 
@@ -51,7 +51,7 @@ export interface ToolContentResponse {
 }
 
 //  bluesky SNS用固定feed
-const feedTag = extfeedTag || "#geo_less_traveler"
+const feedTag = isEnableFeedTag && extfeedTag ? extfeedTag : "#geo_less_traveler"
 const feedUri = "at://did:plc:ygcsenazbvhyjmxeltz4fgw4/app.bsky.feed.generator/marble_square25"
 
 const LabelGoogleMap = 'Google Map'
@@ -907,7 +907,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             Effect.andThen(() => [
                 {
                   type: "text",
-                  text: "posted"
+                  text: "posted" + (extfeedTag && !isEnableFeedTag ? '. But the feed tag is posted by default.':'')
                 }
               ] as ToolContentResponse[]
             ),
