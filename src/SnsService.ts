@@ -81,13 +81,15 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
         return reLogin().pipe(
           Effect.andThen(() => {
             const rt = new RichText({text: message})
-            const post = {
-              $type: "app.bsky.feed.post",
-              text: rt.text,
-              facets: rt.facets || [],
-              createdAt: dayjs().toISOString(),
-            }
-            return Effect.tryPromise(() => rt.detectFacets(agent)).pipe(Effect.andThen(() => Effect.succeed(post)))
+            return Effect.tryPromise(() => rt.detectFacets(agent)).pipe(Effect.andThen(() => {
+              const post = {
+                $type: "app.bsky.feed.post",
+                text: rt.text,
+                facets: rt.facets || [],
+                createdAt: dayjs().toISOString(),
+              }
+              return Effect.succeed(post);
+            }))
           }),
           Effect.andThen(post => {
             return image ? uploadBlob(image.buf, image.mime).pipe(
@@ -160,27 +162,49 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
           Effect.andThen(a => a.data))
       }
 
-      function getFeed(feed: string, length ?: number) {
-        return Effect.gen(function* () {
-          yield* reLogin()
-          const snsInfo = yield* DbService.getAvatarSns(1, 'bs')
-          yield* McpLogService.logTrace(`getFeed:feedSeenAt:${dayjs.unix(snsInfo.feedSeenAt).toISOString()}`)
-          const feedData = yield* Effect.tryPromise(() => agent.app.bsky.feed.getFeed({
-            feed: feed,
-            limit: length || 10
-          })).pipe(
-            Effect.tap(a => !a.success && Effect.fail(new Error('getFeed error'))),
-            Effect.tap(a => a.data.feed.map(v => McpLogService.logTrace(`getFeed post:${dayjs(v.post.indexedAt).toISOString()}`))),
-            Effect.andThen(a => {
-              return a.data.feed.filter(v => (dayjs(v.post.indexedAt).unix() > snsInfo.feedSeenAt) && v.post.author.handle !== bs_handle)
-            }),
-            Effect.retry(Schedule.recurs(2).pipe(Schedule.intersect(Schedule.spaced("10 seconds"))))
-          )
-          const max = feedData.reduce((p, c) => Math.max(p, dayjs(c.post.indexedAt).unix()), snsInfo.feedSeenAt)
-          yield* DbService.updateSnsFeedSeenAt(1, 'bs', max)
-          return feedData
-        })
-      }
+    function getFeed(feed: string, length ?: number) {
+      return Effect.gen(function* () {
+        yield* reLogin()
+        const snsInfo = yield* DbService.getAvatarSns(1, 'bs')
+        yield* McpLogService.logTrace(`getFeed:feedSeenAt:${dayjs.unix(snsInfo.feedSeenAt).toISOString()}`)
+        const feedData = yield* Effect.tryPromise(() => agent.app.bsky.feed.getFeed({
+          feed: feed,
+          limit: length || 10
+        })).pipe(
+          Effect.tap(a => !a.success && Effect.fail(new Error('getFeed error'))),
+          Effect.tap(a => a.data.feed.map(v => McpLogService.logTrace(`getFeed post:${dayjs(v.post.indexedAt).toISOString()}`))),
+          Effect.andThen(a => {
+            return a.data.feed.filter(v => (dayjs(v.post.indexedAt).unix() > snsInfo.feedSeenAt) && v.post.author.handle !== bs_handle)
+          }),
+          Effect.retry(Schedule.recurs(2).pipe(Schedule.intersect(Schedule.spaced("10 seconds"))))
+        )
+        const max = feedData.reduce((p, c) => Math.max(p, dayjs(c.post.indexedAt).unix()), snsInfo.feedSeenAt)
+        yield* DbService.updateSnsFeedSeenAt(1, 'bs', max)
+        return feedData
+      })
+    }
+
+    function searchPosts(query: string, length ?: number) {
+      return Effect.gen(function* () {
+        yield* reLogin()
+        const snsInfo = yield* DbService.getAvatarSns(1, 'bs')
+        yield* McpLogService.logTrace(`searchPosts:feedSeenAt:${dayjs.unix(snsInfo.feedSeenAt).toISOString()}`)
+        const feedData = yield* Effect.tryPromise(() => agent.app.bsky.feed.searchPosts({
+          q: query,
+          limit: length || 10
+        })).pipe(
+          Effect.tap(a => !a.success && Effect.fail(new Error('getFeed error'))),
+          Effect.tap(a => a.data.posts.map(v => McpLogService.logTrace(`getFeed post:${dayjs(v.indexedAt).toISOString()}`))),
+          Effect.andThen(a => {
+            return a.data.posts.filter(v => (dayjs(v.indexedAt).unix() > snsInfo.feedSeenAt) && v.author.handle !== bs_handle)
+          }),
+          Effect.retry(Schedule.recurs(2).pipe(Schedule.intersect(Schedule.spaced("10 seconds"))))
+        )
+        const max = feedData.reduce((p, c) => Math.max(p, dayjs(c.indexedAt).unix()), snsInfo.feedSeenAt)
+        yield* DbService.updateSnsFeedSeenAt(1, 'bs', max)
+        return feedData
+      })
+    }
 
 
       function getPost(uri: string) {
@@ -286,6 +310,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
         getNotification,
         getFeed,
         getPost,
+        searchPosts,
         snsReply,
         addLike
       }

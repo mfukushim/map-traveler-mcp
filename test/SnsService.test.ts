@@ -111,12 +111,26 @@ describe("Sns", () => {
     const res = await Effect.gen(function* () {
       return yield* SnsService.getFeed("at://did:plc:ygcsenazbvhyjmxeltz4fgw4/app.bsky.feed.generator/marble_square25", 2)
     }).pipe(
-        Effect.provide([SnsServiceLive, McpLogServiceLive,DbServiceLive]),
-        Logger.withMinimumLogLevel(LogLevel.Trace),
-        Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
-        Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed({})),
-        Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
-        runPromiseExit
+      Effect.provide([SnsServiceLive, McpLogServiceLive,DbServiceLive]),
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
+      Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed({})),
+      Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
+      runPromiseExit
+    )
+    expect(res).toBeInstanceOf(Object)
+  })
+  it("searchPosts", async () => {
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    const res = await Effect.gen(function* () {
+      return yield* SnsService.searchPosts("#AIイラスト", 2)
+    }).pipe(
+      Effect.provide([SnsServiceLive, McpLogServiceLive,DbServiceLive]),
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
+      Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed({})),
+      Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
+      runPromiseExit
     )
     expect(res).toBeInstanceOf(Object)
   })

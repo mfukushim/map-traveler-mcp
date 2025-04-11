@@ -8,7 +8,7 @@ import {__pwd, DbService, env} from "./DbService.js";
 import {McpLogService} from "./McpLogService.js";
 import * as path from "node:path";
 import * as fs from "node:fs";
-import {bs_handle, bs_id, bs_pass} from "./EnvUtils.js";
+import {bs_handle, bs_id, bs_pass, extfeedTag, isEnableFeedTag} from "./EnvUtils.js";
 
 dayjs.extend(timezone)
 
@@ -250,9 +250,13 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
 \`\`\`
 `
             )
+          } else {
+            if (extfeedTag && !isEnableFeedTag) {
+              textList.push('I detected an external feed tag "MT_FEED_TAG", but it was not used. external feed tags must start with a # and be at least 15 characters long.\n')
+            }
           }
           if (!env.promptChanged && !env.fixedModelPrompt) {
-            textList.push('You can change the appearance of your avatar by directly telling the AI what you want it to look like, or by specifying a prompt to show its appearance with set_avatar_prompt.')
+            textList.push('You can change the appearance of your avatar by directly telling the AI what you want it to look like, or by specifying a prompt to show its appearance with set_avatar_prompt.\n')
           }
           textList.push('You can play a tiny role play game using the scenario in carBattle.txt. Have fun!')
         }
