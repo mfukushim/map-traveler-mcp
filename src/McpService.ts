@@ -677,13 +677,27 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           const recentvisitorPosts = yield* SnsService.getAuthorFeed(notification.handle, 3);
           //  イイネのときの自分が書いていいねがつけられたpost、replyの場合のreplyを付けた相手のpost
           const mentionPostText = yield* SnsService.getPost(notification.uri).pipe(
-            Effect.andThen(a =>
-              Effect.succeed(Option.fromNullable(a.posts.length > 0 ? (a.posts[0].record as any).text as string : undefined))))
+            Effect.andThen(a => {
+              //  直近1件のみに絞る
+              const text = a.posts.flatMap(b => [(b.record as any).text as string|undefined])?.[0]
+              const image = a.posts.flatMap(b => [b.embed?.images as any[]])?.[0]
+              return Effect.succeed({
+                text:text,
+                // text:Effect.succeed(Option.fromNullable(a.posts.length > 0 ? (a.posts[0].record as any).text as string : undefined)),
+                image: image?.[0].thumb as string | undefined,
+              })
+            }))
+          const image = mentionPostText.image ?
+            yield * HttpClient.get(mentionPostText.image).pipe(
+              Effect.andThen((response) => response.arrayBuffer),
+              Effect.scoped,
+              Effect.provide(FetchHttpClient.layer)
+            ): undefined
           //  replyのときに、replyが付けられた自分が書いたpost, イイネのときはないはず
           const repliedPostText = notification.mentionType === 'reply' && notification.parentUri ?
             (yield* SnsService.getPost(notification.parentUri).pipe(
               Effect.andThen(a =>
-                Effect.succeed(Option.fromNullable(a.posts.length > 0 ? (a.posts[0].record as any).text as string : undefined))))) : Option.none();
+                Effect.succeed(a.posts.length > 0 ? (a.posts[0].record as any).text as string : undefined)))) : undefined;
 
           const visitorName = notification.name || notification.handle || '誰か'
           yield* McpLogService.logTrace(`avatarName:${visitorName}`)
@@ -694,14 +708,15 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             recentVisitorPost = (p.record as any).text as string
             recentVisitorPostId = p.uri + '-' + p.cid
           }
-          yield* McpLogService.logTrace(`mentionPostText:${Option.getOrUndefined(mentionPostText)}`)
-          yield* McpLogService.logTrace(`repliedPostText:${Option.getOrUndefined(repliedPostText)}`)
+          yield* McpLogService.logTrace(`mentionPostText:${mentionPostText.text}`)
+          yield* McpLogService.logTrace(`repliedPostText:${repliedPostText}`)
           yield* McpLogService.logTrace(`visitorPostText:${recentVisitorPost}`)
           return {
             visitorName,
             recentVisitorPost: recentVisitorPost,
             visitorProf: visitorProf.description,
-            mentionPost: mentionPostText,
+            mentionPost: mentionPostText.text,
+            mentionImage: image,
             repliedPost: repliedPostText,
             target: notification.mentionType === 'reply' ? notification.uri + '-' + notification.cid : //  bsの場合はuri+cid replyの場合はreplyそのものにアクションする、
               //  likeの場合は相手の最新のpostにアクションする→likeされた自身のpostにする→likeの場合は相手の記事にbotタグがある場合は相手の最新記事に直接リプライする、タグがない一般ユーザの記事の場合自身にポストする
@@ -710,13 +725,31 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         })
       }
 
-      const getSnsMentions = () => {
+    const uniqueTop = (arr: {
+      visitorName: string
+      recentVisitorPost: string
+      visitorProf: string | undefined
+      mentionPost: string | undefined
+      mentionImage: ArrayBuffer | undefined
+      repliedPost: string | undefined
+      target: string
+    }[])=> {
+      const seen = new Set<string>();
+      return arr.filter(item => {
+        const val = item.visitorName;
+        if (seen.has(item.visitorName)) return false;
+        seen.add(val);
+        return true;
+      });
+    }
+
+      const getSnsMentions = (limit=50) => {
         //  TODO 自身へのメンションしか受け付けない。特定タグに限る? 現在から一定期間しか読み取れない。最大件数がある。その他固定フィルタ機能を置く
         //  Like: likeを付けた人のhandle,likeがついた記事の内容、likeを付けた人の最新の記事、likeを付けた人のプロフィール
         //    これのランダム選択はllmでするかロジック側で選定して記事を作らせるか
         //  reply: replyを付けた人のhandle,replyがついた記事の内容、replyの記事内容、replyを付けた人のプロフィール
         return Effect.gen(function* () {
-          const notifications = yield* SnsService.getNotification()
+          const notifications = yield* SnsService.getNotification(undefined,limit)
           const {reply, like} = notifications.reduce((p, c) => {
             if (c.mentionType === 'reply') {
               p.reply.push(c)
@@ -726,21 +759,23 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             return p
           }, {reply: [], like: []} as { reply: AtPubNotification[], like: AtPubNotification[] })
           const likeMes = yield* Effect.forEach(like, a => makeVisitorMessage(a))
+            .pipe(Effect.andThen(a => uniqueTop(a)))
           //  replyはrootに対するreplyのみにする。1段くらいはreplyを重ねたいけど、そこはまた後で考える
-          const replyMes = yield* Effect.forEach(reply.filter(v => v.rootUri != v.parentUri), a => makeVisitorMessage(a))
+          const replyMes = yield* Effect.forEach(reply.filter(v => v.rootUri === v.parentUri), a => makeVisitorMessage(a))
+            .pipe(Effect.andThen(a=> uniqueTop(a)))
           //  反応するreplyにはタグを確認する
 
           //  replyがあればreplyを優先にしてlikeは処理しないことにするか。多くをまとめて処理できることを確認してからより多くの返答を行う
           const likeText = `Our SNS post received the following likes.\n` +
             `|id|Name of the person who liked the post|recent article by the person who liked this|Profile of the person who liked|\n` +
             likeMes.map((a) =>
-              `|"${a.target}"|${a.visitorName}|${a.recentVisitorPost}|${a.visitorProf}|`).join('\n') +
+              `|"${a.target}"|${a.visitorName}|${(a.recentVisitorPost || '').replaceAll('\n','')}|${(a.visitorProf || '').replaceAll('\n','')}|`).join('\n') +
             '\n'
 
           const replyText = `We received the following reply to our SNS post:\n` +
             `|id|The name of the person who replied|Content of the reply article|Profile of the person who replied|\n` +
             replyMes.map((a) =>
-              `|"${a.target}"|${a.visitorName}|${Option.getOrElse(a.mentionPost, () => '')}|${a.visitorProf || ''}|`).join('\n') +
+              `|"${a.target}"|${a.visitorName}|${(a.mentionPost || '').replaceAll('\n','')}|${(a.visitorProf || '').replaceAll('\n','')}|`).join('\n') +
             '\n'
 
           const content: ToolContentResponse[] = []
@@ -750,6 +785,14 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               text: replyText
             })
           }
+          replyMes.filter(r => r.mentionImage)
+            .forEach(r => content.push({
+              type: "image",
+              data: Buffer.from(r.mentionImage!!).toString("base64"),
+              mimeType: "image/jpeg"
+            } as ToolContentResponse
+          ))
+
           if (likeMes.length > 0) {
             content.push({
               type: 'text',
@@ -772,9 +815,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           const detectFeeds = posts.filter(v => v.author.handle !== bs_handle)
             .reduce((p, c) => {
               //  同一ハンドルの直近1件のみ
-              if (!p.find(v => v.author.handle === c.author.handle)) {
-                p.push(c)
-              }
+              if (!p.find(v => v.author.handle === c.author.handle)) p.push(c)
               return p
             }, [] as PostView[])
           const select = detectFeeds.map(v => {
@@ -960,7 +1001,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           case "kick_traveler":
             return setTravelerExist(false)
           case "get_sns_mentions":
-            return getSnsMentions()
+            return getSnsMentions(10)
           case "read_sns_reader":
             return readSnsReader()
           case "get_sns_feeds":
