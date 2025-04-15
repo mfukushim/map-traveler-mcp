@@ -329,7 +329,7 @@ describe("Mcp", () => {
   it("getSnsMentions", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* McpService.getSnsMentions()
+      return yield* McpService.getSnsMentions(5)
     }).pipe(
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),

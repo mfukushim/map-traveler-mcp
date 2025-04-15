@@ -256,11 +256,11 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
         return addBsLike(split[0],split[1]).pipe(Effect.andThen(a =>  DbService.saveSnsPost(JSON.stringify(a), bs_handle!)))
       }
 
-      function getNotification(seenAtEpoch?: number) {
+      function getNotification(seenAtEpoch?: number,limit=50) {
         return Effect.gen(function* () {
           yield* reLogin()
           const snsInfo = yield* DbService.getAvatarSns(1, 'bs')
-          const notification = yield* Effect.tryPromise(() => agent.listNotifications()).pipe(
+          const notification = yield* Effect.tryPromise(() => agent.listNotifications({limit})).pipe(
             Effect.tap(a => !a.success && Effect.fail(new Error('getNotification fail'))),
             Effect.tap(a => McpLogService.logTrace(`notification num:${a.data.length}`)),
             Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
