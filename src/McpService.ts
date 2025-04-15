@@ -1055,6 +1055,11 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 name: "carBattle.txt",
                 description: "Play the fantasy role playing"
               }, {
+                uri: "file:///worldMapChallenge.txt",
+                mimeType: "text/plain",
+                name: "worldMapChallenge.txt",
+                description: "Play the challenge party game"
+              }, {
                 uri: "file:///credit.txt",
                 mimeType: "text/plain",
                 name: "credit.txt",
