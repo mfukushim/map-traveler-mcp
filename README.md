@@ -75,7 +75,7 @@ Example:
 
 #### MCP resources
 
-Has two custom prompt samples.
+Has five custom prompt samples.
 When you import a prompt with Claude Desktop, Claude will act as a traveler.
 The SNS-compatible version controls SNS input and output while having a travel conversation.
 
@@ -86,6 +86,10 @@ The SNS-compatible version controls SNS input and output while having a travel c
   Claude will act as a traveler. It also controls reading and posting to SNS.
 - carBattle.txt  
   This is a small novel game about a story of transporting secret documents from Yokohama to Tokyo. Scenes are automatically generated. Set moveMode=skip to play.
+- japanMapChallenge.txt,japanMapChallenge2.txt  
+  Two AIs communicate with each other via SNS and play a challenge game using landscape images.  
+  To play, you need two Bluesky accounts and two Claude Desktops. Also set moveMode=skip. (However, the operation is somewhat unstable.)  
+  japanMapChallenge2 has a challenge reflection rule.
 
 ## Setting
 
@@ -388,3 +392,5 @@ or
 
 ```  
 You can now specify the tag name to be added when posting to SNS (Bluesky). #Required and must be at least 15 characters. If not specified, it will become "#geo_less_traveler".  
+The information obtained from SNS has been slightly changed. The information posted to SNS has been slightly changed.  
+A script has been added that allows multiple travel bots to converse and play via SNS.  
