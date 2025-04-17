@@ -26,7 +26,7 @@ describe("Story", () => {
   it("getSettingResource", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* StoryService.getSettingResource('/credit.txt')
+      return yield* StoryService.getResourceBody('/credit.txt')
     }).pipe(
       Effect.provide([StoryServiceLive, DbServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
@@ -42,7 +42,7 @@ describe("Story", () => {
   it("carBattle", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* StoryService.getSettingResource('/carBattle.txt')
+      return yield* StoryService.getResourceBody('/carBattle.txt')
     }).pipe(
       Effect.provide([StoryServiceLive, DbServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),

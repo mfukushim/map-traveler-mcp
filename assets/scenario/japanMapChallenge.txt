@@ -1,0 +1,59 @@
+Play the challenge party game
+Two AIs play a party game through SNS, and the game progresses are reported to the user.
+
+Settings:
+1. First, call get_setting. If the result shows that moveMode is skip, explain the following to the user and end the play.
+"This game requires moveMode to be set to skip. Add the following to claude_desktop_config.json"
+```
+"env": {
+"moveMode":"skip"
+}
+```
+Furthermore, if anySnsExist is false, the following is explained to the user and play ends:
+"This game requires SNS functionality. Please set MT_BS_ID, MT_BS_PASS, and MT_BS_HANDLE for SNS functionality in claude_desktop_config.json."
+
+Next, set your current location to Tokyo Station using set_traveler_location.
+
+Rules Summary:
+
+This game is a party game played by multiple AIs via SNS. The AIs provide live commentary of the game's progress to the user while playing.
+The AI can nominate other AIs to specify "things that often appear in landscape photographs."
+The specified AI will think of a location or address where it thinks the specified object is located, and will call reach_a_percentage_of_destination to travel to that address.
+If the move is successful, you will get a landscape image.
+The challenge is successful if the specified object is captured in the landscape image obtained.
+If the challenge is successful, reply to the question article using reply_sns_writer.
+When you report using reply_sns_writer, a scenic image will be automatically sent to SNS.
+If the specified object appears in the image uploaded by the specified AI, the challenge will be approved.
+If your challenge is approved, you will receive the nomination rights.
+Once you have the right to nominate, go back to the beginning and nominate another AI, specify "something that can appear in landscape photos" and post it on social media. Then repeat this process.
+If the movement fails or the specified object does not appear in the captured landscape image, the challenge will fail.
+Even if the challenge fails, please reply to SNS with reply_sns_writer for each movement.
+If the challenge fails, the AI will reply to the question article using reply_sns_writer. The AI that challenged will lose and the game will end.
+
+Rule details:
+
+First, read the SNS with get_sns_feeds to get the recruitment status of the AI or game to participate in. If you are not recruiting participants for the 'Japan map challenge Game', proceed to A-1 as the questioner. If you are recruiting participants, proceed to B-1 as the respondent.
+
+A. Questioner rules:
+
+A-1. As the question creator, post the first assignment on SNS using post_sns_writer. Let the users know that you are the question creator.
+Think of objects that may appear in a landscape photo.
+The objects should be common objects that are not human figures and are commonly found on ordinary street corners (e.g. cars, buildings, bicycles, etc.).
+You can also ask the user questions and consult with them to decide which objects to select.
+Play the “Japan Map Challenge Game”. The AI that can participate should take on the following challenge and reply.
+“Think of the name or address of a famous place where you think there is (any object that could appear in a landscape photograph) in the photograph. Reply to this post with the name or address of that place.”
+A-2. Call get_sns_mentions once to get the reply from the respondent. If there are no mentions, wait according to the user's instructions.
+A-3. When you receive a reply from a respondent on SNS, check whether the image of the answer matches the challenge, and if it does, send a "challenge accepted" to SNS. If it does not match, report a "challenge failed" to SNS.
+A-4. If the challenge is accepted, the respondent becomes the next question setter, and the respondent proceeds to B-1 and continues the next game. If the challenge is unsuccessful, the respondent loses and the game ends.
+
+B. Respondents rules:
+
+B-1. Read SNS with get_sns_feeds, and if the AI is specified as a respondent by SNS handle and assigned an issue, it will become a respondent. Please inform the user that it has become a respondent.
+B-2. Think of a place or address where you think the object specified in the task will appear in the photo, and call set_traveler_destination_address and reach_a_percentage_of_destination to travel to that address. If the travel is successful, you can get a landscape image.
+B-3. If the specified object is visible in the obtained scenery image, the challenge is successful. If the challenge is successful, reply to the question article using reply_sns_writer. When you report using post_sns_writer, the scenery image will be automatically sent to SNS.
+Inform the user that the challenge was successful.
+B-4. If the scenery image does not contain the specified object, the challenge will fail. Even if the challenge fails, please reply to the question article using reply_sns_writer after each move. The user will be notified that the challenge has failed. If the challenge fails, the player will lose and the game will end.
+B-5. You can try twice. The first time, let the AI decide the location, and the second time, please decide the location together with the user.
+B-6. If the challenge is successful, call get_sns_mentions periodically according to the user's instructions and wait for the questioner's response.
+B-7. If the questioner's response is that the challenge is accepted, the answerer becomes the questioner and proceeds to A-1 and continues with the next game. If the challenge is rejected, the answerer loses and the game ends.
+

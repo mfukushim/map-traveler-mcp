@@ -69,7 +69,7 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 
 #### MCP resources
 
-2つのカスタムプロンプトのサンプルを持ちます。  
+5つのカスタムプロンプトのサンプルを持ちます。  
 Claude Desktopでプロンプトを取り込むと、Claudeが旅人の立場の役をします。  
 SNS対応版では旅会話をしながらSNSの入出力を制御します。
 
@@ -79,6 +79,10 @@ SNS対応版では旅会話をしながらSNSの入出力を制御します。
   Claudeが旅人の立場の役をします。合わせてSNSへの読み取りとポストを制御します。
 - carBattle.txt  
   横浜から東京に向かって秘密文書を運ぶストーリーの小さなノベルゲームです。シーンは自動で生成します。遊ぶためにはmoveMode=skipを設定します。
+- japanMapChallenge.txt,japanMapChallenge2.txt  
+  SNSを介して2つのAI同士で会話して風景画像を使ったチャレンジゲームをします。  
+  遊ぶためには2つのBlueskyアカウントと2つのClaude Desktopが必要です。またmoveMode=skipを設定します。(ただしやや動作は不安定です)  
+  japanMapChallenge2はチャレンジの反射ルールを付けたものです。
 
 ## 設定
 
@@ -370,5 +374,6 @@ envにimage_widthを追加しました。デフォルトは512です。小さく
 }
 
 ```
-SNS(Bluesky)ポスト時に付加するタグ名を指定できるようにしました。#必須で15文字以上です。未指定だと"#geo_less_traveler"になります。  
-
+SNS(Bluesky)ポスト時に付加するタグ名を指定できるようにしました。#必須で15文字以上です。未指定だと"#geo_less_traveler"になります。    
+SNSで取得する情報を少し変更しました。SNSでポストする情報を少し変更しました。  
+SNSを介して複数の旅botが会話して遊ぶスクリプトを追加しました。  

@@ -234,14 +234,17 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
         })
       }
 
-      function snsReply(message: string, appendNeedText: string, replyId: string) {
+      function snsReply(message: string, appendNeedText: string, replyId: string,image?: {
+        buf: Buffer;
+        mime: string;
+      }) {
         const sliceLen = appendNeedText.length + 1
         return Effect.gen(function* () {
           const postIds: { snsType: SnsType; id: number }[] = []
           yield* reLogin()
           const split = replyId.split('-');
           const bsPostId = yield* bsPost(
-            [message.slice(0, 300 - sliceLen), appendNeedText].join('\n'), {uri: split[0], cid: split[1]}); //  bsは300文字らしい
+            [message.slice(0, 300 - sliceLen), appendNeedText].join('\n'), {uri: split[0], cid: split[1]},image); //  bsは300文字らしい
           postIds.push({
             snsType: 'bs',
             id: yield* DbService.saveSnsPost(JSON.stringify(bsPostId), bs_handle!)
@@ -256,11 +259,11 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
         return addBsLike(split[0],split[1]).pipe(Effect.andThen(a =>  DbService.saveSnsPost(JSON.stringify(a), bs_handle!)))
       }
 
-      function getNotification(seenAtEpoch?: number) {
+      function getNotification(seenAtEpoch?: number,limit=50) {
         return Effect.gen(function* () {
           yield* reLogin()
           const snsInfo = yield* DbService.getAvatarSns(1, 'bs')
-          const notification = yield* Effect.tryPromise(() => agent.listNotifications()).pipe(
+          const notification = yield* Effect.tryPromise(() => agent.listNotifications({limit})).pipe(
             Effect.tap(a => !a.success && Effect.fail(new Error('getNotification fail'))),
             Effect.tap(a => McpLogService.logTrace(`notification num:${a.data.length}`)),
             Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
