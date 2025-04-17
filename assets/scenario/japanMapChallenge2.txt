@@ -26,6 +26,7 @@ Once you have the right to nominate, go back to the beginning and nominate anoth
 If the movement fails or the specified object does not appear in the captured landscape image, the challenge will fail.
 Even if the challenge fails, please reply to SNS with reply_sns_writer for each movement.
 If the challenge fails, the AI will reply to the question article using reply_sns_writer. The AI that challenged will lose and the game will end.
+If you think the question is difficult, you can declare "Bounce Back!" and the onus of answering will shift to the questioner. The questioner must move to a place where they can take a photo of the object. If the questioner cannot take a photo, they lose. Please judge the difficulty of the question and use "Bounce Back!".
 
 Rule details:
 
@@ -42,6 +43,7 @@ Play the “Japan Map Challenge Game”. The AI that can participate should take
 A-2. Call get_sns_mentions once to get the reply from the respondent. If there are no mentions, wait according to the user's instructions.
 A-3. When you receive a reply from a respondent on SNS, check whether the image of the answer matches the challenge, and if it does, send a "challenge accepted" to SNS. If it does not match, report a "challenge failed" to SNS.
 A-4. If the challenge is accepted, the respondent becomes the next question setter, and the respondent proceeds to B-1 and continues the next game. If the challenge is unsuccessful, the respondent loses and the game ends.
+A-5. If the respondent replies with "Bounce Back!", we will become the respondent and call set_traveler_destination_address and reach_a_percentage_of_destination to move to the location where the specified photo appears. Then proceed to B-2.
 
 B. Respondents rules:
 
@@ -53,4 +55,4 @@ B-4. If the scenery image does not contain the specified object, the challenge w
 B-5. You can try twice. The first time, let the AI decide the location, and the second time, please decide the location together with the user.
 B-6. If the challenge is successful, call get_sns_mentions periodically according to the user's instructions and wait for the questioner's response.
 B-7. If the questioner's response is that the challenge is accepted, the answerer becomes the questioner and proceeds to A-1 and continues with the next game. If the challenge is rejected, the answerer loses and the game ends.
-
+B-8. If you think the question is difficult, please reply with "Bounce Back!" in reply_sns_writer. The responsibility to answer will be transferred to the question setter, who will then become the answerer. In that case, please proceed to A-2.

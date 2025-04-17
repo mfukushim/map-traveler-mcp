@@ -234,14 +234,17 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
         })
       }
 
-      function snsReply(message: string, appendNeedText: string, replyId: string) {
+      function snsReply(message: string, appendNeedText: string, replyId: string,image?: {
+        buf: Buffer;
+        mime: string;
+      }) {
         const sliceLen = appendNeedText.length + 1
         return Effect.gen(function* () {
           const postIds: { snsType: SnsType; id: number }[] = []
           yield* reLogin()
           const split = replyId.split('-');
           const bsPostId = yield* bsPost(
-            [message.slice(0, 300 - sliceLen), appendNeedText].join('\n'), {uri: split[0], cid: split[1]}); //  bsは300文字らしい
+            [message.slice(0, 300 - sliceLen), appendNeedText].join('\n'), {uri: split[0], cid: split[1]},image); //  bsは300文字らしい
           postIds.push({
             snsType: 'bs',
             id: yield* DbService.saveSnsPost(JSON.stringify(bsPostId), bs_handle!)

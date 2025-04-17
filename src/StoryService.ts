@@ -270,7 +270,7 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
       )
     }
 
-    function getSettingResource(pathname: string) {
+    function getResourceBody(pathname: string) {
       //  様式は /credit.txt
       return Effect.gen(function *() {
         yield *McpLogService.logTrace(`getSettingResource:`,pathname)
@@ -279,7 +279,7 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
           return yield *Effect.async<string, Error>((resume) => {
             fs.readFile(path.join(__pwd, `assets/scenario${pathname}`), {encoding: "utf8"}, (err, data) => {
               if (err) resume(Effect.fail(err))
-              else resume(Effect.succeed(data));
+              else resume(Effect.succeed(data.slice(data.indexOf('\n') + 1)));
             });
           })
         } else if (pathname.includes("/setting.txt")) {
@@ -308,13 +308,40 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
       })
     }
 
+    function getResourceList() {
+      return Effect.gen(function *() {
+        yield *McpLogService.logTrace(`getResourceList:`)
+        const files = yield *Effect.tryPromise(() => fs.promises.readdir(path.join(__pwd, `assets/scenario`)))
+        const data =  yield *Effect.forEach(files,a => {
+          return Effect.all({
+            name: Effect.succeed(a),
+            desc:Effect.async<string, Error>((resume) => {
+              fs.readFile(path.join(__pwd, `assets/scenario/${a}`), {encoding: "utf8"}, (err, data) => {
+                if (err) resume(Effect.fail(err))
+                else resume(Effect.succeed(data.split('\n')[0]));
+              });
+            })
+          })
+        })
+        data.push({
+          name: 'setting.txt',
+          desc: 'setting of traveler'
+        },{
+          name: 'credit.txt',
+          desc: 'credit of this component'
+        })
+        return data
+      })
+    }
+
     // endregion
 
     return {
       tips,
       placesToFacilities,
       getNearbyFacilities,
-      getSettingResource
+      getResourceBody,
+      getResourceList
     }
   }),
 }) {
