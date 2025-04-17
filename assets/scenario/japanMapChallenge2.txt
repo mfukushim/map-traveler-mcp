@@ -9,6 +9,9 @@ Settings:
 "moveMode":"skip"
 }
 ```
+Furthermore, if anySnsExist is false, the following is explained to the user and play ends:
+"This game requires SNS functionality. Please set MT_BS_ID, MT_BS_PASS, and MT_BS_HANDLE for SNS functionality in claude_desktop_config.json."
+
 Next, set your current location to Tokyo Station using set_traveler_location.
 
 Rules Summary:
