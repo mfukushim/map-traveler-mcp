@@ -1,3 +1,4 @@
+Play the fantasy role playing
 A tabletop RPG will be played by the user and the AI.
 
 Settings:

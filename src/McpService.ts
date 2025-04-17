@@ -726,7 +726,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
 
       //  タグの前のテキストだけに絞る 改行は除く
       const filterTags = (body?: string) => {
-        return body ? body.split('#')[0].replaceAll('\n', ''):''
+        return body ? body.split('#')[0].replaceAll('\n', '') : ''
       }
 
       const uniqueTop = (arr: {
@@ -898,6 +898,25 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         })
       }
 
+      function* recentImage() {
+        const img = yield* ImageService.getRecentImageAndClear().pipe(Effect.tap(a => McpLogService.logTrace(`sns image:${a !== undefined}`)))
+        const recentUseLabels = []
+        if (GoogleMapApi_key) {
+          recentUseLabels.push(LabelGoogleMap)
+        }
+        if (useAiImageGen && img) {
+          recentUseLabels.push(labelImage(useAiImageGen));
+        }
+        const appendLicence = aiGenerated + recentUseLabels.join(',')  //  追加ライセンスの文字列をclient LLMに制御させることは信頼できないので、直近の生成行為に対する文字列を強制付加する
+        return {
+          img: img ? {
+            buf: img,
+            mime: "image/png"
+          } : undefined
+          , appendLicence
+        };
+      }
+
       const replySnsWriter = (message: string, id: string) => {
         //  TODO 固定フィルタ
         return Effect.gen(function* () {
@@ -918,9 +937,11 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           if (!id2) {
             return yield* Effect.fail(new AnswerError('id is invalid'))
           }
+          const {img, appendLicence} = yield* recentImage();
+
           //  追加ライセンスの文字列をclient LLMに制御させることは信頼できないので、直近の生成行為に対する文字列を強制付加する
           //  @メンションは今は表示名に対して付けているので邪魔にはなっていない ただ除去したほうが無難な可能性がある
-          return yield* SnsService.snsReply(message.replaceAll("@", ""), ` ${feedTag} ${aiGenerated} `, id2).pipe(
+          return yield* SnsService.snsReply(message.replaceAll("@", ""), ` ${feedTag} ${appendLicence} `, id2, img).pipe(
             Effect.andThen(() => [
                 {
                   type: "text",
@@ -931,7 +952,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             Effect.provide(SnsServiceLive)
           );
         })
-      }
+      };
 
       const postSnsWriter = (message: string) => {
         //  特定タグを強制付加する 長すぎは強制的に切る 特定ライセンス記述を強制付加する その他固定フィルタ機能を置く
@@ -946,20 +967,9 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             ] as ToolContentResponse[]
             return yield* Effect.succeed(noMes).pipe(Effect.tap(() => env.loggingMode && McpLogService.logTrace(message)))
           }
-          const img = yield* ImageService.getRecentImageAndClear().pipe(Effect.tap(a => McpLogService.logTrace(`sns image:${a !== undefined}`)))
-          const recentUseLabels = []
-          if (GoogleMapApi_key) {
-            recentUseLabels.push(LabelGoogleMap)
-          }
-          if (useAiImageGen) {
-            recentUseLabels.push(labelImage(useAiImageGen));
-          }
-          const appendLicence = aiGenerated + recentUseLabels.join(',')  //  追加ライセンスの文字列をclient LLMに制御させることは信頼できないので、直近の生成行為に対する文字列を強制付加する
+          const {img, appendLicence} = yield* recentImage();
           //  @メンションは今は表示名に対して付けているので邪魔にはなっていない ただ除去したほうが表示的に邪魔にならないだろう
-          return yield* SnsService.snsPost(message.replaceAll("@", ""), ` ${feedTag} ${appendLicence} `, img ? {
-            buf: img,
-            mime: "image/png"
-          } : undefined).pipe(
+          return yield* SnsService.snsPost(message.replaceAll("@", ""), ` ${feedTag} ${appendLicence} `, img).pipe(
             Effect.andThen(() => [
                 {
                   type: "text",
@@ -1037,45 +1047,61 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
        */
       const run = () => {
         server.setRequestHandler(ListResourcesRequestSchema, async () => {
-          return {
-            resources: [
-              {
-                uri: "file:///role.txt",
-                mimeType: "text/plain",
-                name: "role.txt",
-                description: "The purpose and role of AI"
-              }, {
-                uri: "file:///roleWithSns.txt",
-                mimeType: "text/plain",
-                name: "roleWithSns.txt",
-                description: "The purpose and role of AI with SNS"
-              }, {
-                uri: "file:///carBattle.txt",
-                mimeType: "text/plain",
-                name: "carBattle.txt",
-                description: "Play the fantasy role playing"
-              }, {
-                uri: "file:///japanMapChallenge.txt",
-                mimeType: "text/plain",
-                name: "japanMapChallenge.txt",
-                description: "Play the challenge party game"
-              }, {
-                uri: "file:///credit.txt",
-                mimeType: "text/plain",
-                name: "credit.txt",
-                description: "credit of this component"
-              }, {
-                uri: "file:///setting.txt",
-                mimeType: "text/plain",
-                name: "setting.txt",
-                description: "setting of traveler"
+          return await StoryService.getResourceList().pipe(
+            Effect.andThen(a => {
+              return {
+                resources:a.map(b => {
+                  return {
+                    uri: `file:///${b.name}`,
+                    mimeType: "text/plain",
+                    name: b.name,
+                    description: b.desc
+                  }
+                })
               }
-            ]
-          };
+            }),
+            Effect.provide([DbServiceLive, StoryServiceLive]),
+            Effect.runPromise
+          )
+          // return {
+          //   resources: [
+          //     {
+          //       uri: "file:///role.txt",
+          //       mimeType: "text/plain",
+          //       name: "role.txt",
+          //       description: "The purpose and role of AI"
+          //     }, {
+          //       uri: "file:///roleWithSns.txt",
+          //       mimeType: "text/plain",
+          //       name: "roleWithSns.txt",
+          //       description: "The purpose and role of AI with SNS"
+          //     }, {
+          //       uri: "file:///carBattle.txt",
+          //       mimeType: "text/plain",
+          //       name: "carBattle.txt",
+          //       description: "Play the fantasy role playing"
+          //     }, {
+          //       uri: "file:///japanMapChallenge.txt",
+          //       mimeType: "text/plain",
+          //       name: "japanMapChallenge.txt",
+          //       description: "Play the challenge party game"
+          //     }, {
+          //       uri: "file:///credit.txt",
+          //       mimeType: "text/plain",
+          //       name: "credit.txt",
+          //       description: "credit of this component"
+          //     }, {
+          //       uri: "file:///setting.txt",
+          //       mimeType: "text/plain",
+          //       name: "setting.txt",
+          //       description: "setting of traveler"
+          //     }
+          //   ]
+          // };
         });
         server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
           const url = new URL(request.params.uri);
-          return await StoryService.getSettingResource(url.pathname).pipe(
+          return await StoryService.getResourceBody(url.pathname).pipe(
             Effect.andThen(a => ({
               contents: [{
                 uri: request.params.uri,

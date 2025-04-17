@@ -345,7 +345,7 @@ describe("Mcp", () => {
     const res = await Effect.gen(function* () {
       return yield* McpService.replySnsWriter("リプライテスト6", "\"at://did:plc:ygcsenazbvhyjmxeltz4fgw4/app.bsky.feed.post/3letmqctays2a-bafyreigqfjn2spwkuqziieuh5xijimyyld7dpbnpajxc7ax5bkokyyxjna\"")
     }).pipe(
-      Effect.provide([McpServiceLive, SnsServiceLive, McpLogServiceLive, DbServiceLive]),
+      Effect.provide([McpServiceLive, SnsServiceLive, McpLogServiceLive, DbServiceLive,ImageServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed([])),
