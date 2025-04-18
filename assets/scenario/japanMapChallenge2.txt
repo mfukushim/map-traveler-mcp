@@ -43,7 +43,7 @@ The objects should be common objects that are not human figures and are commonly
 You can also ask the user questions and consult with them to decide which objects to select.
 Play the “Japan Map Challenge Game”. The AI that can participate should take on the following challenge and reply.
 “Think of the name or address of a famous place where you think there is (any object that could appear in a landscape photograph) in the photograph. Reply to this post with the name or address of that place.”
-A-2. Call get_sns_mentions once to get the reply from the respondent. If there are no mentions, wait according to the user's instructions.
+A-2. Please ask the user for instructions. Call get_sns_mentions once according to the user's instructions to get the reply from the respondent. If there is no mention, ask the user for instructions again. Proceed to A-3 only if there is a mention.
 A-3. When you receive a reply from a respondent on SNS, check whether the image of the answer matches the challenge, and if it does, send a "challenge accepted" to SNS. If it does not match, report a "challenge failed" to SNS.
 A-4. If the challenge is accepted, the respondent becomes the next question setter, and the respondent proceeds to B-1 and continues the next game. If the challenge is unsuccessful, the respondent loses and the game ends.
 A-5. If the respondent replies with "Bounce Back!", we will become the respondent and call set_traveler_destination_address and reach_a_percentage_of_destination to move to the location where the specified photo appears. Then proceed to B-2.
@@ -54,8 +54,9 @@ B-1. Read SNS with get_sns_feeds, and if the AI is specified as a respondent by 
 B-2. Think of a place or address where you think the object specified in the task will appear in the photo, and call set_traveler_destination_address and reach_a_percentage_of_destination to travel to that address. If the travel is successful, you can get a landscape image.
 B-3. If the specified object is visible in the obtained scenery image, the challenge is successful. If the challenge is successful, reply to the question article using reply_sns_writer. When you report using post_sns_writer, the scenery image will be automatically sent to SNS.
 Inform the user that the challenge was successful.
-B-4. If the scenery image does not contain the specified object, the challenge will fail. Even if the challenge fails, please reply to the question article using reply_sns_writer after each move. The user will be notified that the challenge has failed. If the challenge fails, the player will lose and the game will end.
-B-5. You can try twice. The first time, let the AI decide the location, and the second time, please decide the location together with the user.
-B-6. If the challenge is successful, call get_sns_mentions periodically according to the user's instructions and wait for the questioner's response.
-B-7. If the questioner's response is that the challenge is accepted, the answerer becomes the questioner and proceeds to A-1 and continues with the next game. If the challenge is rejected, the answerer loses and the game ends.
-B-8. If you think the question is difficult, please reply with "Bounce Back!" in reply_sns_writer. The responsibility to answer will be transferred to the question setter, who will then become the answerer. In that case, please proceed to A-2.
+B-4. If the landscape image does not contain the specified object, the challenge will fail. If the challenge fails, reply to the question article with the failure result using reply_sns_writer. Then ask the user for instructions.
+B-5. Discuss with the user and decide the next move, and call set_traveler_destination_address and reach_a_percentage_of_destination to travel to that address. If the travel is successful, you can get a landscape image.
+B-6. If the challenge fails, the player loses and the game ends. Use reply_sns_writer to report that the challenge failed.
+B-7. If the challenge is successful, call get_sns_mentions periodically according to the user's instructions and wait for the questioner's response.
+B-8. If the questioner's response is that the challenge is accepted, the answerer becomes the questioner and proceeds to A-1 and continues with the next game. If the challenge is rejected, the answerer loses and the game ends.
+B-9. If you find the question difficult in B-1 or B-5, please reply to reply_sns_writer with "Bounce Back!". The responsibility for answering will be transferred to the question setter, who will then become the answerer. In that case, proceed to A-2.
