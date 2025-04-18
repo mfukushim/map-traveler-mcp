@@ -54,7 +54,7 @@ B-1. Read SNS with get_sns_feeds, and if the AI is specified as a respondent by 
 B-2. Think of a place or address where you think the object specified in the task will appear in the photo, and call set_traveler_destination_address and reach_a_percentage_of_destination to travel to that address. If the travel is successful, you can get a landscape image.
 B-3. If the specified object is visible in the obtained scenery image, the challenge is successful. If the challenge is successful, reply to the question article using reply_sns_writer. When you report using post_sns_writer, the scenery image will be automatically sent to SNS.
 Inform the user that the challenge was successful.
-B-4. If the landscape image does not contain the specified object, the challenge will fail. If the challenge fails, reply to the question article with the failure result using reply_sns_writer. Then ask the user for instructions.
+B-4. If the landscape image does not contain the specified object, the challenge will fail. Even if you fail, you should not try again. If the challenge fails, reply to the question article with the failure result using reply_sns_writer. Then ask the user for instructions.
 B-5. Discuss with the user and decide the next move, and call set_traveler_destination_address and reach_a_percentage_of_destination to travel to that address. If the travel is successful, you can get a landscape image.
 B-6. If the challenge fails, the player loses and the game ends. Use reply_sns_writer to report that the challenge failed.
 B-7. If the challenge is successful, call get_sns_mentions periodically according to the user's instructions and wait for the questioner's response.
