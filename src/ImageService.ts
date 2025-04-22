@@ -2,7 +2,7 @@
 
 import {Effect, Schedule, Option, Schema} from "effect";
 import sharp = require("sharp");
-import {FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse} from "@effect/platform";
+import {HttpClient, HttpClientRequest, HttpClientResponse} from "@effect/platform";
 import dayjs from "dayjs";
 import FormData from 'form-data';
 import {Jimp} from "jimp";
@@ -133,7 +133,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             Effect.mapError(e => new Error(`sdMakeTextToImage error:${e}`)),
             Effect.scoped,
         )
-      }).pipe(Effect.provide(FetchHttpClient.layer))
+      })
 
     }
 
@@ -272,7 +272,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               Effect.andThen(a => Buffer.from(a)),
               Effect.tap(a => McpLogService.logTrace(`downloadMedia out:${a.length}`)),
               Effect.tapError(a => McpLogService.logError(`downloadMedia err:${a}`)),
-          ), Schedule.recurs(4).pipe(Schedule.intersect(Schedule.spaced("10 seconds")))).pipe(Effect.provide([McpLogServiceLive]));
+          ), Schedule.recurs(4).pipe(Schedule.intersect(Schedule.spaced("10 seconds"))));
     }
 
     /**
@@ -877,7 +877,6 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       return HttpClient.get(`${comfy_url}/history`).pipe(
           Effect.andThen((response) => HttpClientResponse.schemaBodyJson(sc)(response)),
           Effect.scoped,
-          Effect.provide(FetchHttpClient.layer),
           Effect.andThen((a1: any) => {
             const prOut = a1[prompt_id]
             if (!prOut) {
@@ -898,7 +897,6 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
                   }).pipe(
                       Effect.andThen((response) => response.arrayBuffer),
                       Effect.scoped,
-                      Effect.provide(FetchHttpClient.layer) //  TODO この後に削除が欲しいところだけど
                   ))
             })
           }),

@@ -460,7 +460,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             }
             return content
           }
-        ).pipe(Effect.provide(StoryServiceLive))
+        )
       }
       const setPersonMode = (person: string) => {
         const mode: PersonMode = person === 'second_person' ? 'second' : 'third'
@@ -538,18 +538,14 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       }
 
       const getCurrentLocationInfo = (includePhoto: boolean, includeNearbyFacilities: boolean) => {
-        return RunnerService.getCurrentView(dayjs(), includePhoto, includeNearbyFacilities, env.isPractice).pipe(
-          Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
-        )
+        return RunnerService.getCurrentView(dayjs(), includePhoto, includeNearbyFacilities, env.isPractice)
       }
 
       const getElapsedView = (timeElapsedPercentage: number) => {
         if (env.isPractice) {
           return practiceNotUsableMessage
         }
-        return RunnerService.getElapsedView(timeElapsedPercentage).pipe(
-          Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
-        )
+        return RunnerService.getElapsedView(timeElapsedPercentage)
       }
 
       const practiceNotUsableMessage = Effect.succeed([
@@ -614,15 +610,14 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             type: "text",
             text: setMessage.join('\n')
           } as ToolContentResponse]
-        }).pipe(Effect.provide([MapServiceLive, DbServiceLive, RunnerServiceLive]))
+        })
       }
       const getDestinationAddress = () => {
         if (env.isPractice) {
           return practiceNotUsableMessage
         }
         return RunnerService.getDestinationAddress().pipe(
-          Effect.andThen(a => [{type: "text", text: `Current destination is "${a}"`} as ToolContentResponse]),
-          Effect.provide([MapServiceLive, StoryServiceLive, RunnerServiceLive, ImageServiceLive, DbServiceLive]),
+          Effect.andThen(a => [{type: "text", text: `Current destination is "${a}"`} as ToolContentResponse])
         )
       }
       const setDestinationAddress = (address: string) => {
@@ -630,8 +625,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           return practiceNotUsableMessage
         }
         return RunnerService.setDestinationAddress(address).pipe(
-          Effect.andThen(a => [{type: "text", text: a.message} as ToolContentResponse]),
-          Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, ImageServiceLive]),
+          Effect.andThen(a => [{type: "text", text: a.message} as ToolContentResponse])
         )
       }
       const startJourney = () => {
@@ -646,14 +640,11 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               })
             }
             return out
-          }),
-          Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
+          })
         )
       }
       const stopJourney = () => {
-        return RunnerService.stopJourney(env.isPractice).pipe(
-          Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
-        )
+        return RunnerService.stopJourney(env.isPractice)
       }
 
       const setTravelerExist = (callKick: boolean) => {
@@ -689,8 +680,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           const image = mentionPostText.image ?
             yield* HttpClient.get(mentionPostText.image).pipe(
               Effect.andThen((response) => response.arrayBuffer),
-              Effect.scoped,
-              Effect.provide(FetchHttpClient.layer)
+              Effect.scoped
             ) : undefined
           //  replyのときに、replyが付けられた自分が書いたpost, イイネのときはないはず
           const repliedPostText = notification.mentionType === 'reply' && notification.parentUri ?
@@ -814,7 +804,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             })
           }
           return content
-        }).pipe(Effect.provide(SnsServiceLive))
+        })
       }
 
 
@@ -847,8 +837,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           const imageOut = yield* Effect.forEach(images, (a) => {
             return HttpClient.get(a.uri).pipe(
               Effect.andThen((response) => response.arrayBuffer),
-              Effect.scoped,
-              Effect.provide(FetchHttpClient.layer)
+              Effect.scoped
             ).pipe(Effect.andThen(a1 => ({
               type: "image",
               data: Buffer.from(a1).toString("base64"),
@@ -861,7 +850,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           }]
           c.push(...imageOut)
           return c
-        }).pipe(Effect.provide(SnsServiceLive))
+        })
       }
 
       const addLike = (id: string) => {
@@ -892,8 +881,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                   text: "Liked"
                 }
               ] as ToolContentResponse[]
-            ),
-            Effect.provide(SnsServiceLive)
+            )
           );
         })
       }
@@ -948,8 +936,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                   text: "posted"
                 }
               ] as ToolContentResponse[]
-            ),
-            Effect.provide(SnsServiceLive)
+            )
           );
         })
       };
@@ -976,8 +963,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                   text: "posted" + (extfeedTag && !isEnableFeedTag ? '. But the feed tag is posted by default.' : '')
                 }
               ] as ToolContentResponse[]
-            ),
-            Effect.provide(SnsServiceLive)
+            )
           );
         })
       }
@@ -1159,7 +1145,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               return toolSwitch(request)
             }),
             Effect.andThen(a => noImageOut ? a.filter(v => v.type !== 'image') : a),
-            Effect.provide([DbServiceLive, ImageServiceLive]),
             Effect.andThen(a => ({content: a})),
             Effect.catchIf(a => a instanceof AnswerError, e => {
               return Effect.succeed({
@@ -1177,9 +1162,9 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                     text: "Sorry,unknown system error."
                   } as ToolContentResponse]
                 }),
-                Effect.provide(McpLogServiceLive),
               )
             }),
+            Effect.provide([DbServiceLive, StoryServiceLive, MapServiceLive, FetchHttpClient.layer, ImageServiceLive, RunnerServiceLive, SnsServiceLive]),
             Effect.runPromise)
         });
 
@@ -1229,7 +1214,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         makeToolsDef,
       }
     }
-  )
+  ),
+  dependencies: [DbServiceLive, McpLogServiceLive, StoryServiceLive, MapServiceLive, FetchHttpClient.layer, ImageServiceLive, RunnerServiceLive, SnsServiceLive],
 }) {
 }
 

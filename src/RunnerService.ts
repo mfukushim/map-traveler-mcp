@@ -1,7 +1,7 @@
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
 
 import {Effect, Option, Schema} from "effect";
-import {MapService, MapDef} from "./MapService.js";
+import {MapService, MapDef, MapServiceLive} from "./MapService.js";
 import {
   __pwd,
   DbService,
@@ -14,8 +14,8 @@ import dayjs = require("dayjs");
 import utc = require("dayjs/plugin/utc");
 import duration = require("dayjs/plugin/duration");
 import relativeTime = require("dayjs/plugin/relativeTime");
-import {ImageService, widthOut, heightOut} from "./ImageService.js";
-import {FacilityInfo, StoryService} from "./StoryService.js";
+import {ImageService, widthOut, heightOut, ImageServiceLive} from "./ImageService.js";
+import {FacilityInfo, StoryService, StoryServiceLive} from "./StoryService.js";
 import {TripStatus} from "./db/schema.js";
 import 'dotenv/config'
 import {McpLogService} from "./McpLogService.js";
@@ -34,6 +34,7 @@ import {
   sd_key,
   time_scale
 } from "./EnvUtils.js";
+import {FetchHttpClient} from "@effect/platform";
 
 
 dayjs.extend(utc)
@@ -659,7 +660,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         runStatus.to = Option.getOrElse(res.address, () => runStatus.from)
         yield* DbService.saveRunStatus(runStatus)
         return res.out
-      }).pipe(Effect.provide(DbServiceLive))
+      })
     }
 
     function getStreetImage(loc: any, abort = false, localDebug = false) {
@@ -721,7 +722,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       makeView,
     }
   }),
-  dependencies: [DbServiceLive]
+  dependencies: [DbServiceLive,StoryServiceLive,MapServiceLive,FetchHttpClient.layer, ImageServiceLive]
 }) {
 }
 
