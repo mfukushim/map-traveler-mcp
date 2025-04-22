@@ -1049,41 +1049,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             Effect.provide([DbServiceLive, StoryServiceLive]),
             Effect.runPromise
           )
-          // return {
-          //   resources: [
-          //     {
-          //       uri: "file:///role.txt",
-          //       mimeType: "text/plain",
-          //       name: "role.txt",
-          //       description: "The purpose and role of AI"
-          //     }, {
-          //       uri: "file:///roleWithSns.txt",
-          //       mimeType: "text/plain",
-          //       name: "roleWithSns.txt",
-          //       description: "The purpose and role of AI with SNS"
-          //     }, {
-          //       uri: "file:///carBattle.txt",
-          //       mimeType: "text/plain",
-          //       name: "carBattle.txt",
-          //       description: "Play the fantasy role playing"
-          //     }, {
-          //       uri: "file:///japanMapChallenge.txt",
-          //       mimeType: "text/plain",
-          //       name: "japanMapChallenge.txt",
-          //       description: "Play the challenge party game"
-          //     }, {
-          //       uri: "file:///credit.txt",
-          //       mimeType: "text/plain",
-          //       name: "credit.txt",
-          //       description: "credit of this component"
-          //     }, {
-          //       uri: "file:///setting.txt",
-          //       mimeType: "text/plain",
-          //       name: "setting.txt",
-          //       description: "setting of traveler"
-          //     }
-          //   ]
-          // };
         });
         server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
           const url = new URL(request.params.uri);

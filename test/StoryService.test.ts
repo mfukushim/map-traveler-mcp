@@ -14,10 +14,10 @@ describe("Story", () => {
     const res = await Effect.gen(function* () {
       return yield* StoryService.tips()
     }).pipe(
-        Effect.provide([StoryServiceLive, DbServiceLive]),
-        Logger.withMinimumLogLevel(LogLevel.Trace),
-        Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
-        runPromise
+      Effect.provide([StoryServiceLive]),
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
+      runPromise
     )
     expect(res).toBeInstanceOf(Object)
   })
