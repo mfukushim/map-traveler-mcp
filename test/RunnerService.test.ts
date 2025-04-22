@@ -1,6 +1,6 @@
 // @vitest-environment node
 import {Effect, Logger, LogLevel} from "effect";
-import {describe, expect, it} from "@effect/vitest"
+import {beforeAll, describe, expect, it} from "@effect/vitest"
 import {RunnerService, RunnerServiceLive} from "../src/RunnerService.js";
 import {runPromise} from "effect/Effect";
 import {FetchHttpClient} from "@effect/platform";
@@ -9,20 +9,24 @@ import {MapDef, MapServiceLive} from "../src/MapService.js";
 import {ImageServiceLive} from "../src/ImageService.js";
 import {StoryServiceLive} from "../src/StoryService.js";
 import {McpLogService, McpLogServiceLive} from "../src/McpLogService.js";
-import {AnswerError} from "../src/mapTraveler.js";
 import * as fs from "node:fs";
 import dayjs from "dayjs";
-
+import {AnswerError} from "../src/mapTraveler.js";
 
 describe("Runner", () => {
+  beforeAll(async () => {
+    return await DbService.initSystemMode().pipe(
+      Effect.provide([DbServiceLive]),
+      Effect.runPromise
+    )
+  });
 
   it("getCurrentView_practice", async () => {
-    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    //  vitest --run --testNamePattern=getCurrentView_practice RunnerService.test.ts
     const res = await Effect.gen(function* () {
       return yield* RunnerService.getCurrentView(dayjs(), false, false, true)  //
     }).pipe(
-      Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive,
-        FetchHttpClient.layer, McpLogServiceLive]), //  layer
+      Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive, FetchHttpClient.layer]), //  layer
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(a => Effect.logError(a)),
       Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed([])),
@@ -114,6 +118,7 @@ describe("Runner", () => {
     expect(res.flat().filter(a => a.type === 'text').every(b => ['current location is','\'I am in a hotel'].some(c => b.text?.includes(c)))).toBeTruthy()
   })
   it("getElapsedView_Running", async () => {
+    //  vitest --run --testNamePattern=getElapsedView_Running RunnerService.test.ts
     //  envコメントアウトでも通るがGoogle map apiを設定している状態が厳密
     const now = dayjs()
     const s = fs.readFileSync('tools/test/routeSample.json', {encoding: 'utf-8'});

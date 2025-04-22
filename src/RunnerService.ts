@@ -5,7 +5,6 @@ import {MapService, MapDef} from "./MapService.js";
 import {
   __pwd,
   DbService,
-  DbServiceLive,
   env,
   RunStatus,
 } from "./DbService.js";
@@ -659,7 +658,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         runStatus.to = Option.getOrElse(res.address, () => runStatus.from)
         yield* DbService.saveRunStatus(runStatus)
         return res.out
-      }).pipe(Effect.provide(DbServiceLive))
+      })
     }
 
     function getStreetImage(loc: any, abort = false, localDebug = false) {
@@ -721,7 +720,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       makeView,
     }
   }),
-  dependencies: [DbServiceLive]
+  // dependencies: [DbServiceLive,StoryServiceLive,MapServiceLive,FetchHttpClient.layer, ImageServiceLive]
 }) {
 }
 

@@ -447,7 +447,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         }
 
         yield* McpLogService.logTrace(`initSystemMode end:${JSON.stringify(env)}`)
-      }).pipe(Effect.provide(McpLogServiceLive))
+      })
     }
 
     function addScript(filePath: string, tag?: string) {
