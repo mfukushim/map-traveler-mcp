@@ -507,6 +507,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             (bodyWindowRatioW ? `bodyWindowRatioW=${bodyWindowRatioW}\n` : '') +
             (bodyWindowRatioH ? `bodyWindowRatioH=${bodyWindowRatioH}\n` : '') +
             (noImageOut ? `noImage=true\n` : '') +
+            (isEnableFeedTag ? `feedTag=${extfeedTag}\n` : '') +
             `version=${version}\n`
           return [{
             type: "text",
@@ -1036,7 +1037,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           return await StoryService.getResourceList().pipe(
             Effect.andThen(a => {
               return {
-                resources:a.map(b => {
+                resources: a.map(b => {
                   return {
                     uri: `file:///${b.name}`,
                     mimeType: "text/plain",
