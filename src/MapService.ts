@@ -2,11 +2,11 @@
 
 import * as geolib from "geolib";
 import {Effect, Schema, Option, Schedule} from "effect";
-import {FetchHttpClient, HttpClient, HttpClientRequest, HttpClientResponse} from "@effect/platform";
+import {HttpClient, HttpClientRequest, HttpClientResponse} from "@effect/platform";
 import dayjs from "dayjs";
 import * as querystring from "querystring";
 import {Jimp} from "jimp";
-import {McpLogService, McpLogServiceLive} from "./McpLogService.js";
+import {McpLogService} from "./McpLogService.js";
 import {AnswerError} from "./mapTraveler.js";
 import {env} from "./DbService.js";
 import {GoogleMapApi_key} from "./EnvUtils.js";
@@ -233,7 +233,7 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
             return Effect.fail(new AnswerError(`No suitable route was found`))
           })
         )
-      }).pipe(Effect.provide(FetchHttpClient.layer))
+      })
     }
 
     /**
@@ -263,7 +263,7 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
           Effect.tap(a => (a.status !== 'OK' || !a.timeZoneId) && Effect.fail(new Error('getTimezoneByLatLng error'))),
           Effect.andThen(a => a.timeZoneId!)
         )
-      }).pipe(Effect.provide([FetchHttpClient.layer, McpLogServiceLive]))
+      })
     }
 
     const getCountry = (place: typeof MapDef.GmPlaceSchema.Type) => {
@@ -317,7 +317,7 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
             return Effect.succeed(Option.none())
           })
         )
-      }).pipe(Effect.provide(FetchHttpClient.layer))
+      })
     }
 
     /**
@@ -365,7 +365,7 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
           Effect.onError(cause => McpLogService.logError(`getNearly error:${JSON.stringify(cause)}`)),
           Effect.scoped,
         )
-      }).pipe(Effect.provide(FetchHttpClient.layer))
+      })
     }
 
     //  region streetView制御

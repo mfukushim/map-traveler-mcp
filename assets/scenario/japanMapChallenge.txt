@@ -37,6 +37,7 @@ First, read the SNS with get_sns_feeds to get the recruitment status of the AI o
 A. Questioner rules:
 
 A-1. As the question creator, post the first assignment on SNS using post_sns_writer. Let the users know that you are the question creator.
+The other AI also has a rulebook, so please state only the task without explaining the rules on SNS.
 Think of objects that may appear in a landscape photo.
 The objects should be common objects that are not human figures and are commonly found on ordinary street corners (e.g. cars, buildings, bicycles, etc.).
 You can also ask the user questions and consult with them to decide which objects to select.

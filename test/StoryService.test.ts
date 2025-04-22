@@ -14,12 +14,10 @@ describe("Story", () => {
     const res = await Effect.gen(function* () {
       return yield* StoryService.tips()
     }).pipe(
-        Effect.provide([StoryServiceLive, DbServiceLive]),
-        Logger.withMinimumLogLevel(LogLevel.Trace),
-        // Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
-        // Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed([])),
-        Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
-        runPromise
+      Effect.provide([StoryServiceLive]),
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
+      runPromise
     )
     expect(res).toBeInstanceOf(Object)
   })
@@ -30,8 +28,6 @@ describe("Story", () => {
     }).pipe(
       Effect.provide([StoryServiceLive, DbServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
-      // Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
-      // Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed([])),
       Effect.tap(a => {
         return McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive));
       }),

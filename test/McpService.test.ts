@@ -15,6 +15,8 @@ import {NodeFileSystem} from "@effect/platform-node";
 import {z} from "zod";
 import {CallToolRequestSchema} from "@modelcontextprotocol/sdk/types.js";
 import {ImageServiceLive} from "../src/ImageService.js";
+import {MapServiceLive} from "../src/MapService.js";
+import {RunnerServiceLive} from "../src/RunnerService.js";
 
 const inGitHubAction = process.env.GITHUB_ACTIONS === 'true';
 
@@ -57,7 +59,7 @@ describe("Mcp", () => {
       // Effect.catchIf(a => a instanceof AnswerError, e => {
       //   return Effect.log(e.toString());
       // }),
-      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive]),
+      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
       runPromise
     )
     expect(res).toBeInstanceOf(Array)
@@ -127,7 +129,7 @@ describe("Mcp", () => {
         return Effect.logError(e.toString());
       }),
       Effect.tap(a => Effect.log(a)),
-      Effect.provide([McpServiceLive]),
+      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
       runPromise
     )
     console.log(res)
@@ -154,7 +156,7 @@ describe("Mcp", () => {
             }
           })
       }),
-      Effect.provide([McpServiceLive]),
+      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
       runPromise
     )
     expect(res).toBeInstanceOf(Array)
@@ -166,7 +168,7 @@ describe("Mcp", () => {
     const res = await Effect.gen(function* () {
       return yield* McpService.setCurrentLocation("456 Random Street, Lost City") //東京都千代田区丸の内1丁目9-1
     }).pipe(
-      Effect.provide([McpServiceLive]),
+      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
       Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
@@ -179,7 +181,7 @@ describe("Mcp", () => {
     const res = await Effect.gen(function* () {
       return yield* McpService.setCurrentLocation("Yokohama Station") //東京都千代田区丸の内1丁目9-1
     }).pipe(
-      Effect.provide([McpServiceLive]),
+      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
       Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
@@ -192,7 +194,7 @@ describe("Mcp", () => {
     await Effect.gen(function* () {
       return yield* McpService.getDestinationAddress()
     }).pipe(
-      Effect.provide([McpServiceLive, DbServiceLive]),
+      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.catchIf(a => a instanceof AnswerError, e => {
@@ -207,7 +209,7 @@ describe("Mcp", () => {
     const res = await Effect.gen(function* () {
       return yield* McpService.setDestinationAddress("456 Random Street, Lost City")  //川崎駅
     }).pipe(
-      Effect.provide([McpServiceLive]),
+      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => Effect.log(a)),
@@ -220,7 +222,7 @@ describe("Mcp", () => {
     const res = await Effect.gen(function* () {
       return yield* McpService.setDestinationAddress("Tokyo station")  //川崎駅
     }).pipe(
-      Effect.provide([McpServiceLive]),
+      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => Effect.log(a)),
@@ -248,7 +250,7 @@ describe("Mcp", () => {
       yield* McpService.startJourney()
       return yield* McpService.getCurrentLocationInfo(true, true)
     }).pipe(
-      Effect.provide([McpServiceLive, DbServiceLive, McpLogServiceLive, NodeFileSystem.layer]),
+      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive, NodeFileSystem.layer]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => Effect.log(JSON.stringify(a).slice(0, 200))),
@@ -262,7 +264,7 @@ describe("Mcp", () => {
       yield* McpService.startJourney()
       return yield* McpService.stopJourney()
     }).pipe(
-      Effect.provide([McpServiceLive, DbServiceLive, McpLogServiceLive]),
+      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => Effect.log(JSON.stringify(a).slice(0, 200))),
@@ -275,7 +277,7 @@ describe("Mcp", () => {
     const res = await Effect.gen(function* () {
       return yield* McpService.startJourney()
     }).pipe(
-      Effect.provide([McpServiceLive]),
+      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => Effect.log(a.map(b => {
@@ -298,7 +300,7 @@ describe("Mcp", () => {
       yield* McpService.startJourney()
       return yield* McpService.stopJourney()
     }).pipe(
-      Effect.provide([McpServiceLive]),
+      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => Effect.log(a.map(b => {
@@ -321,7 +323,7 @@ describe("Mcp", () => {
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed([])),
       Effect.tap(a => Effect.log(a)),
-      Effect.provide([McpServiceLive, DbServiceLive]),
+      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
       runPromise
     )
     expect(res).toBeInstanceOf(Array)
@@ -335,7 +337,7 @@ describe("Mcp", () => {
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed([])),
       Effect.tap(a => Effect.log(a)),
-      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive]),
+      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
       runPromise
     )
     expect(res).toBeInstanceOf(Array)
@@ -420,7 +422,7 @@ describe("Mcp", () => {
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => McpLogService.logTraceToolsRes(a.flat())),
-      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive]),
+      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
       runPromise
     )
     expect(res).toBeInstanceOf(Array)

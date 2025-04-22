@@ -344,6 +344,7 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
       getResourceList
     }
   }),
+  // dependencies: [DbServiceLive,McpLogServiceLive,MapServiceLive]
 }) {
 }
 
