@@ -90,12 +90,12 @@ describe("Mcp", () => {
   it("tips", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* McpService.tips()  //
+      return yield * McpService.tips()  //
     }).pipe(
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
-      Effect.provide([StoryServiceLive, McpServiceLive, FetchHttpClient.layer]),
+      Effect.provide([StoryServiceLive, McpServiceLive,ImageServiceLive, FetchHttpClient.layer]),
       runPromise
     )
     expect(res).toBeInstanceOf(Array)

@@ -23,9 +23,9 @@ import {
   mapApi_url, moveMode, no_sns_post,
   pixAi_key, rembg_path, rembgPath, remBgUrl,
   sd_key, ServerLog,
-  sqlite_path
+  sqlite_path, tursoToken, tursoUrl
 } from "./EnvUtils.js";
-
+import {createClient} from "@libsql/client";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -53,13 +53,19 @@ export function isValidFilePath(filePath: string) {
   }
 }
 
-export const dbPath = sqlite_path && isValidFilePath(expandPath(sqlite_path)) ?
+const dbPath = sqlite_path && isValidFilePath(expandPath(sqlite_path)) ?
   'file:' + path.normalize(expandPath(sqlite_path)).replaceAll('\\', '/') : ':memory:'
 
-const db = drizzle(dbPath);
-// logSync(`db path:${dbPath}`)
+const client = tursoUrl && tursoToken ?
+  createClient({
+  url: tursoUrl,
+  authToken: tursoToken
+}):undefined
 
-export type DbMode = 'memory' | 'file';
+const db = drizzle(client || dbPath)
+// const db = drizzle(dbPath);
+
+export type DbMode = 'memory' | 'file' | 'api';
 export type PersonMode = 'third' | 'second';
 export type MoveMode = 'realtime' | 'skip';
 const MapEndpoint = ['directions', 'places', 'timezone', 'svMeta', 'streetView', 'nearby'] as const;
@@ -69,7 +75,6 @@ export type MapEndpoint = (typeof MapEndpoint)[number];
 export const env = {
   travelerExist: true, //  まだ動的ツール切り替えはClaude desktopに入っていない。。
   dbMode: 'memory' as DbMode,
-  dbFileExist: false,
   isPractice: false,
   anyImageAiExist: false,
   anySnsExist: false,
@@ -102,7 +107,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
 
     function init() {
       return Effect.gen(function* () {
-        yield* stub(migrate(db, {migrationsFolder: path.join(__pwd, 'drizzle')}))
+        yield* stub(migrate(db, {migrationsFolder: path.join(__pwd, 'drizzle')}));
         //  暫定のdb初期値
         const created = dayjs().toDate();
         yield* stub(db.select().from(avatar_model)).pipe(Effect.tap(a => {
@@ -366,9 +371,12 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         //  db有無の確認 dbサービスの初期化によって確認させる とコマンドon/off
         yield* init()
         env.progressToken = undefined
-        if (dbPath !== ':memory:') {
-          env.dbMode = "file"
-          env.dbFileExist = true
+        if (client) {
+          env.dbMode = "api";
+        } else {
+          if (dbPath !== ':memory:') {
+            env.dbMode = "file";
+          }
         }
         yield* getEnv('travelerExist').pipe(
           Effect.andThen(a => {
