@@ -1,5 +1,7 @@
 # Virtual Traveling bot environment for MCP
 
+[![smithery badge](https://smithery.ai/badge/@mfukushim/map-traveler-mcp)](https://smithery.ai/server/@mfukushim/map-traveler-mcp)
+
 English / [Japanese](./README_jp.md)
 
 This is an MCP server that creates an environment for an avatar to virtually travel on Google Maps.
@@ -226,7 +228,6 @@ https://github.com/danielgatis/rembg?tab=readme-ov-file#rembg-s
 Setup is simple if you use the Docker version to launch a container and access it.  
 
 https://github.com/danielgatis/rembg?tab=readme-ov-file#usage-as-a-docker  
-
 
 #### When using external ComfyUI (for more advanced users)
 
