@@ -1,6 +1,6 @@
 {
   "name": "@mfukushim/map-traveler-mcp",
-  "version": "0.0.77",
+  "version": "0.0.78",
   "type": "module",
   "bin": {
     "map-traveler-mcp": "build/esm/mapTraveler.js"
@@ -36,7 +36,7 @@
     "check": "tsc -b tsconfig.json",
     "test": "vitest",
     "coverage": "vitest --coverage",
-    "inspector": "pnpm build && cmd /c \"set CLIENT_PORT=5174 && npx @modelcontextprotocol/inspector build/esm/index.js\""
+    "inspector": "pnpm build && cmd /c \"set CLIENT_PORT=5174 && npx @modelcontextprotocol/inspector build/esm/mapTraveler.js\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.33.1",

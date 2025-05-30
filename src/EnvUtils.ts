@@ -7,9 +7,13 @@ const EnvMap: [string, string][] = [
   ['mapApi_url', 'MT_MAP_API_URL'],
   ['time_scale', 'MT_TIME_SCALE'],
   ['sqlite_path', 'MT_SQLITE_PATH'],
+  ['tursoUrl', 'MT_TURSO_URL'],
+  ['tursoToken', 'MT_TURSO_TOKEN'],
   ['rembg_path','MT_REMBG_PATH'],
   ['rembgPath','MT_REMBG_PATH'],
   ['remBgUrl','MT_REMBG_URL'],
+  // ['remBgPrKey','MT_REMBG_PR_KEY'],
+  ['remBgWoKey','MT_REMBG_WO_KEY'],
   ['pixAi_key','MT_PIXAI_KEY'],
   ['sd_key','MT_SD_KEY'],
   ['pixAi_modelId','MT_PIXAI_MODEL_ID'],
@@ -52,6 +56,8 @@ export const moveMode = getEnvironment('moveMode')
 export const remBgUrl = getEnvironment('remBgUrl')
 export const rembg_path = getEnvironment('rembg_path')
 export const rembgPath = getEnvironment('rembgPath')
+// export const remBgPrKey = getEnvironment('remBgPrKey')
+export const remBgWoKey = getEnvironment('remBgWoKey')
 export const filter_tools = getEnvironment('filter_tools')
 export const comfy_params = getEnvironment('comfy_params')
 export const fixed_model_prompt = getEnvironment('fixed_model_prompt')
@@ -68,6 +74,8 @@ export const bodyWindowRatioW = getEnvironment('bodyWindowRatioW')
 export const bodyWindowRatioH = getEnvironment('bodyWindowRatioH')
 export const time_scale = getEnvironment('time_scale')
 export const sqlite_path = getEnvironment('sqlite_path')
+export const tursoUrl = getEnvironment('tursoUrl')
+export const tursoToken = getEnvironment('tursoToken')
 export const extfeedTag = getEnvironment('feedTag')
 export const isEnableFeedTag = extfeedTag && extfeedTag.length > 14 && extfeedTag[0] === '#' //  拡張タグは安全のため15文字以上を強制する
 export const noImageOut = getEnvironment('noImageOut') === 'true'

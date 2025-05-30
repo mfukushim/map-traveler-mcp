@@ -28,7 +28,7 @@ import {
   fixed_model_prompt,
   image_width,
   pixAi_key,
-  pixAi_modelId,
+  pixAi_modelId, remBgWoKey,
   sd_key,
   ServerLog
 } from "./EnvUtils.js";
@@ -570,30 +570,109 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               contentType: "image/png" // 適切な Content-Type を指定
             });
             return fetch(`${env.remBgUrl}/api/remove`,
-                {
-                  method: 'POST',
-                  headers: {
-                    ...formData.getHeaders(),
-                  },
-                  body: formData.getBuffer(),
-                }
+              {
+                method: 'POST',
+                headers: {
+                  ...formData.getHeaders(),
+                },
+                body: formData.getBuffer(),
+              }
             )
           },
           catch: error => new Error(`${error}`)
         }).pipe(
-            Effect.scoped,
-            Effect.andThen(
-                a => Effect.tryPromise(() => a.arrayBuffer())),
-            Effect.tap(a => McpLogService.logTrace('rembgService out:',a.byteLength,a.toString())),
-            Effect.tap(a => {
-              if (a && a.byteLength) {
-                return Effect.succeed(a)
+          Effect.scoped,
+          Effect.andThen(
+            a => Effect.tryPromise(() => a.arrayBuffer())),
+          Effect.tap(a => McpLogService.logTrace('rembgService out:',a.byteLength,a.toString())),
+          Effect.tap(a => {
+            if (a && a.byteLength) {
+              return Effect.succeed(a)
+            }
+            return Effect.fail(new Error())
+          }),
+          Effect.tapError(e => McpLogService.logTrace('rembgService err:',JSON.stringify(e))),
+          Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("2 seconds")))),
+          Effect.andThen(a => Buffer.from(a))
+        )
+      })
+    }
+
+/*
+    const rembgFormApi = (sdImage: Buffer) => {
+      return Effect.gen(function* () {
+        yield* McpLogService.logTrace('in rembgFormApi')
+        if (!remBgPrKey) {
+          return yield* Effect.fail(new Error('no rembg Pr key'))
+        }
+        return yield* Effect.tryPromise({
+          try: () => {
+            const formData = new FormData()
+            formData.append("file", sdImage, {
+              filename: "input.png", // ファイル名を指定（必須）
+              contentType: "image/png" // 適切な Content-Type を指定
+            });
+            return fetch(`https://sdk.photoroom.com/v1/segment`,
+              {
+                method: 'POST',
+                headers: {
+                  ...formData.getHeaders(),
+                  'x-api-key':remBgPrKey!!
+                },
+                body: formData.getBuffer(),
               }
-              return Effect.fail(new Error())
-            }),
-            Effect.tapError(e => McpLogService.logTrace('rembgService err:',JSON.stringify(e))),
-            Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("2 seconds")))),
-            Effect.andThen(a => Buffer.from(a))
+            )
+          },
+          catch: error => new Error(`${error}`)
+        }).pipe(
+          Effect.scoped,
+          Effect.andThen(
+            a => Effect.tryPromise(() => a.arrayBuffer())),
+          Effect.tap(a => McpLogService.logTrace('rembgFormApi out:',a.byteLength,a.toString())),
+          Effect.tap(a => {
+            if (a && a.byteLength) {
+              return Effect.succeed(a)
+            }
+            return Effect.fail(new Error())
+          }),
+          Effect.tapError(e => McpLogService.logTrace('rembgFormApi err:',JSON.stringify(e))),
+          Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("2 seconds")))),
+          Effect.andThen(a => Buffer.from(a))
+        )
+      })
+    }
+*/
+
+    const rembgApi = (sdImage: Buffer) => {
+      return Effect.gen(function* () {
+        yield* McpLogService.logTrace('in rembgApi')
+        if (!remBgWoKey) {
+          return yield* Effect.fail(new Error('no rembg Wo key'))
+        }
+        const client = yield* HttpClient.HttpClient;
+        return yield* HttpClientRequest.post(`https://api.withoutbg.com/v1.0/image-without-background-base64`).pipe(
+          HttpClientRequest.setHeaders({
+            Accept: "application/json",
+            "Content-Type": "application/json",
+            "X-API-Key": remBgWoKey,
+          }),
+          HttpClientRequest.bodyJson({
+            image_base64: sdImage.toString("base64"),
+          }),
+          Effect.flatMap(client.execute),
+          Effect.flatMap(a => a.json),
+          Effect.andThen((a: any) => {
+            //  TODO うまくSchema.decode出来なかったので雑にキャストする
+            if (a.error) {
+              return Effect.fail(new Error(`rembgApi error:${JSON.stringify(a.node_errors)}`))
+            }
+            return Effect.succeed(a as { img_without_background_base64: string })
+          }),
+          Effect.tapError(McpLogService.logError),
+          // Effect.tap(a => McpLogService.logTrace(a)),
+          Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
+          Effect.scoped,
+          Effect.andThen(a => Buffer.from(a.img_without_background_base64,"base64"))
         )
       })
     }
@@ -618,8 +697,19 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       );
     }
 
+    const isEnableRembg = () => {
+      return env.rembgPath || env.remBgUrl || remBgWoKey
+    }
+
     const rembg = (sdImage: Buffer) => {
-      return env.remBgUrl ? rembgService(sdImage) : rembgCli(sdImage)
+      if(env.remBgUrl) {
+        return rembgService(sdImage)
+      } else if (remBgWoKey) {
+        return rembgApi(sdImage)
+      // } else if (remBgPrKey) {
+      //   return rembgFormApi(sdImage)
+      }
+      return rembgCli(sdImage);
     }
 
     /**
@@ -644,7 +734,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         localDebug = false,
     ) {
       return Effect.gen(function* () {
-            if (!env.rembgPath && !env.remBgUrl) {
+            if (!isEnableRembg()) {
               //  rembg pathがない場合、画像合成しないままの画像を戻す
               return {
                 buf: yield* Effect.tryPromise(() => sharp(basePhoto).resize({
@@ -970,7 +1060,10 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       getBasePrompt,
       comfyApiMakeImage,
       rembgService,
+      rembgApi,
+      // rembgFormApi,
       shrinkImage,
+      isEnableRembg,
     }
   }),
   dependencies: [McpLogServiceLive]

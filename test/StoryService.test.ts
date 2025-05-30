@@ -6,6 +6,7 @@ import {McpLogService, McpLogServiceLive} from "../src/McpLogService.js";
 import {DbServiceLive} from "../src/DbService.js";
 import {runPromise} from "effect/Effect";
 import {StoryService, StoryServiceLive} from "../src/StoryService.js";
+import {ImageServiceLive} from "../src/ImageService.js";
 
 
 describe("Story", () => {
@@ -14,7 +15,7 @@ describe("Story", () => {
     const res = await Effect.gen(function* () {
       return yield* StoryService.tips()
     }).pipe(
-      Effect.provide([StoryServiceLive]),
+      Effect.provide([StoryServiceLive,ImageServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
       runPromise
