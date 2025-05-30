@@ -5,10 +5,16 @@ startCommand:
   commandFunction:
     # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
     |-
-    (config) => ({ command: 'node', args: ['build/esm/mapTraveler.js'], 
-    env: { ...process.env,
-      "MT_GOOGLE_MAP_KEY":config.MT_GOOGLE_MAP_KEY
-    } })
+    (config) => {
+      return {
+        command: 'node', 
+        args: ['build/esm/mapTraveler.js'], 
+        env: {
+          ...process.env,
+          MT_GOOGLE_MAP_KEY:config.MT_GOOGLE_MAP_KEY
+        }
+      }
+    }
   configSchema:
     # JSON Schema defining the configuration options for the MCP.
     type: object
@@ -17,70 +23,4 @@ startCommand:
         type: string
         title: "Google Map API key"
         description: "Google Map API key"
-      MT_TURSO_URL:
-        type: string
-        title: "Turso sqlite API URL"
-        description: "Turso sqlite API URL"
-      MT_TURSO_TOKEN:
-        type: string
-        title: "Turso sqlite API access token"
-        description: "Turso sqlite API access token"
-      MT_REMBG_WO_KEY:
-        type: string
-        title: "withoutbg.com rembg API key"
-        description: "withoutbg.com rembg API key"
-      MT_PIXAI_KEY:
-        type: string
-        title: "pixAi API key"
-        description: "pixAi API key"
-      MT_PIXAI_MODEL_ID:
-        type: string
-        title: "pixAi ModelId"
-        description: "Optional: pixAi ModelId, if not set use default model 1648918127446573124"
-      MT_SD_KEY:
-        type: string
-        title: "Stability.ai image generation API key"
-        description: "Stability.ai image generation API key"
-      MT_FIXED_MODEL_PROMPT:
-        type: string
-        title: "Fixed avatar generation prompt"
-        description: "Fixed avatar generation prompt. You will no longer be able to change your avatar during conversations"
-      MT_BS_ID:
-        type: string
-        title: "Bluesky sns registration address"
-        description: "Bluesky sns registration address"
-      MT_BS_PASS:
-        type: string
-        title: "bluesky sns password"
-        description: "bluesky sns password"
-      MT_BS_HANDLE:
-        type: string
-        title: "bluesky sns handle name"
-        description: "bluesky sns handle name: e.g. xxxxxxxx.bsky.social"
-      MT_FILTER_TOOLS:
-        type: string
-        title: "tools filter"
-        description: "Directly filter the tools to be used. All are available if not specified. e.g. tips,set_traveler_location"
-      MT_MOVE_MODE:
-        type: string
-        title: "move mode"
-        description: "Specify whether the movement mode is realtime or skip. default realtime"
-        default: "realtime"
-        enum: [ "realtime", "skip" ]
-      MT_IMAGE_WIDTH:
-        type: number
-        title: "Output image width"
-        description: "Output image width (pixels) Default is 512"
-        default: 512
-        minimum: 64
-        maximum: 512
-      MT_NO_IMAGE:
-        type: boolean
-        title: "No image output"
-        description: "true = do not output image, not specified = output image if possible, default is not specified"
-        default: false
-      MT_FEED_TAG:
-        type: string
-        title: "SNS feed tag"
-        description: "Specify the feed tag when posting to SNS (#required, 15 characters or more) Default is #geo_less_traveler)"
   exampleConfig: {}
