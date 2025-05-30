@@ -1,6 +1,7 @@
 # 旅botミニ MCP版
 ### 仮想 旅アバター環境パッケージ 
 
+[![smithery badge](https://smithery.ai/badge/@mfukushim/map-traveler-mcp)](https://smithery.ai/server/@mfukushim/map-traveler-mcp)
 
 Japanese / [English](./README.md)
 
@@ -12,7 +13,7 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 
 > librechat https://www.librechat.ai/ に対応しました。
 
-<img alt="libre0.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/libre0.png" width="400"/>
+> Smithery https://smithery.ai/server/@mfukushim/map-traveler-mcp に対応しました。
 
 
 
@@ -103,8 +104,11 @@ claude_desktop_config.json
         "MT_MAP_API_URL": "(オプション: Map APIカスタムエンドポイント 例 direction=https://xxxx,search=https://yyyy )",
         "MT_TIME_SCALE": "(オプション:道路での移動時間の尺度. default 4)",
         "MT_SQLITE_PATH":"(db保存ファイルのパス 例 %USERPROFILE%/Desktop/traveler.sqlite など)",
+        "MT_TURSO_URL":"(Turso sqlite APIのURL)",
+        "MT_TURSO_TOKEN":"(Turso sqlite APIのアクセストークン)",
         "MT_REMBG_PATH": "(インストールしたrembg cliの絶対パス)",
         "MT_REMBG_URL": "(rembg APIのURL)",
+        "MT_REMBG_WO_KEY": "(withoutbg.com rembg API キー)",
         "MT_PIXAI_KEY":"(pixAi APIのキー)",
         "MT_SD_KEY":"(またはStability.aiのAPIのキー",
         "MT_PIXAI_MODEL_ID": "(オプション: pixAiの場合の使用ModelId. 未設定の場合とりあえず 1648918127446573124 を使う",
@@ -212,6 +216,22 @@ https://github.com/danielgatis/rembg?tab=readme-ov-file#rembg-s
 Docker版を使ってコンテナを立ち上げてそれをアクセスすれば設定はシンプルになります。  
 
 https://github.com/danielgatis/rembg?tab=readme-ov-file#usage-as-a-docker  
+
+#### 設定dbにＴurso libsql APIを使う
+
+ローカルにsqliteファイルを置かずにクラウドAPIのＴurso libsql( https://turso.tech/libsql )を使う場合は、Ｔursoにサインアップしsqlite dbを割り当ててください
+(有償 無料枠あり)  
+dbの設定(マイグレーション)は本アドインが自動で行います。
+
+MT_TURSO_URL = dbのURL  
+MT_TURSO_TOKEN = dbのアクセストークン  
+
+#### rembgにクラウドAPIを使う
+
+rembg周りのローカル設定はどの方法を使っても複雑ですが、有償のクラウドrembg ( https://withoutbg.com/ )の設定を追加しました。  
+> 注意: 有償で無料枠もわずかにありますが、業務用APIで結構高いので注意してください (1画像 20円くらい)   
+
+MT_REMBG_WO_KEY = withoutbg のアクセストークン
 
 
 #### 外付けのComfyUIを使用する場合(詳しい人向け)
@@ -343,17 +363,21 @@ libreChatにはMCPのリソース機能がないため、代わりに
    https://note.com/marble_walkers/n/ne7584ed231c8
 8. LibreChat設定編  
    https://note.com/marble_walkers/n/n339bf7905324
+9. AIエージェントSNS対戦マップチャレンジ  
+   https://note.com/marble_walkers/n/n6db937573eaa
+
 
 #### ソースコードについての追記  
 
 エラーマネージメントをシンプルにする&自身の学習のためにEffect tsを使用しています。  
 EffectのServiceも使っていますが、MCPの呼び出しの仕組み上、Serviceを使ってまとめたのは最適ではなかったと考えています。  
 MCPの呼び出しを直接Effectで処理するほうがシンプルになると思います。  
+追記: この後EffectのServiceの使い方について再検討してきれいに書き直せそうというところまでは把握していますが書き直すがどうかは検討中です。  
 
 #### 最新の更新についてのメモ
 
-envにimage_widthを追加しました。デフォルトは512です。小さくすることでLLM APIのコストを低減出来るかもしれません。
-画像入出力がないMCPクライアント向けに画像を出力しないenv設定を追加しました。  
+- envにimage_widthを追加しました。デフォルトは512です。小さくすることでLLM APIのコストを低減出来るかもしれません。
+- 画像入出力がないMCPクライアント向けに画像を出力しないenv設定を追加しました。  
 "MT_NO_IMAGE": "true" で一切画像生成と出力をしません。その他の画像関係の設定を省略できます。  
 ```
 {
@@ -374,6 +398,11 @@ envにimage_widthを追加しました。デフォルトは512です。小さく
 }
 
 ```
-SNS(Bluesky)ポスト時に付加するタグ名を指定できるようにしました。#必須で15文字以上です。未指定だと"#geo_less_traveler"になります。    
-SNSで取得する情報を少し変更しました。SNSでポストする情報を少し変更しました。  
-SNSを介して複数の旅botが会話して遊ぶスクリプトを追加しました。  
+- SNS(Bluesky)ポスト時に付加するタグ名を指定できるようにしました。#必須で15文字以上です。未指定だと"#geo_less_traveler"になります。    
+- SNSで取得する情報を少し変更しました。SNSでポストする情報を少し変更しました。  
+- SNSを介して複数の旅botが会話して遊ぶスクリプトを追加しました。  
+
+- Smithery からのリモート利用に対応しました。  
+細かい設定をしない場合は、練習モードで起動します。
+各クラウドAPIまで設定することでフル動作も可能ですが、rembg APIなど有償APIを多数使うので課金にはご注意ください。  
+アバター合成までしない場合は、最小 Google Map API, Turso sqlite API の設定のみでも旅動作可能です。

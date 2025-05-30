@@ -12,7 +12,8 @@ From an MCP client such as Claude Desktop, you can give instructions to the avat
 
 > Now supports librechat https://www.librechat.ai/.
 
-<img alt="libre0.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/libre0.png" width="400"/>
+> Now supports Smithery https://smithery.ai/server/@mfukushim/map-traveler-mcp 
+
 
 ## Functions
 
@@ -111,8 +112,11 @@ claude_desktop_config.json
         "MT_MAP_API_URL": "(Optional: Map API custom endpoint. Example: direction=https://xxxx,places=https://yyyy )",
         "MT_TIME_SCALE": "(Optional:Scale of travel time on real roads duration. default 4)",
         "MT_SQLITE_PATH":"(db save path: e.g. %USERPROFILE%/Desktop/traveler.sqlite ,$HOME/traveler.sqlite )",
+        "MT_TURSO_URL":"(Turso sqlite API URL)",
+        "MT_TURSO_TOKEN":"(Turso sqlite API access token)",
         "MT_REMBG_PATH": "(absolute path of the installed rembg cli)",
         "MT_REMBG_URL": "(rembg API URL)",
+        "MT_REMBG_WO_KEY": "(withoutbg.com rembg API key)",
         "MT_PIXAI_KEY":"(pixAi API key)",
         "MT_SD_KEY":"(or Stability.ai image generation API key",
         "MT_PIXAI_MODEL_ID": "(Optional: pixAi ModelId, if not set use default model 1648918127446573124 ",
@@ -228,6 +232,22 @@ https://github.com/danielgatis/rembg?tab=readme-ov-file#rembg-s
 Setup is simple if you use the Docker version to launch a container and access it.  
 
 https://github.com/danielgatis/rembg?tab=readme-ov-file#usage-as-a-docker  
+
+#### Use Turso libsql API for configuration database
+
+If you want to use the cloud API Turso libsql (https://turso.tech/libsql) without having a local sqlite file, sign up for Turso and allocate a sqlite database (paid, free tier available).   
+This add-in will automatically configure (migrate) the database.  
+MT_TURSO_URL = turso db URL  
+MT_TURSO_TOKEN = turso db access token  
+
+
+#### Use Cloud API for rembg
+
+Local settings around rembg are complicated no matter what method you use, but we have added settings for the paid cloud rembg (https://withoutbg.com/).  
+> Note: There is a small free trial available, but please be aware that this is a commercial API and is quite expensive (about 0.1 euros per image).
+
+MT_REMBG_WO_KEY = withoutbg access token
+
 
 #### When using external ComfyUI (for more advanced users)
 
@@ -361,17 +381,21 @@ To use the MCP function in libreChat, use the Agents function.
    https://note.com/marble_walkers/n/ne7584ed231c8
 8. LibreChat setting  
    https://note.com/marble_walkers/n/n339bf7905324
+9. AI Agent SNS Battle Map Challenge  
+   https://note.com/marble_walkers/n/n6db937573eaa
+
 
 #### Additional about the source code
 
 I use Effect.ts to simplify error management & for my own learning.  
 We also use the Effect Service, but due to the way MCP calls work, we believe that consolidating it using the Service was not optimal.  
-I think it would be simpler to handle the MCP calls directly in the Effect.
+I think it would be simpler to handle the MCP calls directly in the Effect.  
+Addendum: I'm aware that I will be able to reconsider how to use the Effect Service and rewrite it neatly, but I'm still considering whether to rewrite it.  
 
 #### Notes on the latest updates
 
-Added image_width to env. The default is 512. Setting it smaller may reduce the cost of LLM API.  
-Added an env setting that does not output images for MCP clients that do not have image input/output.  
+- Added image_width to env. The default is 512. Setting it smaller may reduce the cost of LLM API.  
+- Added an env setting that does not output images for MCP clients that do not have image input/output.  
 "MT_NO_IMAGE": "true" will not generate or output any images. Other image-related settings can be omitted.  
 ```
 {
@@ -392,6 +416,11 @@ or
 }
 
 ```  
-You can now specify the tag name to be added when posting to SNS (Bluesky). #Required and must be at least 15 characters. If not specified, it will become "#geo_less_traveler".  
-The information obtained from SNS has been slightly changed. The information posted to SNS has been slightly changed.  
-A script has been added that allows multiple travel bots to converse and play via SNS.  
+- You can now specify the tag name to be added when posting to SNS (Bluesky). #Required and must be at least 15 characters. If not specified, it will become "#geo_less_traveler".  
+- The information obtained from SNS has been slightly changed. The information posted to SNS has been slightly changed.  
+- A script has been added that allows multiple travel bots to converse and play via SNS.  
+
+- Supports remote use from Smithery.  
+  If you do not want to configure detailed settings, start the app in practice mode.
+  You can also run the app at full speed by configuring each cloud API, but please be aware of charges as it uses many paid APIs such as rembg API.
+  If you do not want to synthesize avatars, you can run the app with the minimum settings of Google Map API and Turso sqlite API.
