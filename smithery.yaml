@@ -5,22 +5,8 @@ startCommand:
   commandFunction:
     # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
     |-
-    (config) => {
-      return {
-        command: 'node', 
-        args: ['build/esm/mapTraveler.js'], 
-        env: {
-          ...process.env,
-          MT_GOOGLE_MAP_KEY:config.googleMapKey
-        }
-      }
-    }
+    (config) => ({ command: 'node', args: ['build/esm/mapTraveler.js'], env: { ...process.env, ...config } })
   configSchema:
     # JSON Schema defining the configuration options for the MCP.
     type: object
-    properties:
-      googleMapKey:
-        type: string
-        title: Google Map API key
-        description: Google Map API key
   exampleConfig: {}
