@@ -362,12 +362,13 @@ To use the MCP function in libreChat, use the Agents function.
    <img alt="libre6.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/libre6.png" width="200"/>
 7. Start a new chat.
 
-#### Smithery
+## Smithery
 
 Please refer to https://smithery.ai/server/@mfukushim/map-traveler-mcp.  
-Remote MCP (stduo mode) is supported. However, image generation is too heavy to run, so it has been removed.  
+Remote MCP (stdio mode) is supported, but the configuration feature has been removed because image generation was too heavy to run.  
 Database settings can now be recorded with Turso sqlite, so if you configure Turso, your travel progress will also be saved.  
 <img alt="smithery.png" src="tools/smithery.png" width="400"/>
+
 
 
 ## Install guide (Japanese, but lots of photos)

@@ -217,8 +217,9 @@ Docker版を使ってコンテナを立ち上げてそれをアクセスすれ�
 
 https://github.com/danielgatis/rembg?tab=readme-ov-file#usage-as-a-docker  
 
-#### 設定dbにＴurso libsql APIを使う
+#### 設定dbにＴurso libSQL APIを使う
 
+remote実行のために、設定の保存を Turso libSQL クラウドsqliteでも行えるようにしました。
 ローカルにsqliteファイルを置かずにクラウドAPIのＴurso libsql( https://turso.tech/libsql )を使う場合は、Ｔursoにサインアップしsqlite dbを割り当ててください
 (有償 無料枠あり)  
 dbの設定(マイグレーション)は本アドインが自動で行います。
@@ -346,12 +347,13 @@ libreChatにはMCPのリソース機能がないため、代わりに
 7. 新規チャットを開始してください。 
 
 
-#### Smitheryでの実行  
+## Smitheryでの実行  
 
 https://smithery.ai/server/@mfukushim/map-traveler-mcp を参照ください。  
-remote MCP(stduoモード)に対応しています。ただし画像生成は重すぎるようなので外しています。  
+remote MCP(stdioモード)に対応しています。ただし画像生成は重すぎるようなので設定機能を外しています。  
 db設定をTurso sqliteで記録出来るようにしたので、Tursoの設定を行えば旅の過程も保持されます。  
 <img alt="smithery.png" src="tools/smithery.png" width="400"/>
+
 
 ## 設定ガイド
 
