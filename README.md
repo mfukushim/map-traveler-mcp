@@ -12,7 +12,7 @@ From an MCP client such as Claude Desktop, you can give instructions to the avat
 
 > Now supports librechat https://www.librechat.ai/.
 
-> Now supports Smithery https://smithery.ai/server/@mfukushim/map-traveler-mcp 
+> Now supports Smithery https://smithery.ai/server/@mfukushim/map-traveler-mcp (images are excluded because they are heavy to run).
 
 
 ## Functions
@@ -361,6 +361,13 @@ To use the MCP function in libreChat, use the Agents function.
 6. Click the Create button to save the agent.  
    <img alt="libre6.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/libre6.png" width="200"/>
 7. Start a new chat.
+
+#### Smithery
+
+Please refer to https://smithery.ai/server/@mfukushim/map-traveler-mcp.  
+Remote MCP (stduo mode) is supported. However, image generation is too heavy to run, so it has been removed.  
+Database settings can now be recorded with Turso sqlite, so if you configure Turso, your travel progress will also be saved.  
+<img alt="smithery.png" src="tools/smithery.png" width="400"/>
 
 
 ## Install guide (Japanese, but lots of photos)

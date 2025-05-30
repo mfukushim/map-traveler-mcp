@@ -13,7 +13,7 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 
 > librechat https://www.librechat.ai/ に対応しました。
 
-> Smithery https://smithery.ai/server/@mfukushim/map-traveler-mcp に対応しました。
+> Smithery https://smithery.ai/server/@mfukushim/map-traveler-mcp に対応しました(画像は重いため除外しています)。
 
 
 
@@ -343,7 +343,15 @@ libreChatにはMCPのリソース機能がないため、代わりに
    <img alt="libre7.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/libre7.png" width="200"/>
 6. 作成ボタンを押してエージェントを保存します。  
    <img alt="libre6.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/libre6.png" width="200"/>
-7. 新規チャットを開始してください。  
+7. 新規チャットを開始してください。 
+
+
+#### Smitheryでの実行  
+
+https://smithery.ai/server/@mfukushim/map-traveler-mcp を参照ください。  
+remote MCP(stduoモード)に対応しています。ただし画像生成は重すぎるようなので外しています。  
+db設定をTurso sqliteで記録出来るようにしたので、Tursoの設定を行えば旅の過程も保持されます。  
+<img alt="smithery.png" src="tools/smithery.png" width="400"/>
 
 ## 設定ガイド
 
