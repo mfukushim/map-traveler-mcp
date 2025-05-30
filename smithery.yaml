@@ -6,7 +6,20 @@ startCommand:
     # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
     |-
     (config) => ({ command: 'node', args: ['build/esm/mapTraveler.js'], 
-    env: { ...process.env, ...config } })
+    env: { ...process.env,
+      MT_GOOGLE_MAP_KEY:config.MT_GOOGLE_MAP_KEY,
+      MT_TURSO_URL:config.MT_TURSO_URL,
+      MT_TURSO_TOKEN:config.MT_TURSO_TOKEN,
+      MT_REMBG_WO_KEY:config.MT_REMBG_WO_KEY,
+      MT_PIXAI_KEY:config.MT_PIXAI_KEY,
+      MT_PIXAI_MODEL_ID:config.MT_PIXAI_MODEL_ID,
+      MT_SD_KEY:config.MT_SD_KEY,
+      MT_FIXED_MODEL_PROMPT:config.MT_FIXED_MODEL_PROMPT,
+      MT_BS_ID:config.MT_BS_ID,
+      MT_BS_PASS:config.MT_BS_PASS,
+      MT_BS_HANDLE:config.MT_BS_HANDLE,
+      MT_FILTER_TOOLS:config.MT_FILTER_TOOLS
+    } })
   configSchema:
     # JSON Schema defining the configuration options for the MCP.
     type: object
