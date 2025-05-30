@@ -9,7 +9,7 @@ RUN apk add --no-cache git python3 make g++
 RUN npm install -g pnpm
 
 # Copy files for install
-COPY package.json pnpm-lock.yaml .
+COPY package.json pnpm-lock.yaml ./
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
@@ -23,6 +23,7 @@ FROM node:lts-alpine AS runtime
 WORKDIR /app
 
 # Copy application files
+COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/build ./build
 COPY --from=build /app/assets ./assets
 COPY --from=build /app/drizzle ./drizzle

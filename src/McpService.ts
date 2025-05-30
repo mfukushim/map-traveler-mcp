@@ -1125,7 +1125,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                   isError: true,
                   content: [{
                     type: "text",
-                    text: `Sorry,unknown system error.${JSON.stringify(e)},${__pwd},${env}`
+                    text: `Sorry,unknown system error.${JSON.stringify(e)}`
                   } as ToolContentResponse]
                 }),
               )
