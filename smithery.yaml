@@ -11,7 +11,7 @@ startCommand:
         args: ['build/esm/mapTraveler.js'], 
         env: {
           ...process.env,
-          MT_GOOGLE_MAP_KEY:config.MT_GOOGLE_MAP_KEY
+          MT_GOOGLE_MAP_KEY:config.googleMapKey
         }
       }
     }
@@ -19,8 +19,8 @@ startCommand:
     # JSON Schema defining the configuration options for the MCP.
     type: object
     properties:
-      MT_GOOGLE_MAP_KEY:
+      googleMapKey:
         type: string
-        title: "Google Map API key"
-        description: "Google Map API key"
+        title: Google Map API key
+        description: Google Map API key
   exampleConfig: {}
