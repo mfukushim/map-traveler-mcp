@@ -1,6 +1,7 @@
 # 旅botミニ MCP版
 ### 仮想 旅アバター環境パッケージ 
 
+[![Verified on MseeP](https://mseep.ai/badge.svg)](https://mseep.ai/app/073d88cc-277d-40b6-8c20-bcabf6c275e9)
 [![smithery badge](https://smithery.ai/badge/@mfukushim/map-traveler-mcp)](https://smithery.ai/server/@mfukushim/map-traveler-mcp)
 
 Japanese / [English](./README.md)
@@ -15,6 +16,7 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 
 > Smithery https://smithery.ai/server/@mfukushim/map-traveler-mcp に対応しました(画像は重いため除外しています)。
 
+> MseeP から安全性評価をもらいました https://mseep.ai/app/mfukushim-map-traveler-mcp
 
 
 ## 機能
@@ -375,6 +377,8 @@ db設定をTurso sqliteで記録出来るようにしたので、Tursoの設定�
    https://note.com/marble_walkers/n/n339bf7905324
 9. AIエージェントSNS対戦マップチャレンジ  
    https://note.com/marble_walkers/n/n6db937573eaa
+10. Smithery, Turso libSQL, rembg APIに対応しました   
+    https://note.com/marble_walkers/n/ne3b3c0f99707
 
 
 #### ソースコードについての追記  
@@ -416,3 +420,5 @@ MCPの呼び出しを直接Effectで処理するほうがシンプルになる�
 細かい設定をしない場合は、練習モードで起動します。
 各クラウドAPIまで設定することでフル動作も可能ですが、rembg APIなど有償APIを多数使うので課金にはご注意ください。  
 アバター合成までしない場合は、最小 Google Map API, Turso sqlite API の設定のみでも旅動作可能です。
+
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/mfukushim-map-traveler-mcp-badge.png)](https://mseep.ai/app/mfukushim-map-traveler-mcp)
