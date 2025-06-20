@@ -1,7 +1,6 @@
-[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/mfukushim-map-traveler-mcp-badge.png)](https://mseep.ai/app/mfukushim-map-traveler-mcp)
-
 # Virtual Traveling bot environment for MCP
 
+[![Verified on MseeP](https://mseep.ai/badge.svg)](https://mseep.ai/app/073d88cc-277d-40b6-8c20-bcabf6c275e9)
 [![smithery badge](https://smithery.ai/badge/@mfukushim/map-traveler-mcp)](https://smithery.ai/server/@mfukushim/map-traveler-mcp)
 
 English / [Japanese](./README_jp.md)
@@ -16,6 +15,7 @@ From an MCP client such as Claude Desktop, you can give instructions to the avat
 
 > Now supports Smithery https://smithery.ai/server/@mfukushim/map-traveler-mcp (images are excluded because they are heavy to run).
 
+> Now verified MseeP https://mseep.ai/app/mfukushim-map-traveler-mcp 
 
 ## Functions
 
@@ -393,6 +393,8 @@ Database settings can now be recorded with Turso sqlite, so if you configure Tur
    https://note.com/marble_walkers/n/n339bf7905324
 9. AI Agent SNS Battle Map Challenge  
    https://note.com/marble_walkers/n/n6db937573eaa
+10. Support Smithery, Turso libSQL, and rembg API   
+   https://note.com/marble_walkers/n/ne3b3c0f99707
 
 
 #### Additional about the source code
@@ -434,3 +436,5 @@ or
   If you do not want to configure detailed settings, start the app in practice mode.
   You can also run the app at full speed by configuring each cloud API, but please be aware of charges as it uses many paid APIs such as rembg API.
   If you do not want to synthesize avatars, you can run the app with the minimum settings of Google Map API and Turso sqlite API.
+
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/mfukushim-map-traveler-mcp-badge.png)](https://mseep.ai/app/mfukushim-map-traveler-mcp)
