@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/mfukushim-map-traveler-mcp-badge.png)](https://mseep.ai/app/mfukushim-map-traveler-mcp)
+
 # Virtual Traveling bot environment for MCP
 
 [![smithery badge](https://smithery.ai/badge/@mfukushim/map-traveler-mcp)](https://smithery.ai/server/@mfukushim/map-traveler-mcp)
