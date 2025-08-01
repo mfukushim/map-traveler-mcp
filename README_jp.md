@@ -130,6 +130,7 @@ claude_desktop_config.json
         "MT_MOVE_MODE": "(オプション:移動モードをrealtimeかskipにするか指定する default realtime)",
         "MT_IMAGE_WIDTH": "(オプション: 出力する画像の幅(pixel) デフォルトでは512)",
         "MT_NO_IMAGE": "(オプション: true=画像を出力しない 未指定=画像出力可能なら画像を出力する デフォルトでは未指定)",
+        "MT_NO_AVATAR": "(オプション: true=アバター合成をせずStreetView画像そのままを出力する 未指定=アバター画像を合成する デフォルトでは未指定)",
         "MT_FEED_TAG": "(オプション: SNSポスト時のフィードタグを指定する(#必須15文字以上) デフォルトでは#geo_less_traveler)"
       }
     }
@@ -420,5 +421,13 @@ MCPの呼び出しを直接Effectで処理するほうがシンプルになる�
 細かい設定をしない場合は、練習モードで起動します。
 各クラウドAPIまで設定することでフル動作も可能ですが、rembg APIなど有償APIを多数使うので課金にはご注意ください。  
 アバター合成までしない場合は、最小 Google Map API, Turso sqlite API の設定のみでも旅動作可能です。
+
+- MT_NO_AVATAR のオプションを追加しました。  
+設定した場合、風景画像にアバター画像は合成しません。アバター合成にかかる処理リトライがなくなるため、返答の取得時間が著しく短くなります。  
+画像合成が遅いか、どうしても失敗してしまう場合は設定してください。  
+
+- 一部 MCP バージョン2025-06-18を取り入れました。  
+スキーマにtitleを入れました。outputSchemaとstructured responseは将来取り入れる予定ですが今回は取り込んでいません。旅botの出力はテキストとしては単純なため構造化はまだ必要ないと考えています。  
+  https://modelcontextprotocol.io/specification/2025-06-18/server/tools
 
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/mfukushim-map-traveler-mcp-badge.png)](https://mseep.ai/app/mfukushim-map-traveler-mcp)

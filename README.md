@@ -138,6 +138,7 @@ claude_desktop_config.json
         "MT_MOVE_MODE": "(Option: Specify whether the movement mode is realtime or skip. default realtime)",
         "MT_IMAGE_WIDTH": "(Option: Output image width (pixels) Default is 512)",
         "MT_NO_IMAGE": "(Options: true = do not output image, not specified = output image if possible, default is not specified)",
+        "MT_NO_AVATAR": "(Option: true = Output StreetView image as is without avatar superimposition. Not specified = Superimpose avatar image. Default is not specified.)",
         "MT_FEED_TAG": "(Optional: Specify the feed tag when posting to SNS (#required, 15 characters or more) Default is #geo_less_traveler)"
       }
     }
@@ -436,5 +437,13 @@ or
   If you do not want to configure detailed settings, start the app in practice mode.
   You can also run the app at full speed by configuring each cloud API, but please be aware of charges as it uses many paid APIs such as rembg API.
   If you do not want to synthesize avatars, you can run the app with the minimum settings of Google Map API and Turso sqlite API.
+
+- Added the MT_NO_AVATAR option.  
+  If set, an avatar image will not be composited onto the landscape image. Since there will be no retry processing for avatar composition, the time it takes to obtain a response will be significantly shorter.  
+  Set this option if image composition is slow or fails unavoidably.
+
+- Partially applied MCP version 2025-06-18.  
+  I added title to the schema. I plan to apply outputSchema and structured response in the future, but I haven't implemented them this time. Since the output of Travel Bot is simple text, I don't think structuring is necessary yet.  
+  https://modelcontextprotocol.io/specification/2025-06-18/server/tools
 
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/mfukushim-map-traveler-mcp-badge.png)](https://mseep.ai/app/mfukushim-map-traveler-mcp)

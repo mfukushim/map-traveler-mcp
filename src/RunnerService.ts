@@ -28,7 +28,7 @@ import {
   bodyHWRatio,
   bodyWindowRatioH,
   bodyWindowRatioW,
-  comfy_url, noImageOut,
+  comfy_url, noAvatarImage, noImageOut,
   pixAi_key,
   sd_key,
   time_scale
@@ -124,10 +124,18 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           lng: loc.lng,
           bearing: 0
         })
-        const image = includePhoto && env.anyImageAiExist && !noImageOut ? (yield* getStreetImage(loc, abort, localDebug).pipe(
+        const image = includePhoto && !noImageOut && (noAvatarImage || !env.anyImageAiExist) ?
+          (yield* getStreetImageOnly(loc).pipe(Effect.orElseSucceed(() => undefined))):
+            includePhoto && env.anyImageAiExist && !noImageOut ?
+          (yield* getStreetImage(loc, abort, localDebug).pipe(
             Effect.andThen(a => a.buf),
-            Effect.orElseSucceed(() => undefined))) :
-          includePhoto && !noImageOut ? (yield* getStreetImageOnly(loc).pipe(Effect.orElseSucceed(() => undefined))) : undefined
+            Effect.orElseSucceed(() => undefined)
+            )
+          ) :undefined
+        // const image = includePhoto && env.anyImageAiExist && !noImageOut ? (yield* getStreetImage(loc, abort, localDebug).pipe(
+        //     Effect.andThen(a => a.buf),
+        //     Effect.orElseSucceed(() => undefined))) :
+        //   includePhoto && !noImageOut ? (yield* getStreetImageOnly(loc).pipe(Effect.orElseSucceed(() => undefined))) : undefined;
         return {
           nearFacilities,
           image,
