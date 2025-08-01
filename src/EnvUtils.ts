@@ -34,6 +34,7 @@ const EnvMap: [string, string][] = [
   ['image_width','MT_IMAGE_WIDTH'],
   ['no_sns_post','MT_NO_SNS_POST'],
   ['noImageOut','MT_NO_IMAGE'],
+  ['noAvatar','MT_NO_AVATAR'],
   ['ServerLog','MT_SERVER_LOG'],
   ['feedTag','MT_FEED_TAG'],
   ['log_path','MT_LOG_PATH'],
@@ -79,3 +80,4 @@ export const tursoToken = getEnvironment('tursoToken')
 export const extfeedTag = getEnvironment('feedTag')
 export const isEnableFeedTag = extfeedTag && extfeedTag.length > 14 && extfeedTag[0] === '#' //  拡張タグは安全のため15文字以上を強制する
 export const noImageOut = getEnvironment('noImageOut') === 'true'
+export const noAvatarImage = getEnvironment('noAvatar') === 'true'
