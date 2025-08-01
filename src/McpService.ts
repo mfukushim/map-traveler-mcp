@@ -131,6 +131,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       const SETTING_COMMANDS: Tool[] = [
         {
           name: "tips",  //  pythonがあったらよいとか、db設定がよいとか、tipsを取得する。tipsの取得を行うのはproject側スクリプトとか、script batchとか
+          title: "Tips for using this MCP server",
           description: "Inform you of recommended actions for your device",
           inputSchema: {
             type: "object",
@@ -139,6 +140,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         },
         {
           name: "get_setting",  //  pythonがあったらよいとか、db設定がよいとか、tipsを取得する。tipsの取得を行うのはproject側スクリプトとか、script batchとか
+          title: "Get the current setting",
           description: "Get current setting",
           inputSchema: {
             type: "object",
@@ -163,6 +165,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         // },
         {
           name: "get_traveler_info",
+          title: "Get the traveler's preferences (optional).",
           description: "get a traveler's setting.For example, traveler's name, the language traveler speak, Personality and speaking habits, etc.",
           inputSchema: {
             type: "object",
@@ -173,6 +176,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         },
         {
           name: "set_traveler_info",  //  環境情報はリソースに反映する できれば更新イベントを出す
+          title: "Set the traveler's preferences (optional).",
           description: "set a traveler's setting.For example, traveler's name, the language traveler speak, Personality and speaking habits, etc.",
           inputSchema: {
             type: "object",
@@ -189,6 +193,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       const AVATAR_PROMPT_COMMANDS: Tool[] = [
         {
           name: "set_avatar_prompt",
+          title: "Avatar generation prompt for image generation AI",
           description: "set a traveler's avatar prompt. A prompt for AI image generation to specify the appearance of a traveler's avatar",
           inputSchema: {
             type: "object",
@@ -203,6 +208,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         },
         {
           name: "reset_avatar_prompt",  //  環境情報はリソースに反映する できれば更新イベントを出す
+          title: "Reset avatar generation prompt for image generation AI",
           description: "reset to default traveler's avatar prompt.",
           inputSchema: {
             type: "object",
@@ -213,6 +219,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       const START_STOP_COMMAND: Tool[] = [
         {
           name: env.personMode === 'second' ? "start_journey" : "start_traveler_journey",
+          title: "Start the journey",
           description: env.personMode === 'second' ? "Start the journey to destination" : "Start the traveler's journey to destination",  //  スタートと合わせてスタートシーン画像を取得して添付する
           inputSchema: {
             type: "object",
@@ -221,6 +228,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         },
         {
           name: env.personMode === 'second' ? "stop_journey" : "stop_traveler_journey",
+          title: "Stop the journey",
           description: env.personMode === 'second' ? "Stop the journey" : "Stop the traveler's journey",  //  停泊と合わせて停止シーン画像を取得して添付する
           inputSchema: {
             type: "object",
@@ -231,6 +239,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       const SKIP_COMMAND: Tool[] = [
         {
           name: "reach_a_percentage_of_destination",  //  現在の経路で指定パーセントまで進めた位置の様子を取得する
+          title: "Reach a specified percentage of the destination (in skip mode)",
           description:
             "Reach a specified percentage of the destination",
           inputSchema: {
@@ -249,6 +258,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       const GET_VIEW_COMMAND: Tool[] = [
         {
           name: env.personMode === 'second' ? "get_current_view_info" : "get_traveler_view_info",
+          title: "Get the current location's view",
           description: env.personMode === 'second' ?
             "Get the address of the current location and information on nearby facilities,view snapshot" :
             "Get the address of the current traveler's location and information on nearby facilities,view snapshot",
@@ -268,6 +278,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         },
         {
           name: "get_traveler_location",  //  関数名の合成現象があった? とりあえずaliasを置く
+          title: "Get the traveler's current location",
           description:
             "Get the address of the current traveler's location",
           inputSchema: {
@@ -280,6 +291,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       const SNS_COMMAND: Tool[] = [
         {
           name: "get_sns_mentions",
+          title:"Get recent social media mentions",
           description: "Get recent social media mentions",
           inputSchema: {
             type: "object",
@@ -288,6 +300,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         },
         {
           name: "get_sns_feeds",
+          title: "Get recent social media feeds",
           description: "Get recent social media posts from fellow travelers feeds",
           inputSchema: {
             type: "object",
@@ -296,6 +309,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         },
         {
           name: "post_sns_writer",
+          title: "Post article to social media",
           description: "Post your recent travel experiences to social media for fellow travelers and readers.",
           inputSchema: {
             type: "object",
@@ -310,6 +324,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         },
         {
           name: "reply_sns_writer",
+          title: "reply to social media",
           description: "Write a reply to the article with the specified ID.",
           inputSchema: {
             type: "object",
@@ -328,6 +343,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         },
         {
           name: "add_like",
+          title: "Add a like to post",
           description: "Add a like to the specified post",
           inputSchema: {
             type: "object",
@@ -354,6 +370,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             const basicToolsCommand: Tool[] = [
               {
                 name: env.personMode === 'second' ? "set_current_location" : "set_traveler_location",
+                title:"Set the traveler's location",
                 description: env.personMode === 'second' ? "Set my current address" : "Set the traveler's current address",
                 inputSchema: {
                   type: "object",
@@ -368,6 +385,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               },
               {
                 name: env.personMode === 'second' ? "get_destination_address" : "get_traveler_destination_address",
+                title: "get a traveler's destination",
                 description: env.personMode === 'second' ? "get a address of destination location" : "get a address of traveler's destination location",
                 inputSchema: {
                   type: "object",
@@ -376,6 +394,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
               },
               {
                 name: env.personMode === 'second' ? "set_destination_address" : "set_traveler_destination_address",
+                title: "set a traveler's destination",
                 description: env.personMode === 'second' ? "set a address of destination" : "set a address of traveler's destination",
                 inputSchema: {
                   type: "object",
@@ -418,6 +437,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             } else {
               cmd.push({
                   name: "call_traveler",  //  pythonがあったらよいとか、db設定がよいとか、tipsを取得する。tipsの取得を行うのはproject側スクリプトとか、script batchとか
+                  title: "call a traveler",
                   description: "call the traveler",
                   inputSchema: {
                     type: "object",
