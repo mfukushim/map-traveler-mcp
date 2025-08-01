@@ -426,5 +426,8 @@ MCPの呼び出しを直接Effectで処理するほうがシンプルになる�
 設定した場合、風景画像にアバター画像は合成しません。アバター合成にかかる処理リトライがなくなるため、返答の取得時間が著しく短くなります。  
 画像合成が遅いか、どうしても失敗してしまう場合は設定してください。  
 
+- 一部 MCP バージョン2025-06-18を取り入れました。  
+スキーマにtitleを入れました。outputSchemaとstructured responseは将来取り入れる予定ですが今回は取り込んでいません。旅botの出力はテキストとしては単純なため構造化はまだ必要ないと考えています。  
+  https://modelcontextprotocol.io/specification/2025-06-18/server/tools
 
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/mfukushim-map-traveler-mcp-badge.png)](https://mseep.ai/app/mfukushim-map-traveler-mcp)

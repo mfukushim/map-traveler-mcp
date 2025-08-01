@@ -442,4 +442,8 @@ or
   If set, an avatar image will not be composited onto the landscape image. Since there will be no retry processing for avatar composition, the time it takes to obtain a response will be significantly shorter.  
   Set this option if image composition is slow or fails unavoidably.
 
+- Partially applied MCP version 2025-06-18.  
+  I added title to the schema. I plan to apply outputSchema and structured response in the future, but I haven't implemented them this time. Since the output of Travel Bot is simple text, I don't think structuring is necessary yet.  
+  https://modelcontextprotocol.io/specification/2025-06-18/server/tools
+
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/mfukushim-map-traveler-mcp-badge.png)](https://mseep.ai/app/mfukushim-map-traveler-mcp)
