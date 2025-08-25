@@ -23,13 +23,16 @@ FROM node:lts-alpine AS runtime
 WORKDIR /app
 
 # Copy application files
-COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/build ./build
-COPY --from=build /app/assets ./assets
-COPY --from=build /app/drizzle ./drizzle
+COPY --chown=node:node --from=build /app/package.json ./package.json
+COPY --chown=node:node --from=build /app/build ./build
+COPY --chown=node:node --from=build /app/assets ./assets
+COPY --chown=node:node --from=build /app/drizzle ./drizzle
 
 # Copy installed node_modules
-COPY --from=build /app/node_modules ./node_modules
+COPY --chown=node:node --from=build /app/node_modules ./node_modules
+
+# Drop privileges: run as non-root user provided by the base image
+USER node
 
 # Use stdio server entrypoint
 ENTRYPOINT ["node", "build/esm/mapTraveler.js"]
