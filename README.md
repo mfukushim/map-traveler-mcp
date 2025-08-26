@@ -444,6 +444,8 @@ or
 
 - Partially applied MCP version 2025-06-18.  
   I added title to the schema. I plan to apply outputSchema and structured response in the future, but I haven't implemented them this time. Since the output of Travel Bot is simple text, I don't think structuring is necessary yet.  
-  https://modelcontextprotocol.io/specification/2025-06-18/server/tools
+  https://modelcontextprotocol.io/specification/2025-06-18/server/tools  
+- Fixed an issue where some functions, such as SNS functions, could not be called regardless of the env settings due to an initialization error.  
+
 
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/mfukushim-map-traveler-mcp-badge.png)](https://mseep.ai/app/mfukushim-map-traveler-mcp)
