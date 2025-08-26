@@ -22,3 +22,4 @@ scratchpad/*
 /.vscode/extensions.json
 /.vscode/settings.json
 /simpleLog.txt
+/tools/
