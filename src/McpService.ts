@@ -126,7 +126,6 @@ function sendLoggingMessage(message: string, level = 'info') {
 export class McpService extends Effect.Service<McpService>()("traveler/McpService", {
   accessors: true,
   effect: Effect.gen(function* () {
-
       //  region tool定義
       const SETTING_COMMANDS: Tool[] = [
         {
@@ -1156,7 +1155,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
 
         const transport = new StdioServerTransport();
         const p = Effect.gen(function* () {
-          yield* Effect.forkDaemon(DbService.initSystemMode())
+          yield* DbService.initSystemMode()
           yield* Effect.tryPromise({
             try: () => {
               return server.connect(transport)
