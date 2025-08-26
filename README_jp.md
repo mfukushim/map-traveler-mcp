@@ -430,4 +430,6 @@ MCPの呼び出しを直接Effectで処理するほうがシンプルになる�
 スキーマにtitleを入れました。outputSchemaとstructured responseは将来取り入れる予定ですが今回は取り込んでいません。旅botの出力はテキストとしては単純なため構造化はまだ必要ないと考えています。  
   https://modelcontextprotocol.io/specification/2025-06-18/server/tools
 
+- 初期化の誤りによりenvの設定にかかわらずSNS関数などが呼び出せないの問題を修正しました。  
+
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/mfukushim-map-traveler-mcp-badge.png)](https://mseep.ai/app/mfukushim-map-traveler-mcp)
