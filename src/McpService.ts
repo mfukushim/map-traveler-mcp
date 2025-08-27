@@ -63,7 +63,7 @@ const labelImage = (aiGen: string) => {
 const server = new Server(
   {
     name: "geo-less-traveler",
-    version: "0.1.0",
+    version: "0.2.0",
   },
   {
     capabilities: {
