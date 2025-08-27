@@ -2,7 +2,6 @@
 
 import {Effect, Option} from "effect"
 import {Server} from "@modelcontextprotocol/sdk/server/index.js";
-import {StdioServerTransport} from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
   GetPromptRequestSchema,
@@ -1153,28 +1152,23 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             Effect.runPromise)
         });
 
-        const transport = new StdioServerTransport();
-        const p = Effect.gen(function* () {
-          yield* DbService.initSystemMode()
-          yield* Effect.tryPromise({
-            try: () => {
-              return server.connect(transport)
-            },
-            catch: error => {
-              return new Error(`mcp server error:${error}`)
-            }
-          })
-        }).pipe(Effect.provide(DbServiceLive))
-        return Effect.runFork(p)
-        // return DbService.initSystemMode().pipe(Effect.andThen(() => Effect.tryPromise({
+        return Effect.gen(function *() {
+            yield* DbService.initSystemMode()
+          return server
+        })
+        // const transport = new StdioServerTransport();
+        // const p = Effect.gen(function* () {
+        //   yield* DbService.initSystemMode()
+        //   yield* Effect.tryPromise({
         //     try: () => {
         //       return server.connect(transport)
         //     },
         //     catch: error => {
         //       return new Error(`mcp server error:${error}`)
         //     }
-        //   })),
-        //   Effect.provide([DbServiceLive]))
+        //   })
+        // }).pipe(Effect.provide(DbServiceLive))
+        // return Effect.runFork(p)
       }
 
 

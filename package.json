@@ -1,6 +1,6 @@
 {
   "name": "@mfukushim/map-traveler-mcp",
-  "version": "0.0.81",
+  "version": "0.1.0",
   "type": "module",
   "bin": {
     "map-traveler-mcp": "build/esm/mapTraveler.js"
@@ -32,11 +32,13 @@
     "build": "pnpm build-esm",
     "build:npm": "npm run build-esm",
     "build-esm": "tsc -b tsconfig.build.json",
+    "start": "pnpm build-esm && node build/esm/mapTraveler.js",
     "build-annotate": "babel build/esm --plugins annotate-pure-calls --out-dir build/esm --source-maps",
     "check": "tsc -b tsconfig.json",
     "test": "vitest",
     "coverage": "vitest --coverage",
-    "inspector": "pnpm build && cmd /c \"set CLIENT_PORT=5174 && npx @modelcontextprotocol/inspector build/esm/mapTraveler.js\""
+    "inspector": "pnpm build && cmd /c \"npx -y @modelcontextprotocol/inspector build/esm/mapTraveler.js\"",
+    "inspector2": "npx -y @modelcontextprotocol/inspector"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.33.1",
@@ -48,10 +50,14 @@
     "@libsql/client": "^0.14.0",
     "@modelcontextprotocol/sdk": "^1.17.1",
     "@pixai-art/client": "^0.4.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "cors": "^2.8.5",
     "dayjs": "^1.11.13",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.38.3",
     "effect": "^3.12.4",
+    "express": "^5.1.0",
     "form-data": "^4.0.1",
     "geolib": "^3.3.4",
     "jimp": "^1.6.0",
