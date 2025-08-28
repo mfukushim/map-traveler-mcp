@@ -1,7 +1,7 @@
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
 
-import {Effect, Layer, Option} from "effect";
-import {drizzle} from 'drizzle-orm/libsql';
+import {Effect, Layer, Option, Schema} from "effect";
+import {drizzle, LibSQLDatabase} from 'drizzle-orm/libsql';
 import {migrate} from 'drizzle-orm/libsql/migrator';
 import {anniversary, avatar_model, avatar_sns, env_kv, run_status, runAvatar, sns_posts, SnsType} from "./db/schema.js";
 import {and, desc, eq, inArray, or} from "drizzle-orm";
@@ -18,14 +18,14 @@ import {
   bs_handle,
   bs_id,
   bs_pass, comfy_params,
-  comfy_url, comfy_workflow_i2i, comfy_workflow_t2i, filter_tools, fixed_model_prompt,
+  comfy_url, comfy_workflow_i2i, comfy_workflow_t2i, EnvSmithery, filter_tools, fixed_model_prompt,
   GoogleMapApi_key,
   mapApi_url, moveMode, no_sns_post,
   pixAi_key, rembg_path, rembgPath, remBgUrl,
-  sd_key, ServerLog,
+  sd_key, ServerLog, setSmitheryEnv,
   sqlite_path, tursoToken, tursoUrl
 } from "./EnvUtils.js";
-import {createClient} from "@libsql/client";
+import {createClient,Client} from "@libsql/client";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -56,22 +56,27 @@ export function isValidFilePath(filePath: string) {
 const dbPath = sqlite_path && isValidFilePath(expandPath(sqlite_path)) ?
   'file:' + path.normalize(expandPath(sqlite_path)).replaceAll('\\', '/') : ':memory:'
 
-const client = tursoUrl && tursoToken ?
-  createClient({
-  url: tursoUrl,
-  authToken: tursoToken
-}):undefined
-
-const db = drizzle(client || dbPath)
+// const client = tursoUrl && tursoToken ?
+//   createClient({
+//   url: tursoUrl,
+//   authToken: tursoToken
+// }):undefined
+//
+// const db = drizzle(client || dbPath)
 // const db = drizzle(dbPath);
 
-export type DbMode = 'memory' | 'file' | 'api';
-export type PersonMode = 'third' | 'second';
-export type MoveMode = 'realtime' | 'skip';
-const MapEndpoint = ['directions', 'places', 'timezone', 'svMeta', 'streetView', 'nearby'] as const;
+export const DbModeSchema = Schema.Literal('memory', 'file', 'api')
+export type DbMode = typeof DbModeSchema.Type;
+export const PersonModeSchema = Schema.Literal('third', 'second')
+export type PersonMode = typeof PersonModeSchema.Type;
+export const MoveModeSchema = Schema.Literal('realtime', 'skip')
+export type MoveMode = typeof MoveModeSchema.Type;
+export const MapEndpointSchema = Schema.Literal('directions', 'places', 'timezone', 'svMeta', 'streetView', 'nearby')
+const MapEndpoint = MapEndpointSchema.literals
 export type MapEndpoint = (typeof MapEndpoint)[number];
 
 
+/*
 export const env = {
   travelerExist: true, //  まだ動的ツール切り替えはClaude desktopに入っていない。。
   dbMode: 'memory' as DbMode,
@@ -90,6 +95,7 @@ export const env = {
   progressToken: undefined as string | number | undefined,
   mapApis: new Map<MapEndpoint, string>(),
 }
+*/
 
 export const scriptTables = new Map<string, { script: any, nodeNameToId: Map<string, number> }>();
 
@@ -97,6 +103,24 @@ export const scriptTables = new Map<string, { script: any, nodeNameToId: Map<str
 export class DbService extends Effect.Service<DbService>()("traveler/DbService", {
   accessors: true,
   effect: Effect.gen(function* () {
+    let env = {
+      travelerExist: true, //  まだ動的ツール切り替えはClaude desktopに入っていない。。
+      dbMode: 'memory' as DbMode,
+      isPractice: false,
+      anyImageAiExist: false,
+      anySnsExist: false,
+      personMode: 'third' as PersonMode,
+      fixedModelPrompt: false,
+      promptChanged: false,
+      noSnsPost: false,
+      moveMode: 'realtime' as MoveMode,
+      remBgUrl: undefined as string | undefined,
+      rembgPath: undefined as string | undefined,
+      loggingMode: false,
+      filterTools: [] as string[],
+      progressToken: undefined as string | number | undefined,
+      mapApis: new Map<MapEndpoint, string>(),
+    }
 
     const stub = <T>(qy: Promise<T>) => Effect.tryPromise({
       try: () => qy,
@@ -104,8 +128,20 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         return new Error(`${error}`);
       }
     })
+    let client:Client|undefined
+    let db:LibSQLDatabase<Record<string, never>> & {
+      $client: Client
+      }
 
-    function init() {
+    function init(tursoUrl?:string,tursoToken?:string) {
+      client = tursoUrl && tursoToken ?
+        createClient({
+          url: tursoUrl,
+          authToken: tursoToken
+        }):undefined
+
+      db = drizzle(client || dbPath)
+
       return Effect.gen(function* () {
         yield* stub(migrate(db, {migrationsFolder: path.join(__pwd, 'drizzle')}));
         //  暫定のdb初期値
@@ -353,7 +389,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       }).pipe(Effect.andThen(a => JSON.parse(a).version as string))
     }
 
-    const initSystemMode = () => {
+    const initSystemMode = (extEnv:Option.Option<EnvSmithery>) => {
       //  主要なモード
       //  noTraveler: traveler未呼び出し
       //  memoryDb: メモリdbを使う
@@ -367,9 +403,32 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       //  noSns:いずれかのsnsのアカウントがない
       //  noBlueSky: 対話用bsアカウントがない
       //  filterTools: 使うツールのフィルタ undefinedなら可能なすべて
+      const env = {
+        travelerExist: true, //  まだ動的ツール切り替えはClaude desktopに入っていない。。
+        dbMode: 'memory' as DbMode,
+        isPractice: false,
+        anyImageAiExist: false,
+        anySnsExist: false,
+        personMode: 'third' as PersonMode,
+        fixedModelPrompt: false,
+        promptChanged: false,
+        noSnsPost: false,
+        moveMode: 'realtime' as MoveMode,
+        remBgUrl: undefined as string | undefined,
+        rembgPath: undefined as string | undefined,
+        loggingMode: false,
+        filterTools: [] as string[],
+        progressToken: undefined as string | number | undefined,
+        mapApis: new Map<MapEndpoint, string>(),
+      }
+
       return Effect.gen(function* () {
         //  db有無の確認 dbサービスの初期化によって確認させる とコマンドon/off
-        yield* init()
+        if (Option.isSome(extEnv)) {
+          setSmitheryEnv(extEnv.value)
+        }
+
+        yield* init(Option.getOrNull(extEnv)?.MT_TURSO_URL || tursoUrl,Option.getOrNull(extEnv)?.MT_TURSO_TOKEN || tursoToken);
         env.progressToken = undefined
         if (client) {
           env.dbMode = "api";
@@ -455,6 +514,8 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         }
 
         yield* McpLogService.logTrace(`initSystemMode end:${JSON.stringify(env)}`)
+
+        return env
       })
     }
 
@@ -486,6 +547,9 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       return {name: name, script: parse, nodeNameToId: map1};
     }
 
+    function getSysEnv() {
+      return env
+    }
 
     return {
       init,
@@ -506,6 +570,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       getEnvOption,
       saveEnv,
       getVersion,
+      getSysEnv
     }
   }),
   dependencies: [McpLogServiceLive]

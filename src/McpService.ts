@@ -1,6 +1,6 @@
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
 
-import {Effect, Option} from "effect"
+import {Effect, Layer, Option} from "effect"
 import {Server} from "@modelcontextprotocol/sdk/server/index.js";
 import {
   CallToolRequestSchema,
@@ -16,7 +16,7 @@ import {
   __pwd,
   DbService,
   DbServiceLive,
-  env,
+  // env,
   PersonMode
 } from "./DbService.js";
 import {StoryService, StoryServiceLive} from "./StoryService.js";
@@ -35,7 +35,7 @@ import {
   bodyHWRatio,
   bodyWindowRatioH,
   bodyWindowRatioW,
-  bs_handle, extfeedTag,
+  bs_handle, Env, EnvSmithery, extfeedTag,
   GoogleMapApi_key, isEnableFeedTag,
   noImageOut
 } from "./EnvUtils.js";
@@ -126,6 +126,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
   accessors: true,
   effect: Effect.gen(function* () {
       //  region tool定義
+    const makeToolsDef = (env:Env) => {
+
       const SETTING_COMMANDS: Tool[] = [
         {
           name: "tips",  //  pythonがあったらよいとか、db設定がよいとか、tipsを取得する。tipsの取得を行うのはproject側スクリプトとか、script batchとか
@@ -356,7 +358,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         },
       ]
 
-      const makeToolsDef = () => {
         const def = () => {
           if (env.isPractice) {
             return [
@@ -456,9 +457,9 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
 
 
       //  region tools関数
-      const tips = () => {
+      const tips = (env:Env) => {
         return Effect.gen(function* () {
-            const res = yield* StoryService.tips()
+            const res = yield* StoryService.tips(env)
             const content = [{type: "text", text: res.textList.join('\n-------\n')} as ToolContentResponse]
             if (res.imagePathList.length > 0) {
               yield* Effect.forEach(res.imagePathList, a => {
@@ -480,7 +481,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           }
         )
       }
-      const setPersonMode = (person: string) => {
+      const setPersonMode = (person: string,env:Env) => {
         const mode: PersonMode = person === 'second_person' ? 'second' : 'third'
         env.personMode = mode
         return DbService.saveEnv('personMode', mode).pipe(
@@ -512,7 +513,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           )
         )
       }
-      const getSetting = () => {
+      const getSetting = (env:Env) => {
         return Effect.gen(function* () {
           const version = yield* DbService.getVersion()
           const envText = 'A json of current environment settings\n' +
@@ -533,7 +534,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           } as ToolContentResponse]
         })
       }
-      const setAvatarPrompt = (prompt: string) => {
+      const setAvatarPrompt = (prompt: string,env:Env) => {
         return DbService.updateBasePrompt(defaultAvatarId, prompt).pipe(
           Effect.andThen(a => [{
               type: "text",
@@ -556,11 +557,11 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         )
       }
 
-      const getCurrentLocationInfo = (includePhoto: boolean, includeNearbyFacilities: boolean) => {
+      const getCurrentLocationInfo = (includePhoto: boolean, includeNearbyFacilities: boolean,env:Env) => {
         return RunnerService.getCurrentView(dayjs(), includePhoto, includeNearbyFacilities, env.isPractice)
       }
 
-      const getElapsedView = (timeElapsedPercentage: number) => {
+      const getElapsedView = (timeElapsedPercentage: number,env:Env) => {
         if (env.isPractice) {
           return practiceNotUsableMessage
         }
@@ -577,7 +578,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         ]
       )
 
-      const setCurrentLocation = (location: string) => {
+      const setCurrentLocation = (location: string,env:Env) => {
         if (env.isPractice) {
           return practiceNotUsableMessage
         }
@@ -631,7 +632,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           } as ToolContentResponse]
         })
       }
-      const getDestinationAddress = () => {
+      const getDestinationAddress = (env:Env) => {
         if (env.isPractice) {
           return practiceNotUsableMessage
         }
@@ -639,7 +640,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           Effect.andThen(a => [{type: "text", text: `Current destination is "${a}"`} as ToolContentResponse])
         )
       }
-      const setDestinationAddress = (address: string) => {
+      const setDestinationAddress = (address: string,env:Env) => {
         if (env.isPractice) {
           return practiceNotUsableMessage
         }
@@ -647,7 +648,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           Effect.andThen(a => [{type: "text", text: a.message} as ToolContentResponse])
         )
       }
-      const startJourney = () => {
+      const startJourney = (env:Env) => {
         return RunnerService.startJourney(env.isPractice).pipe(
           Effect.andThen(a => {
             const out: ToolContentResponse[] = [{type: "text", text: a.text}]
@@ -662,11 +663,11 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           })
         )
       }
-      const stopJourney = () => {
+      const stopJourney = (env:Env) => {
         return RunnerService.stopJourney(env.isPractice)
       }
 
-      const setTravelerExist = (callKick: boolean) => {
+      const setTravelerExist = (callKick: boolean,env:Env) => {
         env.travelerExist = callKick
         return McpLogService.log(`enter setTravelerExist:${callKick}`).pipe(
           Effect.tap(() => sendToolListChanged()),
@@ -872,7 +873,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         })
       }
 
-      const addLike = (id: string) => {
+      const addLike = (id: string,env:Env) => {
         //  TODO 固定フィルタ
         return Effect.gen(function* () {
           if (env.noSnsPost) {
@@ -924,7 +925,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         };
       }
 
-      const replySnsWriter = (message: string, id: string) => {
+      const replySnsWriter = (message: string, id: string,env:Env) => {
         //  TODO 固定フィルタ
         return Effect.gen(function* () {
           if (env.noSnsPost) {
@@ -960,7 +961,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         })
       };
 
-      const postSnsWriter = (message: string) => {
+      const postSnsWriter = (message: string,env:Env) => {
         //  特定タグを強制付加する 長すぎは強制的に切る 特定ライセンス記述を強制付加する その他固定フィルタ機能を置く
         //  TODO 固定フィルタ
         return Effect.gen(function* () {
@@ -988,10 +989,10 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       }
       //  endregion
 
-      const toolSwitch = (request: z.infer<typeof CallToolRequestSchema>) => {
+      const toolSwitch = (request: z.infer<typeof CallToolRequestSchema>,env:Env) => {
         switch (request.params.name) {
           case "tips":
-            return tips()
+            return tips(env)
           // case "set_person_mode":
           //   return setPersonMode(String(request.params.arguments?.person)).pipe(Effect.provide([DbServiceLive,McpLogServiceLive]))
           case "get_traveler_info":
@@ -999,37 +1000,37 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           case "set_traveler_info":
             return setTravelerInfo(String(request.params.arguments?.settings))
           case "get_setting":
-            return getSetting()
+            return getSetting(env)
           case "set_avatar_prompt":
-            return setAvatarPrompt(String(request.params.arguments?.prompt))
+            return setAvatarPrompt(String(request.params.arguments?.prompt),env)
           case "reset_avatar_prompt":
             return resetAvatarPrompt()
           case "get_current_view_info":
           case "get_traveler_view_info":
-            return getCurrentLocationInfo(request.params.arguments?.includePhoto as boolean, request.params.arguments?.includeNearbyFacilities as boolean)
+            return getCurrentLocationInfo(request.params.arguments?.includePhoto as boolean, request.params.arguments?.includeNearbyFacilities as boolean,env)
           case "reach_a_percentage_of_destination":
-            return getElapsedView(request.params.arguments?.timeElapsedPercentage as number)
+            return getElapsedView(request.params.arguments?.timeElapsedPercentage as number,env)
           case "get_traveler_location":
-            return getCurrentLocationInfo(false, true)
+            return getCurrentLocationInfo(false, true,env)
           case "set_current_location":
           case "set_traveler_location":
-            return setCurrentLocation(String(request.params.arguments?.address))
+            return setCurrentLocation(String(request.params.arguments?.address),env)
           case "get_destination_address":
           case "get_traveler_destination_address":
-            return getDestinationAddress()
+            return getDestinationAddress(env)
           case "set_destination_address":
           case "set_traveler_destination_address":
-            return setDestinationAddress(String(request.params.arguments?.address))
+            return setDestinationAddress(String(request.params.arguments?.address),env)
           case "start_journey":
           case "start_traveler_journey":
-            return startJourney()
+            return startJourney(env)
           case "stop_journey":
           case "stop_traveler_journey":
-            return stopJourney()
+            return stopJourney(env)
           case "call_traveler":
-            return setTravelerExist(true)
+            return setTravelerExist(true,env)
           case "kick_traveler":
-            return setTravelerExist(false)
+            return setTravelerExist(false,env)
           case "get_sns_mentions":
             return getSnsMentions(10)
           case "read_sns_reader":
@@ -1037,11 +1038,11 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           case "get_sns_feeds":
             return getSnsFeeds()
           case "post_sns_writer":
-            return postSnsWriter(String(request.params.arguments?.message))
+            return postSnsWriter(String(request.params.arguments?.message),env)
           case "reply_sns_writer":
-            return replySnsWriter(String(request.params.arguments?.message), String(request.params.arguments?.id))
+            return replySnsWriter(String(request.params.arguments?.message), String(request.params.arguments?.id),env)
           case "add_like":
-            return addLike(String(request.params.arguments?.id))
+            return addLike(String(request.params.arguments?.id),env)
           default:
             return Effect.fail(new Error(`Unknown tool:${request.params.name}`));
         }
@@ -1050,7 +1051,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       /**
        * Effect上でMCP実行
        */
-      const run = () => {
+      const run = (appLive: Layer.Layer<McpService | DbService | McpLogService | StoryService | ImageService | MapService | RunnerService | SnsService>,smitheryConfig:Option.Option<EnvSmithery>) => {
         server.setRequestHandler(ListResourcesRequestSchema, async () => {
           return await StoryService.getResourceList().pipe(
             Effect.andThen(a => {
@@ -1079,7 +1080,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 text: a
               }]
             })),
-            Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
+            Effect.provide([appLive, FetchHttpClient.layer]),
+            // Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
             Effect.runPromise
           ).catch(e => {
             if (e instanceof Error) {
@@ -1118,15 +1120,17 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
 
 
         server.setRequestHandler(ListToolsRequestSchema, async () => {
-          return await makeToolsDef().pipe(Effect.runPromise)
+          return await DbService.getSysEnv().pipe(Effect.andThen(env => makeToolsDef(env)),
+            Effect.provide([appLive, FetchHttpClient.layer]),
+            Effect.runPromise)
         });
 
         server.setRequestHandler(CallToolRequestSchema, async (request: z.infer<typeof CallToolRequestSchema>) => {
-          return await McpLogService.logTrace(request.params.name).pipe(
-            Effect.andThen(() => {
+          return await DbService.getSysEnv().pipe(
+            Effect.andThen(env => {
               logSync('request.params:', JSON.stringify(request.params))
               env.progressToken = request.params._meta?.progressToken
-              return toolSwitch(request)
+              return toolSwitch(request,env)
             }),
             Effect.andThen(a => noImageOut ? a.filter(v => v.type !== 'image') : a),
             Effect.andThen(a => ({content: a})),
@@ -1148,12 +1152,12 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 }),
               )
             }),
-            Effect.provide([DbServiceLive, StoryServiceLive, MapServiceLive, FetchHttpClient.layer, ImageServiceLive, RunnerServiceLive, SnsServiceLive]),
+            Effect.provide([appLive, FetchHttpClient.layer]),
             Effect.runPromise)
         });
 
         return Effect.gen(function *() {
-            yield* DbService.initSystemMode()
+            yield* DbService.initSystemMode(smitheryConfig)
           return server
         })
         // const transport = new StdioServerTransport();

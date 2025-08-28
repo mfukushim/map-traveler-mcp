@@ -2,7 +2,7 @@
 
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
 
-import {Layer, ManagedRuntime} from "effect";
+import {Layer, Schema, Effect, Option, ManagedRuntime} from "effect";
 import {McpService, McpServiceLive} from "./McpService.js";
 import {DbServiceLive} from "./DbService.js";
 import {ImageServiceLive} from "./ImageService.js";
@@ -24,11 +24,12 @@ import {
   mcpAuthMetadataRouter
 } from "@modelcontextprotocol/sdk/server/auth/router.js";
 import {requireBearerAuth} from "@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js";
+import {EnvSmitherySchema} from "./EnvUtils.js";
+import {Server} from "@modelcontextprotocol/sdk/server/index.js";
+import {StdioServerTransport} from "@modelcontextprotocol/sdk/server/stdio.js";
 
-// Check for OAuth flag
-const useOAuth = true // process.argv.includes('--oauth');
-const strictOAuth = true // process.argv.includes('--oauth-strict');
-
+//  TODO Smithrey対応のための複数のサービスインスタンスが必要なため、Serviceはsessionごとに新規生成の形にする
+const AppLiveFresh = Layer.mergeAll(Layer.fresh(McpServiceLive), Layer.fresh(DbServiceLive),Layer.fresh(McpServiceLive), Layer.fresh(ImageServiceLive), Layer.fresh(MapServiceLive),Layer.fresh(RunnerServiceLive),Layer.fresh(SnsServiceLive),Layer.fresh(StoryServiceLive));
 const AppLive = Layer.mergeAll(McpServiceLive, DbServiceLive, McpServiceLive, ImageServiceLive, MapServiceLive,RunnerServiceLive,SnsServiceLive,StoryServiceLive);
 const aiRuntime = ManagedRuntime.make(AppLive);
 
@@ -42,181 +43,14 @@ export class AnswerError extends Error {
   }
 }
 
-/*
-console.error('Starting Streamable HTTP server...');
+//  from https://github.com/modelcontextprotocol/typescript-sdk/blob/main/src/examples/server/simpleStreamableHttp.ts
+//  and https://smithery.ai/docs/migrations/typescript-custom-container
 
-const app = express();
+// Check for OAuth flag
+const useOAuth = false // process.argv.includes('--oauth');
+const strictOAuth = false // process.argv.includes('--oauth-strict');
 
-const transports: Map<string, StreamableHTTPServerTransport> = new Map<string, StreamableHTTPServerTransport>();
-
-app.post('/mcp', async (req: Request, res: Response) => {
-  console.error('Received MCP POST request');
-  try {
-    // Check for existing session ID
-    const sessionId = req.headers['mcp-session-id'] as string | undefined;
-    let transport: StreamableHTTPServerTransport;
-
-    if (sessionId && transports.has(sessionId)) {
-      // Reuse existing transport
-      transport = transports.get(sessionId)!;
-    } else if (!sessionId) {
-
-      const server = await McpService.run().pipe(aiRuntime.runPromise)
-      // const { server, cleanup } = createServer();
-
-      // New initialization request
-      const eventStore = new InMemoryEventStore();
-      transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => randomUUID(),
-        eventStore, // Enable resumability
-        onsessioninitialized: (sessionId: string) => {
-          // Store the transport by session ID when session is initialized
-          // This avoids race conditions where requests might come in before the session is stored
-          console.error(`Session initialized with ID: ${sessionId}`);
-          transports.set(sessionId, transport);
-        }
-      });
-
-
-      // Set up onclose handler to clean up transport when closed
-      server.onclose = async () => {
-        const sid = transport.sessionId;
-        if (sid && transports.has(sid)) {
-          console.error(`Transport closed for session ${sid}, removing from transports map`);
-          transports.delete(sid);
-          // await cleanup();
-        }
-      };
-
-      // Connect the transport to the MCP server BEFORE handling the request
-      // so responses can flow back through the same transport
-      await server.connect(transport);
-
-      await transport.handleRequest(req, res);
-      return; // Already handled
-    } else {
-      // Invalid request - no session ID or not initialization request
-      res.status(400).json({
-        jsonrpc: '2.0',
-        error: {
-          code: -32000,
-          message: 'Bad Request: No valid session ID provided',
-        },
-        id: req?.body?.id,
-      });
-      return;
-    }
-
-    // Handle the request with existing transport - no need to reconnect
-    // The existing transport is already connected to the server
-    await transport.handleRequest(req, res);
-  } catch (error) {
-    console.error('Error handling MCP request:', error);
-    if (!res.headersSent) {
-      res.status(500).json({
-        jsonrpc: '2.0',
-        error: {
-          code: -32603,
-          message: 'Internal server error',
-        },
-        id: req?.body?.id,
-      });
-      return;
-    }
-  }
-});
-
-// Handle GET requests for SSE streams (using built-in support from StreamableHTTP)
-app.get('/mcp', async (req: Request, res: Response) => {
-  console.error('Received MCP GET request');
-  const sessionId = req.headers['mcp-session-id'] as string | undefined;
-  if (!sessionId || !transports.has(sessionId)) {
-    res.status(400).json({
-      jsonrpc: '2.0',
-      error: {
-        code: -32000,
-        message: 'Bad Request: No valid session ID provided',
-      },
-      id: req?.body?.id,
-    });
-    return;
-  }
-
-  // Check for Last-Event-ID header for resumability
-  const lastEventId = req.headers['last-event-id'] as string | undefined;
-  if (lastEventId) {
-    console.error(`Client reconnecting with Last-Event-ID: ${lastEventId}`);
-  } else {
-    console.error(`Establishing new SSE stream for session ${sessionId}`);
-  }
-
-  const transport = transports.get(sessionId);
-  await transport!.handleRequest(req, res);
-});
-
-// Handle DELETE requests for session termination (according to MCP spec)
-app.delete('/mcp', async (req: Request, res: Response) => {
-  const sessionId = req.headers['mcp-session-id'] as string | undefined;
-  if (!sessionId || !transports.has(sessionId)) {
-    res.status(400).json({
-      jsonrpc: '2.0',
-      error: {
-        code: -32000,
-        message: 'Bad Request: No valid session ID provided',
-      },
-      id: req?.body?.id,
-    });
-    return;
-  }
-
-  console.error(`Received session termination request for session ${sessionId}`);
-
-  try {
-    const transport = transports.get(sessionId);
-    await transport!.handleRequest(req, res);
-  } catch (error) {
-    console.error('Error handling session termination:', error);
-    if (!res.headersSent) {
-      res.status(500).json({
-        jsonrpc: '2.0',
-        error: {
-          code: -32603,
-          message: 'Error handling session termination',
-        },
-        id: req?.body?.id,
-      });
-      return;
-    }
-  }
-});
-
-// Start the server
-const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.error(`MCP Streamable HTTP Server listening on port ${PORT}`);
-});
-
-// Handle server shutdown
-process.on('SIGINT', async () => {
-  console.error('Shutting down server...');
-
-  // Close all active transports to properly clean up resources
-  for (const sessionId in transports) {
-    try {
-      console.error(`Closing transport for session ${sessionId}`);
-      await transports.get(sessionId)!.close();
-      transports.delete(sessionId);
-    } catch (error) {
-      console.error(`Error closing transport for session ${sessionId}:`, error);
-    }
-  }
-
-  console.error('Server shutdown complete');
-  process.exit(0);
-});
-*/
-
-const MCP_PORT = process.env.MCP_PORT ? parseInt(process.env.MCP_PORT, 10) : 3000;
+const MCP_PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 8081;
 const AUTH_PORT = process.env.MCP_AUTH_PORT ? parseInt(process.env.MCP_AUTH_PORT, 10) : 3001;
 
 const app = express();
@@ -225,7 +59,8 @@ app.use(express.json());
 // Allow CORS all domains, expose the Mcp-Session-Id header
 app.use(cors({
   origin: '*', // Allow all origins
-  exposedHeaders: ["Mcp-Session-Id"]
+  exposedHeaders: ['Mcp-Session-Id', 'mcp-protocol-version'],
+  allowedHeaders: ['Content-Type', 'mcp-session-id'],
 }));
 
 // Set up OAuth if enabled
@@ -284,8 +119,8 @@ if (useOAuth) {
   app.use(mcpAuthMetadataRouter({
     oauthMetadata,
     resourceServerUrl: mcpServerUrl,
-    scopesSupported: ['mcp:tools'],
-    resourceName: 'MCP Demo Server',
+    scopesSupported: ['mcp:tools','mcp:resources'],
+    resourceName: 'map-traveler-mcp Server',
   }));
 
   authMiddleware = requireBearerAuth({
@@ -295,9 +130,24 @@ if (useOAuth) {
   });
 }
 
-// Map to store transports by session ID
-const transports: { [sessionId: string]: StreamableHTTPServerTransport } = {};
+function parseConfig(req: Request) {
+  const configParam = req.query.config as string;
+  if (configParam) {
+    return JSON.parse(Buffer.from(configParam, 'base64').toString());
+  }
+  return {};
+}
 
+// Map to store transports by session ID
+const transports: { [sessionId: string]: {transport:StreamableHTTPServerTransport;server:Server} } = {};
+
+/*
+TODO 現時点のユーザ識別の考え方
+ MT_TURSO_URL が指定されている場合、この文字列をユーザIDかつdbContext指定とする
+ MT_TURSO_URL が指定されていない場合、sessionIdをユーザIDとし、dbは1つのオンメモリdbContextの中でuserIdでデータを分ける
+TODO
+ 将来oauthやきちんとしたログイン認証を入れることがあれば、そのときはreq.auth.clientIdをユーザIDとし、dbは1つのdbContext(環境変数で指定された1つのローカルsqliteや一つのTurso_Url)でuserIdで分けるようにするかもしれない。しかし今は考えない
+ */
 // MCP POST endpoint with optional auth
 const mcpPostHandler = async (req: Request, res: Response) => {
   const sessionId = req.headers['mcp-session-id'] as string | undefined;
@@ -311,25 +161,39 @@ const mcpPostHandler = async (req: Request, res: Response) => {
     console.log('Authenticated user:', req.auth);
   }
   try {
-    let transport: StreamableHTTPServerTransport;
+    // Parse configuration (only if you added configuration handling in Step 2)
+    const rawConfig = parseConfig ? parseConfig(req) : {};
+    // Validate and parse configuration (only if you added configSchema in Step 2)
+    const smitheryConfig = Schema.decodeUnknownOption(EnvSmitherySchema)({
+      MT_GOOGLE_MAP_KEY: rawConfig?.MT_GOOGLE_MAP_KEY || undefined,
+      MT_TURSO_URL: rawConfig?.MT_TURSO_URL || undefined,
+      MT_TURSO_TOKEN: rawConfig?.MT_TURSO_TOKEN || undefined,
+      MT_BS_ID: rawConfig?.MT_BS_ID || undefined,
+      MT_BS_PASS: rawConfig?.MT_BS_PASS || undefined,
+      MT_BS_HANDLE: rawConfig?.MT_BS_HANDLE || undefined,
+      MT_FILTER_TOOLS: rawConfig?.MT_FILTER_TOOLS || undefined,
+      MT_MOVE_MODE: rawConfig?.MT_MOVE_MODE || undefined,
+      MT_FEED_TAG: rawConfig?.MT_FEED_TAG || undefined,
+    });
+
+    let transport: {transport: StreamableHTTPServerTransport;server:Server} | undefined = undefined;
     if (sessionId && transports[sessionId]) {
       // Reuse existing transport
       transport = transports[sessionId];
+      // transport.server.setSmitheryConfig(smitheryConfig);
     } else if (!sessionId && isInitializeRequest(req.body)) {
       // New initialization request
       const eventStore = new InMemoryEventStore();
-      transport = new StreamableHTTPServerTransport({
+      const server = await McpService.run(AppLiveFresh,smitheryConfig).pipe(Effect.provide(AppLiveFresh),Effect.runPromise)
+      const transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
         eventStore, // Enable resumability
         onsessioninitialized: (sessionId) => {
           // Store the transport by session ID when session is initialized
           // This avoids race conditions where requests might come in before the session is stored
           console.log(`Session initialized with ID: ${sessionId}`);
-          transports[sessionId] = transport;
+          transports[sessionId] = {transport,server};
         },
-        // enableDnsRebindingProtection: true,
-        // allowedHosts: ['127.0.0.1'],
-        // allowedOrigins: ['http://localhost:5174']
       });
 
       // Set up onclose handler to clean up transport when closed
@@ -343,7 +207,6 @@ const mcpPostHandler = async (req: Request, res: Response) => {
 
       // Connect the transport to the MCP server BEFORE handling the request
       // so responses can flow back through the same transport
-      const server = await McpService.run().pipe(aiRuntime.runPromise)
       // const server = getServer();
       await server.connect(transport);
 
@@ -364,7 +227,7 @@ const mcpPostHandler = async (req: Request, res: Response) => {
 
     // Handle the request with existing transport - no need to reconnect
     // The existing transport is already connected to the server
-    await transport.handleRequest(req, res, req.body);
+    await transport.transport.handleRequest(req, res, req.body);
   } catch (error) {
     console.error('Error handling MCP request:', error);
     if (!res.headersSent) {
@@ -409,7 +272,7 @@ const mcpGetHandler = async (req: Request, res: Response) => {
   }
 
   const transport = transports[sessionId];
-  await transport.handleRequest(req, res);
+  await transport.transport.handleRequest(req, res);
 };
 
 // Set up GET route with conditional auth middleware
@@ -431,7 +294,7 @@ const mcpDeleteHandler = async (req: Request, res: Response) => {
 
   try {
     const transport = transports[sessionId];
-    await transport.handleRequest(req, res);
+    await transport.transport.handleRequest(req, res);
   } catch (error) {
     console.error('Error handling session termination:', error);
     if (!res.headersSent) {
@@ -463,7 +326,7 @@ process.on('SIGINT', async () => {
   for (const sessionId in transports) {
     try {
       console.log(`Closing transport for session ${sessionId}`);
-      await transports[sessionId].close();
+      await transports[sessionId].transport.close();
       delete transports[sessionId];
     } catch (error) {
       console.error(`Error closing transport for session ${sessionId}:`, error);
@@ -482,14 +345,33 @@ process.on('SIGINT', async () => {
 //   NodeRuntime.runMain
 // )
 
-// async function main() {
-//   await McpService.run().pipe(aiRuntime.runPromise)
-//   // await Effect.runPromise(Effect.gen(function* () {
-//   //   yield* McpService.run()
-//   // }).pipe(Effect.provide([McpServiceLive]),))
-// }
-//
-// main().catch((error) => {
-//   //  MCPではconsole出力はエラーになるっぽい
-//   // console.error("Server error:", error);
-// });
+async function main() {
+  await Effect.gen(function* () {
+    const transport = process.env.TRANSPORT || 'stdio';
+
+    if (transport === 'http') {
+      // Run in HTTP mode
+      app.listen(MCP_PORT, () => {
+        console.log(`MCP HTTP Server listening on port ${MCP_PORT}`);
+      });
+    } else {
+      // Create server with configuration
+      const server = yield *McpService.run(AppLive,Option.none())
+
+      // Start receiving messages on stdin and sending messages on stdout
+      const stdioTransport = new StdioServerTransport();
+      yield *Effect.tryPromise(signal => server.connect(stdioTransport));
+      console.error("MCP Server running in stdio mode");
+    }
+  }).pipe(aiRuntime.runPromise)
+
+  // await McpService.run(AppLive,Option.none()).pipe(aiRuntime.runPromise)
+  // await Effect.runPromise(Effect.gen(function* () {
+  //   yield* McpService.run()
+  // }).pipe(Effect.provide([McpServiceLive]),))
+}
+
+main().catch((error) => {
+  //  MCPではconsole出力はエラーになるっぽい
+  console.error("Server error:", error);
+});

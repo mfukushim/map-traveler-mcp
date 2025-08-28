@@ -4,11 +4,11 @@ import {Effect, Option, Schedule} from "effect";
 import dayjs from "dayjs";
 import timezone = require("dayjs/plugin/timezone")
 import {MapDef, MapService} from "./MapService.js";
-import {__pwd, DbService, env} from "./DbService.js";
+import {__pwd, DbService} from "./DbService.js";
 import {McpLogService} from "./McpLogService.js";
 import * as path from "node:path";
 import * as fs from "node:fs";
-import {bs_handle, bs_id, bs_pass, extfeedTag, isEnableFeedTag} from "./EnvUtils.js";
+import {bs_handle, bs_id, bs_pass, Env, extfeedTag, isEnableFeedTag} from "./EnvUtils.js";
 import {ImageService} from "./ImageService.js";
 
 dayjs.extend(timezone)
@@ -166,7 +166,7 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
      * ランダム: 旅の過程は現在地の設定、行き先の設定、旅の開始
      * ランダム: 一定時間後に現在の報告を聞くとさらに先の画像が出ます
      */
-    const tips = () => {
+    const tips = (env:Env) => {
       //  informationの文
       //  1. practiceモードであればそれを示す 解除にはGoogle map api keyが必要であることを示す
       //  2. dbパスを設定するとアプリを終了しても現在地と行き先が記録されることを示す
@@ -222,7 +222,7 @@ or
 `
               )
             }
-            const enableRembg = yield *ImageService.isEnableRembg()
+            const enableRembg = yield *ImageService.isEnableRembg(env)
             if (!enableRembg) {
               textList.push('In order to synthesize avatar images, your PC must be running Python and install rembg.' +
                 ` Please install Python and rembg on your PC using information from the Internet.\n

@@ -5,7 +5,7 @@ import {MapService, MapDef} from "./MapService.js";
 import {
   __pwd,
   DbService,
-  env,
+  // env,
   RunStatus,
 } from "./DbService.js";
 import * as geolib from "geolib";
@@ -28,7 +28,7 @@ import {
   bodyHWRatio,
   bodyWindowRatioH,
   bodyWindowRatioW,
-  comfy_url, noAvatarImage, noImageOut,
+  comfy_url, Env, noAvatarImage, noImageOut,
   pixAi_key,
   sd_key,
   time_scale
@@ -119,6 +119,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
 
     const getFacilities = (loc: LocationDetail, includePhoto: boolean, abort = false, localDebug = false) => {
       return Effect.gen(function* () {
+        const env = yield *DbService.getSysEnv()
         const nearFacilities = yield* StoryService.getNearbyFacilities({
           lat: loc.lat,
           lng: loc.lng,
@@ -170,7 +171,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       })
     }
 
-    const vehicleView = (loc: LocationDetail, includePhoto: boolean) => {
+    const vehicleView = (loc: LocationDetail, includePhoto: boolean,env:Env) => {
       //  乗り物
       const maneuver = loc.maneuver;
       const vehiclePrompt = maneuver?.includes('ferry') ? '(on ship deck:1.3),(ferry:1.2),sea,handrails' :
@@ -244,6 +245,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       //  指定割合のその場所まで移動してstop状態にする
       const proceed = Math.max(0, Math.min(100, proceedPercent))/100
       return Effect.gen(function* () {
+        const env = yield *DbService.getSysEnv()
         const runStatus = yield* DbService.getRecentRunStatus().pipe(Effect.orElseFail(() =>
           new AnswerError(`current location not set. Please set the current location address`)))
         let p = 1
@@ -306,6 +308,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       return Effect.gen(function* () {
         let loc: LocationDetail
         let viewStatus: TripStatus;
+        const env = yield *DbService.getSysEnv()
         if (practice) {
           loc = {
             status: runStatus.status,
@@ -333,7 +336,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         }
         switch (viewStatus) {
           case 'vehicle':
-            return yield* vehicleView(loc, includePhoto);
+            return yield* vehicleView(loc, includePhoto,env);
           case 'stop':
             return yield* hotelView(practice ? 'Asia/Tokyo' : loc.timeZoneId, includePhoto, runStatus.to)
           case "running":
