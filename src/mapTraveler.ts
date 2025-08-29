@@ -2,7 +2,7 @@
 
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
 
-import {Layer, Effect, Option, ManagedRuntime} from "effect";
+import {Layer, Effect, Option, ManagedRuntime, Schema} from "effect";
 import {McpService, McpServiceLive} from "./McpService.js";
 import {DbServiceLive} from "./DbService.js";
 import {ImageServiceLive} from "./ImageService.js";
@@ -31,10 +31,10 @@ import {McpLogServiceLive} from "./McpLogService.js";
 import {FetchHttpClient} from "@effect/platform";
 
 //  TODO Smithrey対応のための複数のサービスインスタンスが必要なため、Serviceはsessionごとに新規生成の形にする
-const AppLiveFresh = Layer.mergeAll(McpLogServiceLive, Layer.fresh(McpServiceLive), Layer.fresh(DbServiceLive), Layer.fresh(McpServiceLive), Layer.fresh(ImageServiceLive), Layer.fresh(MapServiceLive), Layer.fresh(RunnerServiceLive), Layer.fresh(SnsServiceLive), Layer.fresh(StoryServiceLive));
+// const AppLiveFresh = Layer.mergeAll(McpLogServiceLive, Layer.fresh(McpServiceLive), Layer.fresh(DbServiceLive), Layer.fresh(McpServiceLive), Layer.fresh(ImageServiceLive), Layer.fresh(MapServiceLive), Layer.fresh(RunnerServiceLive), Layer.fresh(SnsServiceLive), Layer.fresh(StoryServiceLive),FetchHttpClient.layer);
 const AppLive = Layer.mergeAll(McpLogServiceLive, McpServiceLive, DbServiceLive, McpServiceLive, ImageServiceLive, MapServiceLive, RunnerServiceLive, SnsServiceLive, StoryServiceLive, FetchHttpClient.layer);
 const aiRuntime = ManagedRuntime.make(AppLive);
-const aiMultiRuntime = ManagedRuntime.make(AppLiveFresh);
+// const aiMultiRuntime = ManagedRuntime.make(AppLiveFresh);
 
 export class AnswerError extends Error {
   readonly _tag = "AnswerError"
@@ -48,15 +48,14 @@ export class AnswerError extends Error {
 
 //  from https://github.com/modelcontextprotocol/typescript-sdk/blob/main/src/examples/server/simpleStreamableHttp.ts
 //  and https://smithery.ai/docs/migrations/typescript-custom-container
+const MCP_PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 8081;
+const AUTH_PORT = process.env.MCP_AUTH_PORT ? parseInt(process.env.MCP_AUTH_PORT, 10) : 3001;
 
 function setupHttp() {
 
 // Check for OAuth flag
   const useOAuth = false // process.argv.includes('--oauth');
   const strictOAuth = false // process.argv.includes('--oauth-strict');
-
-  const MCP_PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 8081;
-  const AUTH_PORT = process.env.MCP_AUTH_PORT ? parseInt(process.env.MCP_AUTH_PORT, 10) : 3001;
 
   const app = express();
   app.use(express.json());
@@ -181,15 +180,17 @@ function setupHttp() {
         MT_FEED_TAG: rawConfig?.MT_FEED_TAG || undefined,
       });
 
-      let transport: { transport: StreamableHTTPServerTransport; server: Server } | undefined = undefined;
+      let session: { transport: StreamableHTTPServerTransport; server: Server } | undefined = undefined;
       if (sessionId && transports[sessionId]) {
         // Reuse existing transport
-        transport = transports[sessionId];
+        session = transports[sessionId];
         // transport.server.setSmitheryConfig(smitheryConfig);
       } else if (!sessionId && isInitializeRequest(req.body)) {
         // New initialization request
+        const AppLiveFresh = Layer.mergeAll(McpLogServiceLive, Layer.fresh(McpServiceLive), Layer.fresh(DbServiceLive), Layer.fresh(McpServiceLive), Layer.fresh(ImageServiceLive), Layer.fresh(MapServiceLive), Layer.fresh(RunnerServiceLive), Layer.fresh(SnsServiceLive), Layer.fresh(StoryServiceLive),FetchHttpClient.layer);
+        const aiMultiRuntime = ManagedRuntime.make(AppLiveFresh);
         const eventStore = new InMemoryEventStore();
-        const server = await McpService.run(AppLiveFresh, smitheryConfig).pipe(Effect.provide(AppLiveFresh), Effect.runPromise)
+        const server = await McpService.run(aiMultiRuntime, smitheryConfig).pipe(aiMultiRuntime.runPromise)
         const transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => randomUUID(),
           eventStore, // Enable resumability
@@ -212,7 +213,6 @@ function setupHttp() {
 
         // Connect the transport to the MCP server BEFORE handling the request
         // so responses can flow back through the same transport
-        // const server = getServer();
         await server.connect(transport);
 
         await transport.handleRequest(req, res, req.body);
@@ -232,7 +232,7 @@ function setupHttp() {
 
       // Handle the request with existing transport - no need to reconnect
       // The existing transport is already connected to the server
-      await transport.transport.handleRequest(req, res, req.body);
+      await session.transport.handleRequest(req, res, req.body);
     } catch (error) {
       console.error('Error handling MCP request:', error);
       if (!res.headersSent) {
