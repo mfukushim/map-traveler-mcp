@@ -9,12 +9,12 @@ import {Jimp} from "jimp";
 import {PixAIClient} from '@pixai-art/client'
 import {type MediaBaseFragment, TaskBaseFragment} from "@pixai-art/client/types/generated/graphql.js";
 import 'dotenv/config'
-import {logSync, McpLogService, McpLogServiceLive} from "./McpLogService.js";
+import {logSync, McpLogService} from "./McpLogService.js";
 import {
   __pwd,
   DbService,
   // env,
-  scriptTables,
+  // scriptTables,
 } from "./DbService.js";
 import WebSocket from 'ws'
 import * as path from "path";
@@ -22,7 +22,7 @@ import * as os from "node:os";
 import * as fs from "node:fs";
 import {execSync} from "node:child_process";
 import {defaultAvatarId} from "./RunnerService.js";
-import {sendProgressNotification} from "./McpService.js";
+// import {sendProgressNotification} from "./McpService.js";
 import {
   comfy_params, comfy_url, comfy_workflow_i2i, comfy_workflow_t2i, Env,
   fixed_model_prompt,
@@ -35,25 +35,36 @@ import {
 
 export const defaultBaseCharPrompt = 'depth of field, cinematic composition, masterpiece, best quality,looking at viewer,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut'
 
-export const widthOut = Number.parseInt(image_width || "512") || 512;
-export const heightOut = Math.floor(widthOut * 0.75);
+// export const widthOut = Number.parseInt(image_width || "512") || 512;
+// export const heightOut = Math.floor(widthOut * 0.75);
 
 
-let recentImage: Buffer | undefined //  直近の1生成画像を保持する snsのpostに自動引用する
+// let recentImage: Buffer | undefined //  直近の1生成画像を保持する snsのpostに自動引用する
 
-const sdKey: string = sd_key || ''
+// const sdKey: string = sd_key || ''
 const defaultPixAiModelId = '1648918127446573124';
 
-const pixAiClient = new PixAIClient({
-  apiKey: pixAi_key || '',
-  webSocketImpl: WebSocket
-})
+// const pixAiClient = new PixAIClient({
+//   apiKey: pixAi_key || '',
+//   webSocketImpl: WebSocket
+// })
 
 
 export class ImageService extends Effect.Service<ImageService>()("traveler/ImageService", {
   accessors: true,
   effect: Effect.gen(function* () {
+    const widthOut = Number.parseInt(image_width || "512") || 512;
+    const heightOut = Math.floor(widthOut * 0.75);
+    const sdKey: string = sd_key || ''
+    const pixAiClient = new PixAIClient({
+      apiKey: pixAi_key || '',
+      webSocketImpl: WebSocket
+    })
+    let recentImage: Buffer | undefined //  直近の1生成画像を保持する snsのpostに自動引用する
 
+    const getImageOutSize = () => {
+      return {widthOut, heightOut}
+    }
     const getBasePrompt = (avatarId: number) => {
       if (fixed_model_prompt) {
         return Effect.succeed(fixed_model_prompt)
@@ -69,9 +80,10 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       if (env.progressToken === undefined) {
         return Effect.void
       }
-      return sendProgressNotification(env.progressToken || '', total, progress).pipe(
-        Effect.repeat(Schedule.repeatForever.pipe(Schedule.intersect(Schedule.spaced("15 seconds")))),
-      );
+      return Effect.void
+      // return McpService.sendProgressNotification(env.progressToken || '', total, progress).pipe(
+      //   Effect.repeat(Schedule.repeatForever.pipe(Schedule.intersect(Schedule.spaced("15 seconds")))),
+      // );
     }
 
 
@@ -1010,6 +1022,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         const uploadFileName = inImage ? yield* comfyUploadImage(inImage, params).pipe(Effect.andThen(a => Effect.succeedSome(a))) : Option.none()
         //  uploadFileNameはプロンプトスクリプト内で置き換えなければならないので
         const scriptName = inImage ? (comfy_workflow_i2i ? 'i2i' : 'i2i_sample') : (comfy_workflow_t2i ? 't2i' : 't2i_sample')
+        const scriptTables = yield *DbService.getScriptTable()
         const sdT2i = scriptTables.get(scriptName);
         if (!sdT2i) {
           return yield* Effect.fail(new Error('comfyApiMakeImage no script table'))
@@ -1067,9 +1080,10 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       // rembgFormApi,
       shrinkImage,
       isEnableRembg,
+      getImageOutSize,
     }
   }),
-  dependencies: [McpLogServiceLive]
+  // dependencies: [McpLogServiceLive]
 }) {
 }
 

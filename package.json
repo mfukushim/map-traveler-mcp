@@ -37,7 +37,8 @@
     "check": "tsc -b tsconfig.json",
     "test": "vitest",
     "coverage": "vitest --coverage",
-    "inspector": "npx -y @modelcontextprotocol/inspector"
+    "inspector:stdio": "pnpm build && cmd /c \"npx -y @modelcontextprotocol/inspector node build/esm/mapTraveler.js -e ServerLog='log,trace,error,sync'\"",
+    "inspector:http": "npx -y @modelcontextprotocol/inspector"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.33.1",

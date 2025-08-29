@@ -1,6 +1,6 @@
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
 
-import {Effect, Layer, Option, Schema} from "effect";
+import {Effect, Option, Schema} from "effect";
 import {drizzle, LibSQLDatabase} from 'drizzle-orm/libsql';
 import {migrate} from 'drizzle-orm/libsql/migrator';
 import {anniversary, avatar_model, avatar_sns, env_kv, run_status, runAvatar, sns_posts, SnsType} from "./db/schema.js";
@@ -10,7 +10,7 @@ import 'dotenv/config'
 import {fileURLToPath} from 'url';
 import {dirname} from 'path';
 import * as path from "node:path";
-import {logSync, McpLogService, McpLogServiceLive} from "./McpLogService.js";
+import {logSync, McpLogService} from "./McpLogService.js";
 import {practiceData} from "./RunnerService.js";
 import {defaultBaseCharPrompt} from "./ImageService.js";
 import * as fs from "node:fs";
@@ -53,8 +53,8 @@ export function isValidFilePath(filePath: string) {
   }
 }
 
-const dbPath = sqlite_path && isValidFilePath(expandPath(sqlite_path)) ?
-  'file:' + path.normalize(expandPath(sqlite_path)).replaceAll('\\', '/') : ':memory:'
+// const dbPath = sqlite_path && isValidFilePath(expandPath(sqlite_path)) ?
+//   'file:' + path.normalize(expandPath(sqlite_path)).replaceAll('\\', '/') : ':memory:'
 
 // const client = tursoUrl && tursoToken ?
 //   createClient({
@@ -97,12 +97,17 @@ export const env = {
 }
 */
 
-export const scriptTables = new Map<string, { script: any, nodeNameToId: Map<string, number> }>();
+// export const scriptTables = new Map<string, { script: any, nodeNameToId: Map<string, number> }>();
 
 
 export class DbService extends Effect.Service<DbService>()("traveler/DbService", {
   accessors: true,
   effect: Effect.gen(function* () {
+    console.error('start DbService')
+    const dbPath = sqlite_path && isValidFilePath(expandPath(sqlite_path)) ?
+      'file:' + path.normalize(expandPath(sqlite_path)).replaceAll('\\', '/') : ':memory:'
+    const scriptTables = new Map<string, { script: any, nodeNameToId: Map<string, number> }>();
+
     let env = {
       travelerExist: true, //  まだ動的ツール切り替えはClaude desktopに入っていない。。
       dbMode: 'memory' as DbMode,
@@ -129,9 +134,9 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       }
     })
     let client:Client|undefined
-    let db:LibSQLDatabase<Record<string, never>> & {
-      $client: Client
-      }
+    let db:LibSQLDatabase<Record<string, never>> & { $client: Client }
+
+    const getScriptTable = () => scriptTables
 
     function init(tursoUrl?:string,tursoToken?:string) {
       client = tursoUrl && tursoToken ?
@@ -140,7 +145,9 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
           authToken: tursoToken
         }):undefined
 
+      console.error('db:',dbPath,client)
       db = drizzle(client || dbPath)
+      console.error('db2:',db)
 
       return Effect.gen(function* () {
         yield* stub(migrate(db, {migrationsFolder: path.join(__pwd, 'drizzle')}));
@@ -229,6 +236,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
     }
 
     function getEnv(key: string) {
+      console.error('getEnv:',key,db)
       return stub(db.select().from(env_kv).where(eq(env_kv.key, key))).pipe(
         Effect.andThen(takeOne),
         Effect.andThen(a => a.value))
@@ -403,6 +411,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       //  noSns:いずれかのsnsのアカウントがない
       //  noBlueSky: 対話用bsアカウントがない
       //  filterTools: 使うツールのフィルタ undefinedなら可能なすべて
+      console.error('in initSystemMode:',extEnv)
       const env = {
         travelerExist: true, //  まだ動的ツール切り替えはClaude desktopに入っていない。。
         dbMode: 'memory' as DbMode,
@@ -552,7 +561,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
     }
 
     return {
-      init,
+      // init,
       initSystemMode,
       updateRoute,
       getAvatar,
@@ -570,11 +579,12 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       getEnvOption,
       saveEnv,
       getVersion,
-      getSysEnv
+      getSysEnv,
+      getScriptTable,
     }
   }),
-  dependencies: [McpLogServiceLive]
+  // dependencies: [McpLogServiceLive]
 }) {
 }
 
-export const DbServiceLive = Layer.merge(DbService.Default, McpLogServiceLive)
+export const DbServiceLive = DbService.Default // Layer.merge(DbService.Default, McpLogServiceLive)

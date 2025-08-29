@@ -13,7 +13,7 @@ import dayjs = require("dayjs");
 import utc = require("dayjs/plugin/utc");
 import duration = require("dayjs/plugin/duration");
 import relativeTime = require("dayjs/plugin/relativeTime");
-import {ImageService, widthOut, heightOut} from "./ImageService.js";
+import {ImageService} from "./ImageService.js";
 import {FacilityInfo, StoryService} from "./StoryService.js";
 import {TripStatus} from "./db/schema.js";
 import 'dotenv/config'
@@ -674,6 +674,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
 
     function getStreetImage(loc: any, abort = false, localDebug = false) {
       return Effect.gen(function* () {
+        const {widthOut,heightOut} = yield *ImageService.getImageOutSize()
         const okLoc = yield* MapService.findStreetViewMeta(loc.lat, loc.lng, loc.bearing, 640, 640)
         const baseImage = yield* MapService.getStreetViewImage(okLoc.lat, okLoc.lng, loc.bearing, 640, 640)
         const bodyAreaRatioJ = bodyAreaRatio ? {bodyAreaRatio: Number.parseFloat(bodyAreaRatio)} : {}
@@ -710,10 +711,12 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
     function getStreetImageOnly(loc: any) {
       return MapService.findStreetViewMeta(loc.lat, loc.lng, loc.bearing, 640, 640).pipe(
         Effect.andThen(okLoc => MapService.getStreetViewImage(okLoc.lat, okLoc.lng, loc.bearing, 640, 640)),
-        Effect.andThen(baseImage => Effect.tryPromise(() => sharp(baseImage).resize({
-          width: widthOut,
-          height: heightOut
-        }).png().toBuffer())),
+        Effect.andThen(baseImage =>
+          ImageService.getImageOutSize().pipe(Effect.andThen(a =>
+            Effect.tryPromise(() => sharp(baseImage).resize({
+              width: a.widthOut,
+              height: a.heightOut
+            }).png().toBuffer())))),
       )
     }
 

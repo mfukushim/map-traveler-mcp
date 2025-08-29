@@ -1,6 +1,6 @@
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
 
-import {Effect, Layer, Option} from "effect"
+import {Effect, ManagedRuntime, Option} from "effect"
 import {Server} from "@modelcontextprotocol/sdk/server/index.js";
 import {
   CallToolRequestSchema,
@@ -60,43 +60,60 @@ const labelImage = (aiGen: string) => {
   return aiGen === 'pixAi' ? 'PixAi' : aiGen === 'sd' ? 'Stability.ai' : aiGen
 }
 
-const server = new Server(
-  {
-    name: "geo-less-traveler",
-    version: "0.2.0",
-  },
-  {
-    capabilities: {
-      resources: {
-        listChanged: true
-      },
-      tools: {
-        listChanged: true
-      },
-      prompts: {},
-      sampling: {},
-    },
-  }
-);
+// const server = new Server(
+//   {
+//     name: "geo-less-traveler",
+//     version: "0.2.0",
+//   },
+//   {
+//     capabilities: {
+//       resources: {
+//         listChanged: true
+//       },
+//       tools: {
+//         listChanged: true
+//       },
+//       prompts: {},
+//       sampling: {},
+//     },
+//   }
+// );
 
-export function sendProgressNotification(progressToken: string | number, total: number, progress: number) {
-  return Effect.tryPromise({
-    try: () => server.notification({
-      method: "notifications/progress",
-      params: {
-        progress: progress,
-        total: total,
-        progressToken,
-      },
-    }),
-    catch: error => {
-      logSync(`sendProgressNotification catch:${error}`)
-      return new Error(`sendProgressNotification error:${error}`)
-    }
-  }).pipe(Effect.tap(() => logSync('do sendProgressNotification')))
-}
+// export function sendProgressNotification(progressToken: string | number, total: number, progress: number) {
+//   return Effect.tryPromise({
+//     try: () => server.notification({
+//       method: "notifications/progress",
+//       params: {
+//         progress: progress,
+//         total: total,
+//         progressToken,
+//       },
+//     }),
+//     catch: error => {
+//       logSync(`sendProgressNotification catch:${error}`)
+//       return new Error(`sendProgressNotification error:${error}`)
+//     }
+//   }).pipe(Effect.tap(() => logSync('do sendProgressNotification')))
+// }
 
-function sendToolListChanged() {
+// export function sendProgressNotification(server:Server,progressToken: string | number, total: number, progress: number) {
+//   return Effect.tryPromise({
+//     try: () => server.notification({
+//       method: "notifications/progress",
+//       params: {
+//         progress: progress,
+//         total: total,
+//         progressToken,
+//       },
+//     }),
+//     catch: error => {
+//       logSync(`sendProgressNotification catch:${error}`)
+//       return new Error(`sendProgressNotification error:${error}`)
+//     }
+//   }).pipe(Effect.tap(() => logSync('do sendProgressNotification')))
+// }
+
+function sendToolListChanged(server:Server,) {
   logSync('start sendToolListChanged')
   return Effect.tryPromise({
     try: () => server.sendToolListChanged(),
@@ -108,24 +125,71 @@ function sendToolListChanged() {
   }).pipe(Effect.tap(() => logSync('sendToolListChanged put')))
 }
 
-function sendLoggingMessage(message: string, level = 'info') {
-  return Effect.tryPromise({
-    try: () => server.sendLoggingMessage({
-      level: level as "info" | "error" | "debug" | "notice" | "warning" | "critical" | "alert" | "emergency",
-      data: message,
-    }),
-    catch: error => {
-      McpLogService.logError(`sendLoggingMessage catch:${error}`)
-      return new Error(`sendLoggingMessage error:${error}`)
-    }
-  })
-}
-
 
 export class McpService extends Effect.Service<McpService>()("traveler/McpService", {
   accessors: true,
   effect: Effect.gen(function* () {
-      //  region tool定義
+    const server = new Server(
+      {
+        name: "geo-less-traveler",
+        version: "0.2.0",
+      },
+      {
+        capabilities: {
+          resources: {
+            listChanged: true
+          },
+          tools: {
+            listChanged: true
+          },
+          prompts: {},
+          sampling: {},
+        },
+      }
+    );
+
+    function sendProgressNotification(progressToken: string | number, total: number, progress: number) {
+      return Effect.tryPromise({
+        try: () => server.notification({
+          method: "notifications/progress",
+          params: {
+            progress: progress,
+            total: total,
+            progressToken,
+          },
+        }),
+        catch: error => {
+          // logSync(`sendProgressNotification catch:${error}`)
+          return new Error(`sendProgressNotification error:${error}`)
+        }
+      }) //.pipe(Effect.tap(() => logSync('do sendProgressNotification')))
+    }
+
+    // function sendToolListChanged() {
+    //   logSync('start sendToolListChanged')
+    //   return Effect.tryPromise({
+    //     try: () => server.sendToolListChanged(),
+    //     catch: error => {
+    //       //  MCPではstdoutは切られている
+    //       McpLogService.logError(`sendToolListChanged error:${error}`)
+    //       return new Error(`sendToolListChanged error:${error}`)
+    //     }
+    //   }).pipe(Effect.tap(() => logSync('sendToolListChanged put')))
+    // }
+    //
+    function sendLoggingMessage(message: string, level = 'info') {
+      return Effect.tryPromise({
+        try: () => server.sendLoggingMessage({
+          level: level as "info" | "error" | "debug" | "notice" | "warning" | "critical" | "alert" | "emergency",
+          data: message,
+        }),
+        catch: error => {
+          // McpLogService.logError(`sendLoggingMessage catch:${error}`)
+          return new Error(`sendLoggingMessage error:${error}`)
+        }
+      })
+    }
+    //  region tool定義
     const makeToolsDef = (env:Env) => {
 
       const SETTING_COMMANDS: Tool[] = [
@@ -485,7 +549,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         const mode: PersonMode = person === 'second_person' ? 'second' : 'third'
         env.personMode = mode
         return DbService.saveEnv('personMode', mode).pipe(
-          Effect.tap(() => sendToolListChanged()),
+          Effect.tap(() => sendToolListChanged(server)),
           Effect.andThen(a => [{type: "text", text: `Person mode set as follows: ${a.value}`} as ToolContentResponse])
         )
       }
@@ -670,7 +734,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       const setTravelerExist = (callKick: boolean,env:Env) => {
         env.travelerExist = callKick
         return McpLogService.log(`enter setTravelerExist:${callKick}`).pipe(
-          Effect.tap(() => sendToolListChanged()),
+          Effect.tap(() => sendToolListChanged(server)),
           Effect.andThen(() => {
             return [{
               type: "text",
@@ -1051,7 +1115,9 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       /**
        * Effect上でMCP実行
        */
-      const run = (appLive: Layer.Layer<McpService | DbService | McpLogService | StoryService | ImageService | MapService | RunnerService | SnsService>,smitheryConfig:Option.Option<EnvSmithery>) => {
+      const run = (aiRuntime: ManagedRuntime.ManagedRuntime<McpLogService | McpService | DbService | StoryService | ImageService | MapService | RunnerService | SnsService | HttpClient.HttpClient,never>,smitheryConfig:Option.Option<EnvSmithery>) => {
+        // const run = (appLive: Layer.Layer<McpService | DbService | McpLogService | StoryService | ImageService | MapService | RunnerService | SnsService | HttpClient.HttpClient>,smitheryConfig:Option.Option<EnvSmithery>) => {
+        // const aiRuntime = ManagedRuntime.make(appLive)
         server.setRequestHandler(ListResourcesRequestSchema, async () => {
           return await StoryService.getResourceList().pipe(
             Effect.andThen(a => {
@@ -1066,8 +1132,8 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 })
               }
             }),
-            Effect.provide([DbServiceLive, StoryServiceLive]),
-            Effect.runPromise
+            // Effect.provide(appLive),
+            aiRuntime.runPromise
           )
         });
         server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
@@ -1080,9 +1146,10 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 text: a
               }]
             })),
-            Effect.provide([appLive, FetchHttpClient.layer]),
+            //Effect.provide([appLive, FetchHttpClient.layer]),
             // Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
-            Effect.runPromise
+            //Effect.runPromise
+            aiRuntime.runPromise
           ).catch(e => {
             if (e instanceof Error) {
               throw new Error(e.message);
@@ -1120,9 +1187,12 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
 
 
         server.setRequestHandler(ListToolsRequestSchema, async () => {
+          console.error('in setRequestHandler ListToolsRequestSchema')
           return await DbService.getSysEnv().pipe(Effect.andThen(env => makeToolsDef(env)),
-            Effect.provide([appLive, FetchHttpClient.layer]),
-            Effect.runPromise)
+            // Effect.provide([appLive, FetchHttpClient.layer]),
+            // Effect.runPromise
+            aiRuntime.runPromise
+          )
         });
 
         server.setRequestHandler(CallToolRequestSchema, async (request: z.infer<typeof CallToolRequestSchema>) => {
@@ -1152,8 +1222,10 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 }),
               )
             }),
-            Effect.provide([appLive, FetchHttpClient.layer]),
-            Effect.runPromise)
+            aiRuntime.runPromise
+            // Effect.provide([appLive, FetchHttpClient.layer]),
+            // Effect.runPromise
+          )
         });
 
         return Effect.gen(function *() {
@@ -1195,6 +1267,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         toolSwitch,
         getSetting,
         makeToolsDef,
+        sendProgressNotification,
       }
     }
   ),
