@@ -22,16 +22,8 @@ import * as os from "node:os";
 import * as fs from "node:fs";
 import {execSync} from "node:child_process";
 import {defaultAvatarId} from "./RunnerService.js";
+import {Mode, TravelerEnv} from "./EnvUtils.js";
 // import {sendProgressNotification} from "./McpService.js";
-import {
-  comfy_params, comfy_url, comfy_workflow_i2i, comfy_workflow_t2i, Env,
-  fixed_model_prompt,
-  image_width,
-  pixAi_key,
-  pixAi_modelId, remBgWoKey,
-  sd_key,
-  ServerLog
-} from "./EnvUtils.js";
 
 export const defaultBaseCharPrompt = 'depth of field, cinematic composition, masterpiece, best quality,looking at viewer,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut'
 
@@ -53,29 +45,37 @@ const defaultPixAiModelId = '1648918127446573124';
 export class ImageService extends Effect.Service<ImageService>()("traveler/ImageService", {
   accessors: true,
   effect: Effect.gen(function* () {
-    const widthOut = Number.parseInt(image_width || "512") || 512;
-    const heightOut = Math.floor(widthOut * 0.75);
-    const sdKey: string = sd_key || ''
-    const pixAiClient = new PixAIClient({
-      apiKey: pixAi_key || '',
-      webSocketImpl: WebSocket
-    })
+    // const runnerEnv = yield *DbService.getSysEnv()
+    // const widthOut = Number.parseInt(runnerEnv.image_width || "512") || 512;
+    // const heightOut = Math.floor(widthOut * 0.75);
+    // const sdKey: string = runnerEnv.sd_key || ''
+    // const pixAiClient = new PixAIClient({
+    //   apiKey: runnerEnv.pixAi_key || '',
+    //   webSocketImpl: WebSocket
+    // })
     let recentImage: Buffer | undefined //  直近の1生成画像を保持する snsのpostに自動引用する
 
     const getImageOutSize = () => {
-      return {widthOut, heightOut}
+      return DbService.getSysEnv().pipe(Effect.andThen(runnerEnv => {
+        const widthOut = Number.parseInt(runnerEnv.image_width || "512") || 512;
+        const heightOut = Math.floor(widthOut * 0.75);
+        return {widthOut, heightOut}
+      }))
     }
     const getBasePrompt = (avatarId: number) => {
-      if (fixed_model_prompt) {
-        return Effect.succeed(fixed_model_prompt)
-      }
-      return DbService.getAvatarModel(avatarId).pipe(
-        Effect.andThen(a => a.baseCharPrompt + ',anime'),
-        Effect.orElseSucceed(() => defaultBaseCharPrompt));
+      return Effect.gen(function* () {
+        const runnerEnv = yield* DbService.getSysEnv()
+        if (runnerEnv.fixed_model_prompt) {
+          return runnerEnv.fixed_model_prompt
+        }
+        return yield *DbService.getAvatarModel(avatarId).pipe(
+          Effect.andThen(a => a.baseCharPrompt + ',anime'),
+          Effect.orElseSucceed(() => defaultBaseCharPrompt));
+      })
     }
 
     //  TODO notifications/progress を発行すべき
-    const progress = (total = 1, progress = 0, env: Env) => {
+    const progress = (total = 1, progress = 0, env: Mode) => {
       logSync('progress:', env.progressToken, total, progress)
       if (env.progressToken === undefined) {
         return Effect.void
@@ -87,7 +87,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     }
 
 
-    function sdMakeTextToImage(prompt: string, opt?: {
+    function sdMakeTextToImage(prompt: string,runnerEnv: TravelerEnv, opt?: {
       width?: number,
       height?: number,
       sampler?: string,
@@ -113,6 +113,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         if (param.list.length > 10) {
           return yield* Effect.fail(new Error('param weight too long'))
         }
+        const sdKey: string = runnerEnv.sd_key || ''
         const client = yield* HttpClient.HttpClient;
         return yield* HttpClientRequest.post(`https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image`).pipe(
           HttpClientRequest.setHeaders({
@@ -149,7 +150,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
 
     }
 
-    function sdMakeImageToImage(prompt: string, inImage: Buffer, opt?: {
+    function sdMakeImageToImage(prompt: string,runnerEnv: TravelerEnv, inImage: Buffer, opt?: {
       width?: number,
       height?: number,
       sampler?: string,
@@ -157,6 +158,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       steps?: number,
       cfg_scale?: number
     }) {
+      const sdKey: string = runnerEnv.sd_key || ''
       return Effect.tryPromise(() => sharp(inImage).resize({
         width: opt?.width || 1024,
         height: opt?.height || 1024
@@ -203,7 +205,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       )
     }
 
-    function sdMakeImage(prompt: string, inImage?: Buffer, opt?: {
+    function sdMakeImage(prompt: string,runnerEnv: TravelerEnv, inImage?: Buffer, opt?: {
       width?: number,
       height?: number,
       sampler?: string,
@@ -211,13 +213,14 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       steps?: number,
       cfg_scale?: number,
     }) {
+      const sdKey: string = runnerEnv.sd_key || ''
       if (!sdKey) {
         return Effect.fail(new Error('no key'))
       }
-      return inImage ? sdMakeImageToImage(prompt, inImage, opt) : sdMakeTextToImage(prompt, opt);
+      return inImage ? sdMakeImageToImage(prompt,runnerEnv, inImage, opt) : sdMakeTextToImage(prompt,runnerEnv, opt);
     }
 
-    function pixAiMakeImage(prompt: string, inImage?: Buffer, opt?: {
+    function pixAiMakeImage(prompt: string,runnerEnv: TravelerEnv, inImage?: Buffer, opt?: {
       width?: number,
       height?: number,
       sampler?: string,
@@ -225,15 +228,20 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       steps?: number,
       cfg_scale?: number,
     }) {
-      if (!pixAi_key) {
+      if (!runnerEnv.pixAi_key) {
         return Effect.fail(new Error('no key'))
       }
+      const pixAiClient = new PixAIClient({
+        apiKey: runnerEnv.pixAi_key || '',
+        webSocketImpl: WebSocket
+      })
       return Effect.retry(
         Effect.gen(function* () {
           let mediaId
           if (inImage) {
             const blob = new Blob([inImage], {type: 'image/jpeg'});
             const file = new File([blob], "image.jpg", {type: 'image/jpeg'})
+
             mediaId = yield* Effect.tryPromise({
               try: () => pixAiClient.uploadMedia(file),
               catch: error => new Error(`uploadMedia fail:${error}`)
@@ -248,13 +256,13 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           Effect.andThen(a => {
             const body = a ? {
               prompts: prompt,
-              modelId: pixAi_modelId || defaultPixAiModelId,
+              modelId: runnerEnv.pixAi_modelId || defaultPixAiModelId,
               width: opt?.width || 512,
               height: opt?.height || 512,
               mediaId: a
             } : {
               prompts: prompt,
-              modelId: pixAi_modelId || defaultPixAiModelId,
+              modelId: runnerEnv.pixAi_modelId || defaultPixAiModelId,
               width: opt?.width || 512,
               height: opt?.height || 512,
             }
@@ -296,7 +304,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
      */
     function makeHotelPict(selectGen: string, hour: number, append ?: string, localDebug = false) {
       return Effect.gen(function* () {
-        const env = yield* DbService.getSysEnv()
+        const env = yield* DbService.getSysMode()
         if (!env.anyImageAiExist || env.isPractice) {
           //  画像生成AIがなければ固定ホテル画像を使う
           return yield* Effect.async<Buffer, Error>((resume) => fs.readFile(path.join(__pwd, 'assets/hotelPict.png'), (err, data) => {
@@ -320,6 +328,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         if (append) {
           prompt += `,${append}`
         }
+        const {widthOut, heightOut} = yield* getImageOutSize()
         return yield* selectImageGenerator(selectGen, prompt).pipe(
           Effect.tap(a => {
             // const data = Buffer.from(a, "base64");
@@ -372,6 +381,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         } else {
           appendPrompts.push('evening')
         }
+        const {widthOut, heightOut} = yield* getImageOutSize()
         const appendPrompt = appendPrompts.join(',')
         const baseCharPrompt = yield* getBasePrompt(defaultAvatarId)
         const prompt = `${baseCharPrompt},${appendPrompt}`
@@ -474,27 +484,30 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     }
 
     const selectImageGenerator = (generatorId: string, prompt: string, inImage?: Buffer, opt?: Record<string, any>) => {
-      switch (generatorId) {
-        case 'pixAi':
-          return pixAiMakeImage(prompt, inImage, opt)
-        case 'comfyUi': {
-          const optList = comfy_params ? comfy_params.split(',').map(a => {
-            const b = a.split('=');
-            const val = b[1].includes("'") ? b[1].replaceAll("'", "") : Number.parseFloat(b[1])
-            return [b[0], val]
-          }) : []
-          const optC: Record<string, any> = {...Object.fromEntries(optList), ...opt}
-          if (!optC.width) {
-            optC.width = 1024
+      return Effect.gen(function* () {
+        const runnerEnv = yield* DbService.getSysEnv()
+        switch (generatorId) {
+          case 'pixAi':
+            return yield* pixAiMakeImage(prompt,runnerEnv, inImage, opt)
+          case 'comfyUi': {
+            const optList = runnerEnv.comfy_params ? runnerEnv.comfy_params.split(',').map(a => {
+              const b = a.split('=');
+              const val = b[1].includes("'") ? b[1].replaceAll("'", "") : Number.parseFloat(b[1])
+              return [b[0], val]
+            }) : []
+            const optC: Record<string, any> = {...Object.fromEntries(optList), ...opt}
+            if (!optC.width) {
+              optC.width = 1024
+            }
+            if (!optC.height) {
+              optC.height = 1024
+            }
+            return yield* comfyApiMakeImage(prompt, inImage, optC);
           }
-          if (!optC.height) {
-            optC.height = 1024
-          }
-          return comfyApiMakeImage(prompt, inImage, optC);
+          default:
+            return yield* sdMakeImage(prompt,runnerEnv, inImage, opt)
         }
-        default:
-          return sdMakeImage(prompt, inImage, opt)
-      }
+      })
     };
 
     /**
@@ -537,7 +550,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         }
     */
 
-    const rembgCli = (sdImage: Buffer, env: Env) => {
+    const rembgCli = (sdImage: Buffer, env: TravelerEnv) => {
       return Effect.gen(function* () {
         //  TODO EffectのCommandをうまく書けなかったのでnodejsの素で
         const tempPath = os.tmpdir()
@@ -545,8 +558,8 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         const tempOut = path.join(tempPath, `tr-${crypto.randomUUID()}.png`)
         fs.writeFileSync(tempIn, sdImage)
         let rembgPath
-        if (env.rembgPath) {
-          rembgPath = env.rembgPath
+        if (env.mode.rembgPath) {
+          rembgPath = env.mode.rembgPath
         } else {
           yield* Effect.fail(new Error('rembgPath not set'))
         }
@@ -569,10 +582,10 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       }).pipe(Effect.scoped)
     }
 
-    const rembgService = (sdImage: Buffer, env: Env) => {
+    const rembgService = (sdImage: Buffer, env: TravelerEnv) => {
       return Effect.gen(function* () {
         yield* McpLogService.logTrace('in rembgService')
-        if (!env.remBgUrl) {
+        if (!env.mode.remBgUrl) {
           return yield* Effect.fail(new Error('no rembg url'))
         }
         return yield* Effect.tryPromise({
@@ -582,7 +595,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               filename: "input.png", // ファイル名を指定（必須）
               contentType: "image/png" // 適切な Content-Type を指定
             });
-            return fetch(`${env.remBgUrl}/api/remove`,
+            return fetch(`${env.mode.remBgUrl}/api/remove`,
               {
                 method: 'POST',
                 headers: {
@@ -659,7 +672,8 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     const rembgApi = (sdImage: Buffer) => {
       return Effect.gen(function* () {
         yield* McpLogService.logTrace('in rembgApi')
-        if (!remBgWoKey) {
+        const runnerEnv = yield* DbService.getSysEnv()
+        if (!runnerEnv.remBgWoKey) {
           return yield* Effect.fail(new Error('no rembg Wo key'))
         }
         const client = yield* HttpClient.HttpClient;
@@ -667,7 +681,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           HttpClientRequest.setHeaders({
             Accept: "application/json",
             "Content-Type": "application/json",
-            "X-API-Key": remBgWoKey,
+            "X-API-Key": runnerEnv.remBgWoKey,
           }),
           HttpClientRequest.bodyJson({
             image_base64: sdImage.toString("base64"),
@@ -690,14 +704,14 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       })
     }
 
-    const initRembgService = (env: Env) => {
+    const initRembgService = (env: TravelerEnv) => {
       return Effect.gen(function* () {
         yield* McpLogService.logTrace('initRembgService in')
-        if (!env.remBgUrl) {
+        if (!env.mode.remBgUrl) {
           return yield* Effect.fail(new Error('no rembg url'))
         }
         const client = yield* HttpClient.HttpClient
-        const req = HttpClientRequest.get(`${env.remBgUrl}/api`)
+        const req = HttpClientRequest.get(`${env.mode.remBgUrl}/api`)
         const response = yield* client.execute(req)
         return yield* response.text
       }).pipe(
@@ -710,14 +724,14 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       );
     }
 
-    const isEnableRembg = (env: Env) => {
-      return env.rembgPath || env.remBgUrl || remBgWoKey
+    const isEnableRembg = (env: TravelerEnv) => {
+      return env.mode.rembgPath || env.mode.remBgUrl || env.remBgWoKey
     }
 
-    const rembg = (sdImage: Buffer, env: Env) => {
+    const rembg = (sdImage: Buffer, env: TravelerEnv) => {
       if (env.remBgUrl) {
         return rembgService(sdImage, env)
-      } else if (remBgWoKey) {
+      } else if (env.remBgWoKey) {
         return rembgApi(sdImage)
         // } else if (remBgPrKey) {
         //   return rembgFormApi(sdImage)
@@ -748,6 +762,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     ) {
       return Effect.gen(function* () {
           const env = yield* DbService.getSysEnv()
+          const {widthOut, heightOut} = yield* getImageOutSize()
           if (!isEnableRembg(env)) {
             //  rembg pathがない場合、画像合成しないままの画像を戻す
             return {
@@ -826,11 +841,11 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             Effect.tap(sdImage => localDebug && fs.writeFileSync('tools/test/testOutGen.png', sdImage)),
             Effect.andThen(sdImage => rembg(sdImage, env)),
             Effect.tap(avatarImage => localDebug && fs.writeFileSync('tools/test/testOutRmBg.png', avatarImage)),
-            Effect.tap(avatarImage => {
-              if (ServerLog && ServerLog.includes('trace')) {
-                fs.writeFileSync(path.join(os.tmpdir(), `trd-${crypto.randomUUID()}.png`), avatarImage, {flag: "w"});
-              }
-            }),
+            // Effect.tap(avatarImage => {
+            //   if (runnerEnv.ServerLog && runnerEnv.ServerLog.includes('trace')) {
+            //     fs.writeFileSync(path.join(os.tmpdir(), `trd-${crypto.randomUUID()}.png`), avatarImage, {flag: "w"});
+            //   }
+            // }),
             Effect.tap(avatarImage => {
               //  非透明度判定 0.02以上
               const bodyAreaRatio = opt?.bodyAreaRatio || 0.042
@@ -891,7 +906,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       return JSON.parse(scr)
     }
 
-    function comfyUploadImage(inImage: Buffer, opt?: {
+    function comfyUploadImage(inImage: Buffer,runnerEnv:TravelerEnv, opt?: {
       width?: number,
       height?: number,
     }) {
@@ -908,7 +923,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               const formData = new FormData()
               formData.append('image', a, {filename: fileName})
               return fetch(
-                `${comfy_url}/upload/image`,
+                `${runnerEnv.comfy_url}/upload/image`,
                 {
                   method: 'POST',
                   headers: {
@@ -934,8 +949,9 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     function comfyUpExecPrompt(script: any) {
       //  TODO comfyの場合のファイルアップロード。。
       return Effect.gen(function* () {
+        const runnerEnv = yield *DbService.getSysEnv()
         const client = yield* HttpClient.HttpClient;
-        return yield* HttpClientRequest.post(`${comfy_url}/prompt`).pipe(
+        return yield* HttpClientRequest.post(`${runnerEnv.comfy_url}/prompt`).pipe(
           HttpClientRequest.setHeaders({
             // Authorization: `Bearer ${key}`,
             Accept: "application/json",
@@ -960,7 +976,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       })
     }
 
-    function downloadOutput(prompt_id: string, needKeyNum: number = 1) {
+    function downloadOutput(prompt_id: string,runnerEnv:TravelerEnv, needKeyNum: number = 1) {
 
       const sc = Schema.Record({
         key: Schema.String,
@@ -978,7 +994,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           })
         })
       })
-      return HttpClient.get(`${comfy_url}/history`).pipe(
+      return HttpClient.get(`${runnerEnv.comfy_url}/history`).pipe(
         Effect.andThen((response) => HttpClientResponse.schemaBodyJson(sc)(response)),
         Effect.scoped,
         Effect.andThen((a1: any) => {
@@ -992,7 +1008,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           return Effect.forEach(keys, a => {
             const imageList: { filename: string, subfolder: string, type: string }[] = outputs[a].images
             return Effect.forEach(imageList, a2 =>
-              HttpClient.get(`${comfy_url}/view`, {
+              HttpClient.get(`${runnerEnv.comfy_url}/view`, {
                 urlParams: {
                   filename: a2.filename,
                   subfolder: a2.subfolder,
@@ -1010,19 +1026,20 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     }
 
     function comfyApiMakeImage(prompt: string, inImage?: Buffer, params?: Record<string, any>) {
-      if (!comfy_url) {
-        return Effect.fail(new Error('no comfy_url'))
-      }
       return Effect.gen(function* () {
-        const env = yield* DbService.getSysEnv()
+        const runnerEnv = yield *DbService.getSysEnv()
+        if (!runnerEnv.comfy_url) {
+          return yield *Effect.fail(new Error('no comfy_url'))
+        }
+        // const env = yield* DbService.getSysMode()
         const logTotal = params?.logTotal
         const logProgress = params?.logProgress
-        yield* Effect.fork(progress(logTotal || 1, logProgress || 0, env))
+        yield* Effect.fork(progress(logTotal || 1, logProgress || 0, runnerEnv.mode))
 
-        const uploadFileName = inImage ? yield* comfyUploadImage(inImage, params).pipe(Effect.andThen(a => Effect.succeedSome(a))) : Option.none()
+        const uploadFileName = inImage ? yield* comfyUploadImage(inImage,runnerEnv, params,).pipe(Effect.andThen(a => Effect.succeedSome(a))) : Option.none()
         //  uploadFileNameはプロンプトスクリプト内で置き換えなければならないので
-        const scriptName = inImage ? (comfy_workflow_i2i ? 'i2i' : 'i2i_sample') : (comfy_workflow_t2i ? 't2i' : 't2i_sample')
-        const scriptTables = yield *DbService.getScriptTable()
+        const scriptName = inImage ? (runnerEnv.comfy_workflow_i2i ? 'i2i' : 'i2i_sample') : (runnerEnv.comfy_workflow_t2i ? 't2i' : 't2i_sample')
+        const scriptTables = yield* DbService.getScriptTable()
         const sdT2i = scriptTables.get(scriptName);
         if (!sdT2i) {
           return yield* Effect.fail(new Error('comfyApiMakeImage no script table'))
@@ -1051,7 +1068,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         const script = mergeParams(sdT2i.script, sdT2i.nodeNameToId, outParam)
         const ret = yield* comfyUpExecPrompt(script)
 
-        return yield* downloadOutput(ret.prompt_id, 1).pipe(
+        return yield* downloadOutput(ret.prompt_id,runnerEnv, 1).pipe(
           Effect.tap(a => a.length !== 1 && a.length !== 2 && Effect.fail(new Error('download fail'))),
           Effect.andThen(a => Buffer.from(a[0])))
       });
@@ -1059,10 +1076,13 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     }
 
     function shrinkImage(image: Buffer) {
-      return Effect.tryPromise(() => sharp(image).resize({
-        width: widthOut,
-        height: heightOut
-      }).png().toBuffer())
+      return Effect.gen(function *() {
+        const {widthOut, heightOut} = yield* getImageOutSize()
+        return yield *Effect.tryPromise(() => sharp(image).resize({
+          width: widthOut,
+          height: heightOut
+        }).png().toBuffer())
+      })
     }
 
 

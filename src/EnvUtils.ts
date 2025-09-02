@@ -2,7 +2,52 @@
 
 import * as Process from "node:process";
 import {Schema} from "effect";
-import {DbModeSchema, MapEndpointSchema, MoveModeSchema, PersonModeSchema} from "./DbService.js";
+import {
+  DbMode,
+  DbModeSchema, MapEndpoint,
+  MapEndpointSchema,
+  MoveMode,
+  MoveModeSchema,
+  PersonMode,
+  PersonModeSchema
+} from "./DbService.js";
+
+export const EnvSmitherySchema = Schema.partial(Schema.Struct({
+  MT_GOOGLE_MAP_KEY: Schema.String,
+  MT_TURSO_URL: Schema.String,
+  MT_TURSO_TOKEN: Schema.String,
+  MT_BS_ID: Schema.String,
+  MT_BS_PASS: Schema.String,
+  MT_BS_HANDLE: Schema.String,
+  MT_FILTER_TOOLS: Schema.String,
+  MT_MOVE_MODE: Schema.String,
+  MT_FEED_TAG: Schema.String,
+}))
+
+export type EnvSmithery = typeof EnvSmitherySchema.Type
+
+
+
+export const ModeSchema = Schema.mutable(Schema.Struct({
+  travelerExist: Schema.Boolean, //  まだ動的ツール切り替えはClaude desktopに入っていない。。
+  dbMode: DbModeSchema,
+  isPractice: Schema.Boolean,
+  anyImageAiExist: Schema.Boolean,
+  anySnsExist: Schema.Boolean,
+  personMode: PersonModeSchema,
+  fixedModelPrompt: Schema.Boolean,
+  promptChanged: Schema.Boolean,
+  noSnsPost: Schema.Boolean,
+  moveMode: MoveModeSchema,
+  remBgUrl: Schema.optional(Schema.String),
+  rembgPath: Schema.optional(Schema.String),
+  loggingMode: Schema.Boolean,
+  filterTools: Schema.Array(Schema.String),
+  progressToken: Schema.Union(Schema.String,Schema.Number,Schema.Undefined),
+  mapApis:Schema.Map({key:MapEndpointSchema,value:Schema.String}),
+}))
+
+export type Mode = typeof ModeSchema.Type
 
 const EnvMap: [string, string][] = [
   ['GoogleMapApi_key', 'MT_GOOGLE_MAP_KEY'],
@@ -47,87 +92,265 @@ function getEnvironment(name: string) {
   return map ? Process.env[map[1]] || Process.env[map[0]] : undefined;
 }
 
-export let GoogleMapApi_key = getEnvironment('GoogleMapApi_key')
-export const mapApi_url = getEnvironment('mapApi_url')
-export const sd_key = getEnvironment('sd_key')
-export const pixAi_key = getEnvironment('pixAi_key')
-export const pixAi_modelId = getEnvironment('pixAi_modelId')
-export const comfy_url = getEnvironment('comfy_url')
-export const no_sns_post = getEnvironment('no_sns_post')
-export const ServerLog = getEnvironment('ServerLog')
-export let moveMode = getEnvironment('moveMode')
-export const remBgUrl = getEnvironment('remBgUrl')
-export const rembg_path = getEnvironment('rembg_path')
-export const rembgPath = getEnvironment('rembgPath')
-// export const remBgPrKey = getEnvironment('remBgPrKey')
-export const remBgWoKey = getEnvironment('remBgWoKey')
-export let filter_tools = getEnvironment('filter_tools')
-export const comfy_params = getEnvironment('comfy_params')
-export const fixed_model_prompt = getEnvironment('fixed_model_prompt')
-export const comfy_workflow_i2i = getEnvironment('comfy_workflow_i2i')
-export const comfy_workflow_t2i = getEnvironment('comfy_workflow_t2i')
-export let bs_id = getEnvironment('bs_id')
-export let bs_pass = getEnvironment('bs_pass')
-export let bs_handle = getEnvironment('bs_handle')
-export const image_width = getEnvironment('image_width')
 export const log_path = getEnvironment('log_path')
-export const bodyAreaRatio = getEnvironment('bodyAreaRatio')
-export const bodyHWRatio = getEnvironment('bodyHWRatio')
-export const bodyWindowRatioW = getEnvironment('bodyWindowRatioW')
-export const bodyWindowRatioH = getEnvironment('bodyWindowRatioH')
-export const time_scale = getEnvironment('time_scale')
-export const sqlite_path = getEnvironment('sqlite_path')
-export let tursoUrl = getEnvironment('tursoUrl')
-export let tursoToken = getEnvironment('tursoToken')
-export let extfeedTag = getEnvironment('feedTag')
-export const isEnableFeedTag = extfeedTag && extfeedTag.length > 14 && extfeedTag[0] === '#' //  拡張タグは安全のため15文字以上を強制する
-export const noImageOut = getEnvironment('noImageOut') === 'true'
-export const noAvatarImage = getEnvironment('noAvatar') === 'true'
 
-export const EnvSmitherySchema = Schema.partial(Schema.Struct({
-  MT_GOOGLE_MAP_KEY: Schema.String,
-  MT_TURSO_URL: Schema.String,
-  MT_TURSO_TOKEN: Schema.String,
-  MT_BS_ID: Schema.String,
-  MT_BS_PASS: Schema.String,
-  MT_BS_HANDLE: Schema.String,
-  MT_FILTER_TOOLS: Schema.String,
-  MT_MOVE_MODE: Schema.String,
-  MT_FEED_TAG: Schema.String,
-}))
+export const ServerLog = getEnvironment('ServerLog')
 
-export type EnvSmithery = typeof EnvSmitherySchema.Type
 
-export function setSmitheryEnv(extEnv: EnvSmithery) {
-  GoogleMapApi_key = extEnv.MT_GOOGLE_MAP_KEY || GoogleMapApi_key
-  tursoUrl = extEnv.MT_TURSO_URL || tursoUrl
-  tursoToken = extEnv.MT_TURSO_TOKEN || tursoToken
-  bs_id = extEnv.MT_BS_ID || bs_id
-  bs_pass = extEnv.MT_BS_PASS || bs_pass
-  bs_handle = extEnv.MT_BS_HANDLE || bs_handle
-  filter_tools = extEnv.MT_FILTER_TOOLS || filter_tools
-  moveMode = extEnv.MT_MOVE_MODE || moveMode
-  extfeedTag = extEnv.MT_FEED_TAG || extfeedTag
+//  TODO サービス内定義にしないと共有化できてないな。。。
+
+export class TravelerEnv {
+  get noAvatarImage(): boolean {
+    return this._noAvatarImage;
+  }
+  get noImageOut(): boolean {
+    return this._noImageOut;
+  }
+  get isEnableFeedTag(): boolean {
+    return this._isEnableFeedTag;
+  }
+  get extfeedTag(): string | undefined {
+    return this._extfeedTag;
+  }
+  get tursoToken(): string | undefined {
+    return this._tursoToken;
+  }
+  get tursoUrl(): string | undefined {
+    return this._tursoUrl;
+  }
+  get sqlite_path(): string | undefined {
+    return this._sqlite_path;
+  }
+  get time_scale(): string | undefined {
+    return this._time_scale;
+  }
+  get bodyWindowRatioH(): string | undefined {
+    return this._bodyWindowRatioH;
+  }
+  get bodyWindowRatioW(): string | undefined {
+    return this._bodyWindowRatioW;
+  }
+  get bodyHWRatio(): string | undefined {
+    return this._bodyHWRatio;
+  }
+  get bodyAreaRatio(): string | undefined {
+    return this._bodyAreaRatio;
+  }
+  // get log_path(): string | undefined {
+  //   return this._log_path;
+  // }
+  get image_width(): string | undefined {
+    return this._image_width;
+  }
+  get bs_handle(): string | undefined {
+    return this._bs_handle;
+  }
+  get bs_pass(): string | undefined {
+    return this._bs_pass;
+  }
+  get bs_id(): string | undefined {
+    return this._bs_id;
+  }
+  get comfy_workflow_t2i(): string | undefined {
+    return this._comfy_workflow_t2i;
+  }
+  get comfy_workflow_i2i(): string | undefined {
+    return this._comfy_workflow_i2i;
+  }
+  get fixed_model_prompt(): string | undefined {
+    return this._fixed_model_prompt;
+  }
+  get comfy_params(): string | undefined {
+    return this._comfy_params;
+  }
+  get filter_tools(): string | undefined {
+    return this._filter_tools;
+  }
+  get remBgWoKey(): string | undefined {
+    return this._remBgWoKey;
+  }
+  get rembgPath(): string | undefined {
+    return this._rembgPath;
+  }
+  get rembg_path(): string | undefined {
+    return this._rembg_path;
+  }
+  get remBgUrl(): string | undefined {
+    return this._remBgUrl;
+  }
+  get moveMode(): string | undefined {
+    return this._moveMode;
+  }
+  // get ServerLog(): string | undefined {
+  //   return this._ServerLog;
+  // }
+  get no_sns_post(): string | undefined {
+    return this._no_sns_post;
+  }
+  get comfy_url(): string | undefined {
+    return this._comfy_url;
+  }
+  get pixAi_modelId(): string | undefined {
+    return this._pixAi_modelId;
+  }
+  get pixAi_key(): string | undefined {
+    return this._pixAi_key;
+  }
+  get sd_key(): string | undefined {
+    return this._sd_key;
+  }
+  get mapApi_url(): string | undefined {
+    return this._mapApi_url;
+  }
+  get GoogleMapApi_key(): string | undefined {
+    return this._GoogleMapApi_key;
+  }
+
+  get mode(): Mode {
+    return this._mode;
+  }
+
+  private _GoogleMapApi_key:string | undefined
+  private _mapApi_url:string | undefined
+  private _sd_key:string | undefined
+  private _pixAi_key:string | undefined
+  private _pixAi_modelId:string | undefined
+  private _comfy_url:string | undefined
+  private _no_sns_post:string | undefined
+  // private _ServerLog:string | undefined
+  private _moveMode:string | undefined
+  private _remBgUrl:string | undefined
+  private _rembg_path:string | undefined
+  private _rembgPath:string | undefined
+// private remBgPrKey:string | undefined
+  private _remBgWoKey:string | undefined
+  private _filter_tools:string | undefined
+  private _comfy_params:string | undefined
+  private _fixed_model_prompt:string | undefined
+  private _comfy_workflow_i2i:string | undefined
+  private _comfy_workflow_t2i:string | undefined
+  private _bs_id:string | undefined
+  private _bs_pass:string | undefined
+  private _bs_handle:string | undefined
+  private _image_width:string | undefined
+  private _bodyAreaRatio:string | undefined
+  private _bodyHWRatio:string | undefined
+  private _bodyWindowRatioW:string | undefined
+  private _bodyWindowRatioH:string | undefined
+  private _time_scale:string | undefined
+  private _sqlite_path:string | undefined
+  private _tursoUrl:string | undefined
+  private _tursoToken:string | undefined
+  private _extfeedTag:string | undefined
+  private _isEnableFeedTag:boolean;
+  private _noImageOut:boolean;
+  private _noAvatarImage:boolean;
+
+  private _mode:Mode = {
+    travelerExist: true, //  まだ動的ツール切り替えはClaude desktopに入っていない。。
+    dbMode: 'memory' as DbMode,
+    isPractice: false,
+    anyImageAiExist: false,
+    anySnsExist: false,
+    personMode: 'third' as PersonMode,
+    fixedModelPrompt: false,
+    promptChanged: false,
+    noSnsPost: false,
+    moveMode: 'realtime' as MoveMode,
+    remBgUrl: undefined as string | undefined,
+    rembgPath: undefined as string | undefined,
+    loggingMode: false,
+    filterTools: [] as string[],
+    progressToken: undefined as string | number | undefined,
+    mapApis: new Map<MapEndpoint, string>(),
+  }
+
+  constructor() {
+    this._GoogleMapApi_key = getEnvironment('GoogleMapApi_key')
+    this._mapApi_url = getEnvironment('mapApi_url')
+    this._sd_key = getEnvironment('sd_key')
+    this._pixAi_key = getEnvironment('pixAi_key')
+    this._pixAi_modelId = getEnvironment('pixAi_modelId')
+    this._comfy_url = getEnvironment('comfy_url')
+    this._no_sns_post = getEnvironment('no_sns_post')
+    // this._ServerLog = getEnvironment('ServerLog')
+    this._moveMode = getEnvironment('moveMode')
+    this._remBgUrl = getEnvironment('remBgUrl')
+    this._rembg_path = getEnvironment('rembg_path')
+    this._rembgPath = getEnvironment('rembgPath')
+// this._remBgPrKey = getEnvironment('remBgPrKey')
+    this._remBgWoKey = getEnvironment('remBgWoKey')
+    this._filter_tools = getEnvironment('filter_tools')
+    this._comfy_params = getEnvironment('comfy_params')
+    this._fixed_model_prompt = getEnvironment('fixed_model_prompt')
+    this._comfy_workflow_i2i = getEnvironment('comfy_workflow_i2i')
+    this._comfy_workflow_t2i = getEnvironment('comfy_workflow_t2i')
+    this._bs_id = getEnvironment('bs_id')
+    this._bs_pass = getEnvironment('bs_pass')
+    this._bs_handle = getEnvironment('bs_handle')
+    this._image_width = getEnvironment('image_width')
+    this._bodyAreaRatio = getEnvironment('bodyAreaRatio')
+    this._bodyHWRatio = getEnvironment('bodyHWRatio')
+    this._bodyWindowRatioW = getEnvironment('bodyWindowRatioW')
+    this._bodyWindowRatioH = getEnvironment('bodyWindowRatioH')
+    this._time_scale = getEnvironment('time_scale')
+    this._sqlite_path = getEnvironment('sqlite_path')
+    this._tursoUrl = getEnvironment('tursoUrl')
+    this._tursoToken = getEnvironment('tursoToken')
+    this._extfeedTag = getEnvironment('feedTag')
+    this._isEnableFeedTag = Boolean(this._extfeedTag && this._extfeedTag.length > 14 && this._extfeedTag[0] === '#') //  拡張タグは安全のため15文字以上を強制する
+    this._noImageOut = getEnvironment('noImageOut') === 'true'
+    this._noAvatarImage = getEnvironment('noAvatar') === 'true'
+  }
+
+  setSmitheryEnv(extEnv: EnvSmithery) {
+    this._GoogleMapApi_key = extEnv.MT_GOOGLE_MAP_KEY || this._GoogleMapApi_key
+    this._tursoUrl = extEnv.MT_TURSO_URL || this._tursoUrl
+    this._tursoToken = extEnv.MT_TURSO_TOKEN || this._tursoToken
+    this._bs_id = extEnv.MT_BS_ID || this._bs_id
+    this._bs_pass = extEnv.MT_BS_PASS || this._bs_pass
+    this._bs_handle = extEnv.MT_BS_HANDLE || this._bs_handle
+    this._filter_tools = extEnv.MT_FILTER_TOOLS || this._filter_tools
+    this._moveMode = extEnv.MT_MOVE_MODE || this._moveMode
+    this._extfeedTag = extEnv.MT_FEED_TAG || this._extfeedTag
+  }
+
 }
 
-
-export const EnvSchema = Schema.mutable(Schema.Struct({
-  travelerExist: Schema.Boolean, //  まだ動的ツール切り替えはClaude desktopに入っていない。。
-  dbMode: DbModeSchema,
-  isPractice: Schema.Boolean,
-  anyImageAiExist: Schema.Boolean,
-  anySnsExist: Schema.Boolean,
-  personMode: PersonModeSchema,
-  fixedModelPrompt: Schema.Boolean,
-  promptChanged: Schema.Boolean,
-  noSnsPost: Schema.Boolean,
-  moveMode: MoveModeSchema,
-  remBgUrl: Schema.optional(Schema.String),
-  rembgPath: Schema.optional(Schema.String),
-  loggingMode: Schema.Boolean,
-  filterTools: Schema.Array(Schema.String),
-  progressToken: Schema.Union(Schema.String,Schema.Number,Schema.Undefined),
-  mapApis:Schema.Map({key:MapEndpointSchema,value:Schema.String}),
-}))
-
-export type Env = typeof EnvSchema.Type
+// export let GoogleMapApi_key = getEnvironment('GoogleMapApi_key')
+// export const mapApi_url = getEnvironment('mapApi_url')
+// export const sd_key = getEnvironment('sd_key')
+// export const pixAi_key = getEnvironment('pixAi_key')
+// export const pixAi_modelId = getEnvironment('pixAi_modelId')
+// export const comfy_url = getEnvironment('comfy_url')
+// export const no_sns_post = getEnvironment('no_sns_post')
+// export const ServerLog = getEnvironment('ServerLog')
+// export let moveMode = getEnvironment('moveMode')
+// export const remBgUrl = getEnvironment('remBgUrl')
+// export const rembg_path = getEnvironment('rembg_path')
+// export const rembgPath = getEnvironment('rembgPath')
+// // export const remBgPrKey = getEnvironment('remBgPrKey')
+// export const remBgWoKey = getEnvironment('remBgWoKey')
+// export let filter_tools = getEnvironment('filter_tools')
+// export const comfy_params = getEnvironment('comfy_params')
+// export const fixed_model_prompt = getEnvironment('fixed_model_prompt')
+// export const comfy_workflow_i2i = getEnvironment('comfy_workflow_i2i')
+// export const comfy_workflow_t2i = getEnvironment('comfy_workflow_t2i')
+// export let bs_id = getEnvironment('bs_id')
+// export let bs_pass = getEnvironment('bs_pass')
+// export let bs_handle = getEnvironment('bs_handle')
+// export const image_width = getEnvironment('image_width')
+// export const log_path = getEnvironment('log_path')
+// export const bodyAreaRatio = getEnvironment('bodyAreaRatio')
+// export const bodyHWRatio = getEnvironment('bodyHWRatio')
+// export const bodyWindowRatioW = getEnvironment('bodyWindowRatioW')
+// export const bodyWindowRatioH = getEnvironment('bodyWindowRatioH')
+// export const time_scale = getEnvironment('time_scale')
+// export const sqlite_path = getEnvironment('sqlite_path')
+// export let tursoUrl = getEnvironment('tursoUrl')
+// export let tursoToken = getEnvironment('tursoToken')
+// export let extfeedTag = getEnvironment('feedTag')
+// export const isEnableFeedTag = extfeedTag && extfeedTag.length > 14 && extfeedTag[0] === '#' //  拡張タグは安全のため15文字以上を強制する
+// export const noImageOut = getEnvironment('noImageOut') === 'true'
+// export const noAvatarImage = getEnvironment('noAvatar') === 'true'
+//

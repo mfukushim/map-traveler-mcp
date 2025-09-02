@@ -32,14 +32,15 @@
     "build": "pnpm build-esm",
     "build:npm": "npm run build-esm",
     "build-esm": "tsc -b tsconfig.build.json",
-    "start:stdio": "pnpm build-esm && node build/esm/mapTraveler.js",
-    "start:http": "pnpm build-esm && SET TRANSPORT=http&& node build/esm/mapTraveler.js",
+    "start2:stdio": "pnpm build-esm && node build/esm/mapTraveler.js",
+    "start2:http": "pnpm build-esm && SET TRANSPORT=http&& node build/esm/mapTraveler.js",
     "build-annotate": "babel build/esm --plugins annotate-pure-calls --out-dir build/esm --source-maps",
     "check": "tsc -b tsconfig.json",
     "test": "vitest",
     "coverage": "vitest --coverage",
     "inspector:stdio": "pnpm build && cmd /c \"npx -y @modelcontextprotocol/inspector node build/esm/mapTraveler.js -e ServerLog='log,trace,error,sync'\"",
-    "inspector:http": "npx -y @modelcontextprotocol/inspector"
+    "inspector:http": "npx -y @modelcontextprotocol/inspector",
+    "start:stdio": "node build/esm/mapTraveler.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.33.1",
@@ -59,9 +60,11 @@
     "drizzle-orm": "^0.38.3",
     "effect": "^3.12.4",
     "express": "^5.1.0",
+    "express-session": "^1.18.2",
     "form-data": "^4.0.1",
     "geolib": "^3.3.4",
     "jimp": "^1.6.0",
+    "lru-cache": "^11.1.0",
     "sharp": "^0.33.5",
     "ws": "^8.18.0",
     "zod": "^3.24.1"
@@ -74,6 +77,7 @@
     "@effect/build-utils": "^0.7.8",
     "@effect/language-service": "^0.2.0",
     "@effect/vitest": "^0.17.0",
+    "@types/express-session": "^1.18.2",
     "@types/node": "^22.10.7",
     "@types/ws": "^8.5.13",
     "babel-plugin-annotate-pure-calls": "^0.5.0",

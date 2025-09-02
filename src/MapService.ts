@@ -8,7 +8,6 @@ import * as querystring from "querystring";
 import {Jimp} from "jimp";
 import {McpLogService} from "./McpLogService.js";
 import {AnswerError} from "./mapTraveler.js";
-import {GoogleMapApi_key} from "./EnvUtils.js";
 import {DbService} from "./DbService.js";
 
 /**
@@ -134,7 +133,7 @@ export class MapDef {
 export class MapService extends Effect.Service<MapService>()("traveler/MapService", {
   accessors: true,
   effect: Effect.gen(function* () {
-    const key: string = GoogleMapApi_key || ''
+    // const key: string = GoogleMapApi_key || ''
 
     /**
      * 座標からの単純距離計算
@@ -189,17 +188,18 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
      */
     function calcDomesticTravelRoute(depLat: number, depLng: number, destLat: number, destLng: number, depCountry: string, destCountry: string, method: "BICYCLING" | "TRANSIT" = "BICYCLING") {
       return Effect.gen(function* () {
-        const env = yield *DbService.getSysEnv()
-        if (env.isPractice) {
+        const runnerEnv = yield *DbService.getSysEnv()
+        // const env = yield *DbService.getSysMode()
+        if (runnerEnv.mode.isPractice) {
           return yield *Effect.fail(new Error('no key'))
         }
         const client = yield* HttpClient.HttpClient
-        return yield* client.get(env.mapApis.get('directions') || 'https://maps.googleapis.com/maps/api/directions/json', {
+        return yield* client.get(runnerEnv.mode.mapApis.get('directions') || 'https://maps.googleapis.com/maps/api/directions/json', {
           urlParams: {
             origin: `${depLat},${depLng}`,
             destination: `${destLat},${destLng}`,
             mode: method,
-            key: key
+            key: runnerEnv.GoogleMapApi_key || ''
           }
         }).pipe(
           Effect.retry({times: 2}),
@@ -244,16 +244,17 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
      */
     function getTimezoneByLatLng(lat: number, lng: number) {
       return Effect.gen(function* () {
-        const env = yield *DbService.getSysEnv()
-        if (env.isPractice) {
+        const runnerEnv = yield *DbService.getSysEnv()
+        // const env = yield *DbService.getSysMode()
+        if (runnerEnv.mode.isPractice) {
           return yield *Effect.fail(new Error('no key'))
         }
         const client = yield* HttpClient.HttpClient
-        return yield* client.get(env.mapApis.get('timezone') || `https://maps.googleapis.com/maps/api/timezone/json`, {
+        return yield* client.get(runnerEnv.mode.mapApis.get('timezone') || `https://maps.googleapis.com/maps/api/timezone/json`, {
           urlParams: {
             location: `${lat},${lng}`,
             timestamp: `${dayjs().unix()}`,
-            key: key
+            key: runnerEnv.GoogleMapApi_key || ''
           }
         }).pipe(
           Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
@@ -281,15 +282,16 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
      */
     function getMapLocation(address: string) {
       return Effect.gen(function* () {
-        const env = yield *DbService.getSysEnv()
-        if (env.isPractice) {
+        const runnerEnv = yield *DbService.getSysEnv()
+        //const env = yield *DbService.getSysMode()
+        if (runnerEnv.mode.isPractice) {
           return yield *Effect.fail(new Error('no key'))
         }
         const client = yield* HttpClient.HttpClient
-        return yield* HttpClientRequest.post(env.mapApis.get('places') || 'https://places.googleapis.com/v1/places:searchText').pipe(
+        return yield* HttpClientRequest.post(runnerEnv.mode.mapApis.get('places') || 'https://places.googleapis.com/v1/places:searchText').pipe(
           HttpClientRequest.setHeaders({
             "Content-Type": "application/json",
-            "X-Goog-Api-Key": key,
+            "X-Goog-Api-Key": runnerEnv.GoogleMapApi_key || '',
             'X-Goog-FieldMask': 'places.displayName,places.formattedAddress,places.addressComponents,places.location,places.photos,places.id'  //  places.displayName,places.location
           }),
           HttpClientRequest.bodyJson({
@@ -333,15 +335,16 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
      */
     function getNearly(lat: number, lng: number, radius = 2000, findLandMark = false, additionalType: string[] = []) {
       return Effect.gen(function* () {
-        const env = yield *DbService.getSysEnv()
-        if (env.isPractice) {
+        const runnerEnv = yield *DbService.getSysEnv()
+        // const env = yield *DbService.getSysMode()
+        if (runnerEnv.mode.isPractice) {
           return yield *Effect.fail(new Error('no key'))
         }
         const client = yield* HttpClient.HttpClient
-        return yield* HttpClientRequest.post(env.mapApis.get('nearby') || 'https://places.googleapis.com/v1/places:searchNearby').pipe(
+        return yield* HttpClientRequest.post(runnerEnv.mode.mapApis.get('nearby') || 'https://places.googleapis.com/v1/places:searchNearby').pipe(
           HttpClientRequest.setHeaders({
             "Content-Type": "application/json",
-            "X-Goog-Api-Key": key,
+            "X-Goog-Api-Key": runnerEnv.GoogleMapApi_key || '',
             'X-Goog-FieldMask': 'places.id,places.displayName,places.primaryType,places.location,places.shortFormattedAddress,places.formattedAddress'
               + (findLandMark ? '' : ',places.addressComponents,places.photos')
           }),
@@ -382,11 +385,13 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
      * @param height
      */
     function findStreetViewMeta(lat: number, lng: number, bearing: number, width: number, height: number) {
-      if (!key) {
-        return Effect.fail(new Error('no street view key'))
-      }
       return Effect.gen(function* () {
-        const env = yield *DbService.getSysEnv()
+        const runnerEnv = yield *DbService.getSysEnv()
+        const key = runnerEnv.GoogleMapApi_key || ''
+        if (!key) {
+          return yield *Effect.fail(new Error('no street view key'))
+        }
+        // const env = yield *DbService.getSysMode()
         const client = yield* HttpClient.HttpClient
         let result: { lat: number, lng: number } | undefined
         yield* Effect.iterate(5, {
@@ -394,7 +399,7 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
           body: b => {
             const checkLat = lat + 0.05 * (Math.random() - 0.5)
             const checkLng = lng + 0.04 * (Math.random() - 0.5)
-            return client.get(env.mapApis.get('svMeta') || `https://maps.googleapis.com/maps/api/streetview/metadata`, {
+            return client.get(runnerEnv.mode.mapApis.get('svMeta') || `https://maps.googleapis.com/maps/api/streetview/metadata`, {
               urlParams: {
                 size: `${width}x${height}`,
                 location: `${checkLat.toFixed(15)},${checkLng.toFixed(15)}`,
@@ -439,8 +444,9 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
 
     function getStreetViewImage(lat: number, lng: number, bearing: number, width: number, height: number) {
       return Effect.gen(function *() {
-        const env = yield *DbService.getSysEnv()
-        if (env.isPractice) {
+        const runnerEnv = yield *DbService.getSysEnv()
+        // const env = yield *DbService.getSysMode()
+        if (runnerEnv.mode.isPractice) {
           return yield *Effect.fail(new Error('no key'))
         }
         const query = querystring.stringify({
@@ -449,10 +455,10 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
           fov: 60,
           heading: bearing.toFixed(1),
           pitch: 0,
-          key: key,
+          key: runnerEnv.GoogleMapApi_key || '',
           return_error_code: true
         });
-        const url = (env.mapApis.get('streetView') || 'https://maps.googleapis.com/maps/api/streetview')+'?' + query;
+        const url = (runnerEnv.mode.mapApis.get('streetView') || 'https://maps.googleapis.com/maps/api/streetview')+'?' + query;
         return yield *Effect.tryPromise({
           try: () => imageUrlToBuffer(url, width, height),
           catch: error => new Error(`getStreetViewImage error:${error}`)
