@@ -133,7 +133,6 @@ export class MapDef {
 export class MapService extends Effect.Service<MapService>()("traveler/MapService", {
   accessors: true,
   effect: Effect.gen(function* () {
-    // const key: string = GoogleMapApi_key || ''
 
     /**
      * 座標からの単純距離計算
@@ -189,7 +188,6 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
     function calcDomesticTravelRoute(depLat: number, depLng: number, destLat: number, destLng: number, depCountry: string, destCountry: string, method: "BICYCLING" | "TRANSIT" = "BICYCLING") {
       return Effect.gen(function* () {
         const runnerEnv = yield *DbService.getSysEnv()
-        // const env = yield *DbService.getSysMode()
         if (runnerEnv.mode.isPractice) {
           return yield *Effect.fail(new Error('no key'))
         }
@@ -245,7 +243,6 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
     function getTimezoneByLatLng(lat: number, lng: number) {
       return Effect.gen(function* () {
         const runnerEnv = yield *DbService.getSysEnv()
-        // const env = yield *DbService.getSysMode()
         if (runnerEnv.mode.isPractice) {
           return yield *Effect.fail(new Error('no key'))
         }
@@ -283,7 +280,6 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
     function getMapLocation(address: string) {
       return Effect.gen(function* () {
         const runnerEnv = yield *DbService.getSysEnv()
-        //const env = yield *DbService.getSysMode()
         if (runnerEnv.mode.isPractice) {
           return yield *Effect.fail(new Error('no key'))
         }
@@ -336,7 +332,6 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
     function getNearly(lat: number, lng: number, radius = 2000, findLandMark = false, additionalType: string[] = []) {
       return Effect.gen(function* () {
         const runnerEnv = yield *DbService.getSysEnv()
-        // const env = yield *DbService.getSysMode()
         if (runnerEnv.mode.isPractice) {
           return yield *Effect.fail(new Error('no key'))
         }
@@ -391,7 +386,6 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
         if (!key) {
           return yield *Effect.fail(new Error('no street view key'))
         }
-        // const env = yield *DbService.getSysMode()
         const client = yield* HttpClient.HttpClient
         let result: { lat: number, lng: number } | undefined
         yield* Effect.iterate(5, {
@@ -445,7 +439,6 @@ export class MapService extends Effect.Service<MapService>()("traveler/MapServic
     function getStreetViewImage(lat: number, lng: number, bearing: number, width: number, height: number) {
       return Effect.gen(function *() {
         const runnerEnv = yield *DbService.getSysEnv()
-        // const env = yield *DbService.getSysMode()
         if (runnerEnv.mode.isPractice) {
           return yield *Effect.fail(new Error('no key'))
         }

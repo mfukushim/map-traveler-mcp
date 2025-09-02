@@ -12,8 +12,6 @@ import {SnsServiceLive} from "./SnsService.js";
 import {StoryServiceLive} from "./StoryService.js";
 import {randomUUID} from 'node:crypto';
 import express, {Request, Response} from 'express'
-// import session, { SessionData, Store } from "express-session";
-// import {LRUCache} from "lru-cache";
 import {StreamableHTTPServerTransport} from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import {isInitializeRequest} from "@modelcontextprotocol/sdk/types.js";
 import {InMemoryEventStore} from "@modelcontextprotocol/sdk/examples/shared/inMemoryEventStore.js";
@@ -40,86 +38,11 @@ const UNIQUE_TTL_MS  = 10 * 60 * 1000; // ユニーク情報の保持時間（�
 // ====================
 */
 
-//  TODO Smithrey対応のための複数のサービスインスタンスが必要なため、Serviceはsessionごとに新規生成の形にする
-// const AppLiveFresh = Layer.mergeAll(McpLogServiceLive, Layer.fresh(McpServiceLive), Layer.fresh(DbServiceLive), Layer.fresh(McpServiceLive), Layer.fresh(ImageServiceLive), Layer.fresh(MapServiceLive), Layer.fresh(RunnerServiceLive), Layer.fresh(SnsServiceLive), Layer.fresh(StoryServiceLive),FetchHttpClient.layer);
 const AppLive = Layer.mergeAll(McpLogServiceLive, McpServiceLive, DbServiceLive, McpServiceLive, ImageServiceLive, MapServiceLive, RunnerServiceLive, SnsServiceLive, StoryServiceLive, FetchHttpClient.layer);
 const aiRuntime = ManagedRuntime.make(AppLive);
-// const aiMultiRuntime = ManagedRuntime.make(AppLiveFresh);
 
 const serverSet = new Map<string, Server>();  //
 const transports: { [sessionId: string]: { transport: StreamableHTTPServerTransport; userId: string } } = {};
-
-/*
-// ---- Session 型拡張 ----
-declare module "express-session" {
-  interface SessionData {
-    unique?: {
-      userId: string;
-      createdAt: number;
-      transport: StreamableHTTPServerTransport;
-      [key: string]: any;
-    };
-    uniqueExpiredAt?: number;
-  }
-}
-
-// LRU で上限＆TTLを管理する Store ラッパ
-class CappedStore extends Store {
-  private store: Store;
-  private lru: LRUCache<string, boolean>;
-
-  constructor(store: Store, max: number, ttl: number) {
-    super();
-
-    this.store = store;
-    this.lru = new LRUCache<string, boolean>({
-      max,
-      ttl,
-      ttlAutopurge: true,
-      updateAgeOnGet: true,
-      updateAgeOnHas: true,
-      dispose: (value, sid) => {
-        this.store.destroy(sid, () => {});
-      },
-    });
-  }
-
-  get = (sid: string, callback: (err: any, session?: SessionData | null) => void): void => {
-    this.store.get(sid, (err, sess) => {
-      if (!err && sess) this.lru.set(sid, true, { ttl: SESSION_TTL_MS });
-      callback(err, sess);
-    });
-  };
-
-  set = (sid: string, session: SessionData, callback?: (err?: any) => void): void => {
-    this.lru.set(sid, true, { ttl: SESSION_TTL_MS });
-    this.store.set(sid, session, callback || (() => {}));
-  };
-
-  touch = (sid: string, session: SessionData, callback?: () => void): void => {
-    this.lru.set(sid, true, { ttl: SESSION_TTL_MS });
-    if (typeof (this.store as any).touch === "function") {
-      (this.store as any).touch(sid, session, callback || (() => {}));
-    } else {
-      this.store.set(sid, session, callback || (() => {}));
-    }
-  };
-
-  destroy = (sid: string, callback?: (err?: any) => void): void => {
-    this.lru.delete(sid);
-    this.store.destroy(sid, callback || (() => {}));
-    //  TODO serverを破棄する sessionは保持しておく
-  };
-
-  length = (callback: (err: any, length?: number) => void): void => {
-    if (typeof (this.store as any).length === "function") {
-      (this.store as any).length(callback);
-    } else {
-      callback(null, this.lru.size);
-    }
-  };
-}
-*/
 
 export class AnswerError extends Error {
   readonly _tag = "AnswerError"
@@ -137,6 +60,7 @@ const MCP_PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 8081;
 const AUTH_PORT = process.env.MCP_AUTH_PORT ? parseInt(process.env.MCP_AUTH_PORT, 10) : 3001;
 
 async function makeServer(smitheryConfig: Option.Option<any>) {
+//  Smithrey対応のための複数のサービスインスタンスが必要なため、Serviceはsessionごとに新規生成の形にする
   const AppLiveFresh = Layer.mergeAll(McpLogServiceLive, Layer.fresh(McpServiceLive), Layer.fresh(DbServiceLive), Layer.fresh(ImageServiceLive), Layer.fresh(MapServiceLive), Layer.fresh(RunnerServiceLive), Layer.fresh(SnsServiceLive), Layer.fresh(StoryServiceLive), FetchHttpClient.layer);
   const aiMultiRuntime = ManagedRuntime.make(AppLiveFresh);
   return await McpService.run(aiMultiRuntime, smitheryConfig).pipe(aiMultiRuntime.runPromise)
@@ -158,37 +82,6 @@ function setupHttp() {
     allowedHeaders: ['Content-Type', 'mcp-session-id'],
   }));
 
-/*
-  const baseStore = new session.MemoryStore();
-  const cappedStore = new CappedStore(baseStore, MAX_SESSIONS, SESSION_TTL_MS);
-  app.use(
-    session({
-      secret: "change-me",  //  TODO
-      resave: false,
-      saveUninitialized: false,
-      rolling: true,
-      cookie: { maxAge: SESSION_TTL_MS },
-      store: cappedStore,
-    })
-  );
-  // ---- ユニーク情報 TTL 管理ミドルウェア ----
-  app.use((req: Request, _res: Response, next: NextFunction) => {
-    if (!UNIQUE_TTL_MS) return next();
-    if (!req.session) return next();
-
-    const now = Date.now();
-    const u = req.session.unique;
-
-    if (!u) return next();
-
-    const createdAt = u.createdAt ?? 0;
-    if (now - createdAt > UNIQUE_TTL_MS) {
-      delete req.session.unique;
-      req.session.uniqueExpiredAt = now;
-    }
-    next();
-  });
-*/
 
 // Set up OAuth if enabled
   let authMiddleware = null;
@@ -266,13 +159,10 @@ function setupHttp() {
     return {};
   }
 
-// Map to store transports by session ID
-  //const transports: { [sessionId: string]: { transport: StreamableHTTPServerTransport; server: Server } } = {};
-
   /*
   TODO 現時点のユーザ識別の考え方
    MT_TURSO_URL が指定されている場合、この文字列をユーザIDかつdbContext指定とする
-   MT_TURSO_URL が指定されていない場合、sessionIdをユーザIDとし、dbは1つのオンメモリdbContextの中でuserIdでデータを分ける
+   MT_TURSO_URL が指定されていない場合、sessionIdをユーザIDとし、dbは1つのオンメモリdbを使う  sessionクローズ、session維持時間切れとともにserverとオンメモリdbは破棄
   TODO
    将来oauthやきちんとしたログイン認証を入れることがあれば、そのときはreq.auth.clientIdをユーザIDとし、dbは1つのdbContext(環境変数で指定された1つのローカルsqliteや一つのTurso_Url)でuserIdで分けるようにするかもしれない。しかし今は考えない
    */
@@ -313,11 +203,9 @@ function setupHttp() {
       console.log('serverSet len:',serverSet.size,Object.keys(serverSet))
       let server:Server | undefined = undefined;
       if (sessionId && transports[sessionId]) {
-        // if (sessionId && req.session.unique?.transport && req.session.unique.userId === userId) {
         // Reuse existing transport
         session = transports[sessionId];
         transport = session.transport;
-        // const userId = session.userId;
         server = serverSet.get(session.userId)
         console.log('server1:',server)
         // transport = req.session.unique.transport;
@@ -329,7 +217,6 @@ function setupHttp() {
           console.log('server2:',server)
           serverSet.set(userId,server)
         }
-        // transport.server.setSmitheryConfig(smitheryConfig);
       } else if (!sessionId && isInitializeRequest(req.body)) {
         // New initialization request
         const newServer = await makeServer(smitheryConfig);
@@ -346,16 +233,6 @@ function setupHttp() {
             transports[sessionId] = {transport, userId};
             console.log('server3:',newServer)
             serverSet.set(userId,newServer)
-/*
-            if (!req.session.unique) {
-              req.session.unique = {
-                userId: Option.getOrNull(smitheryConfig)?.MT_TURSO_URL || sessionId, // TURSO指定があればMT_TURSO_URLをUserIdにする 指定がなければsessionIdをUserIdとする
-                createdAt: Date.now(),
-                transport,
-                // server,
-              };
-            }
-*/
           },
         })
 
@@ -504,15 +381,6 @@ function setupHttp() {
 
     // Close all active transports to properly clean up resources
     serverSet.clear() //  TODO
-    // for (const sessionId in transports) {
-    //   try {
-    //     console.error(`Closing transport for session ${sessionId}`);
-    //     await transports[sessionId].transport.close();
-    //     delete transports[sessionId];
-    //   } catch (error) {
-    //     console.error(`Error closing transport for session ${sessionId}:`, error);
-    //   }
-    // }
     console.log('Server shutdown complete');
     process.exit(0);
   });
@@ -520,14 +388,6 @@ function setupHttp() {
   return app;
 }
 
-// const HttpLive = HttpApiBuilder.serve(HttpMiddleware.logger).pipe(
-//   Layer.provide(AppLive),
-//   Layer.provide(NodeHttpServer.layer(createServer, { port: 3000 }))
-// )
-//
-// Layer.launch(HttpLive).pipe(
-//   NodeRuntime.runMain
-// )
 
 async function main() {
   await Effect.gen(function* () {
@@ -554,16 +414,7 @@ async function main() {
       })
       console.error("MCP Server running in stdio mode");
     }
-  }).pipe(aiRuntime.runPromise)//.pipe(Effect.provide(AppLive)) //.pipe(aiRuntime.runPromise)
-  // await McpService.run(AppLive,Option.none()).pipe(aiRuntime.runPromise)
-  // await Effect.runPromise(Effect.gen(function* () {
-  //   yield* McpService.run()
-  // }).pipe(Effect.provide([McpServiceLive]),))
-
-  // const ex = await Effect.runPromiseExit(p)
-  // console.error('exit:',ex)
-  // return ex
-  // return await Effect.runFork(p).pipe(Effect.runPromise)
+  }).pipe(aiRuntime.runPromise)
 }
 
 main().catch((error) => {

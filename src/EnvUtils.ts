@@ -59,7 +59,6 @@ const EnvMap: [string, string][] = [
   ['rembg_path','MT_REMBG_PATH'],
   ['rembgPath','MT_REMBG_PATH'],
   ['remBgUrl','MT_REMBG_URL'],
-  // ['remBgPrKey','MT_REMBG_PR_KEY'],
   ['remBgWoKey','MT_REMBG_WO_KEY'],
   ['pixAi_key','MT_PIXAI_KEY'],
   ['sd_key','MT_SD_KEY'],
@@ -96,8 +95,6 @@ export const log_path = getEnvironment('log_path')
 
 export const ServerLog = getEnvironment('ServerLog')
 
-
-//  TODO サービス内定義にしないと共有化できてないな。。。
 
 export class TravelerEnv {
   get noAvatarImage(): boolean {
@@ -136,9 +133,6 @@ export class TravelerEnv {
   get bodyAreaRatio(): string | undefined {
     return this._bodyAreaRatio;
   }
-  // get log_path(): string | undefined {
-  //   return this._log_path;
-  // }
   get image_width(): string | undefined {
     return this._image_width;
   }
@@ -181,9 +175,6 @@ export class TravelerEnv {
   get moveMode(): string | undefined {
     return this._moveMode;
   }
-  // get ServerLog(): string | undefined {
-  //   return this._ServerLog;
-  // }
   get no_sns_post(): string | undefined {
     return this._no_sns_post;
   }
@@ -211,40 +202,38 @@ export class TravelerEnv {
   }
 
   private _GoogleMapApi_key:string | undefined
-  private _mapApi_url:string | undefined
-  private _sd_key:string | undefined
-  private _pixAi_key:string | undefined
-  private _pixAi_modelId:string | undefined
-  private _comfy_url:string | undefined
-  private _no_sns_post:string | undefined
-  // private _ServerLog:string | undefined
+  private readonly _mapApi_url:string | undefined
+  private readonly _sd_key:string | undefined
+  private readonly _pixAi_key:string | undefined
+  private readonly _pixAi_modelId:string | undefined
+  private readonly _comfy_url:string | undefined
+  private readonly _no_sns_post:string | undefined
   private _moveMode:string | undefined
-  private _remBgUrl:string | undefined
-  private _rembg_path:string | undefined
-  private _rembgPath:string | undefined
-// private remBgPrKey:string | undefined
-  private _remBgWoKey:string | undefined
+  private readonly _remBgUrl:string | undefined
+  private readonly _rembg_path:string | undefined
+  private readonly _rembgPath:string | undefined
+  private readonly _remBgWoKey:string | undefined
   private _filter_tools:string | undefined
-  private _comfy_params:string | undefined
-  private _fixed_model_prompt:string | undefined
-  private _comfy_workflow_i2i:string | undefined
-  private _comfy_workflow_t2i:string | undefined
+  private readonly _comfy_params:string | undefined
+  private readonly _fixed_model_prompt:string | undefined
+  private readonly _comfy_workflow_i2i:string | undefined
+  private readonly _comfy_workflow_t2i:string | undefined
   private _bs_id:string | undefined
   private _bs_pass:string | undefined
   private _bs_handle:string | undefined
-  private _image_width:string | undefined
-  private _bodyAreaRatio:string | undefined
-  private _bodyHWRatio:string | undefined
-  private _bodyWindowRatioW:string | undefined
-  private _bodyWindowRatioH:string | undefined
-  private _time_scale:string | undefined
-  private _sqlite_path:string | undefined
+  private readonly _image_width:string | undefined
+  private readonly _bodyAreaRatio:string | undefined
+  private readonly _bodyHWRatio:string | undefined
+  private readonly _bodyWindowRatioW:string | undefined
+  private readonly _bodyWindowRatioH:string | undefined
+  private readonly _time_scale:string | undefined
+  private readonly _sqlite_path:string | undefined
   private _tursoUrl:string | undefined
   private _tursoToken:string | undefined
   private _extfeedTag:string | undefined
-  private _isEnableFeedTag:boolean;
-  private _noImageOut:boolean;
-  private _noAvatarImage:boolean;
+  private readonly _isEnableFeedTag:boolean;
+  private readonly _noImageOut:boolean;
+  private readonly _noAvatarImage:boolean;
 
   private _mode:Mode = {
     travelerExist: true, //  まだ動的ツール切り替えはClaude desktopに入っていない。。
@@ -273,12 +262,10 @@ export class TravelerEnv {
     this._pixAi_modelId = getEnvironment('pixAi_modelId')
     this._comfy_url = getEnvironment('comfy_url')
     this._no_sns_post = getEnvironment('no_sns_post')
-    // this._ServerLog = getEnvironment('ServerLog')
     this._moveMode = getEnvironment('moveMode')
     this._remBgUrl = getEnvironment('remBgUrl')
     this._rembg_path = getEnvironment('rembg_path')
     this._rembgPath = getEnvironment('rembgPath')
-// this._remBgPrKey = getEnvironment('remBgPrKey')
     this._remBgWoKey = getEnvironment('remBgWoKey')
     this._filter_tools = getEnvironment('filter_tools')
     this._comfy_params = getEnvironment('comfy_params')
@@ -316,41 +303,3 @@ export class TravelerEnv {
   }
 
 }
-
-// export let GoogleMapApi_key = getEnvironment('GoogleMapApi_key')
-// export const mapApi_url = getEnvironment('mapApi_url')
-// export const sd_key = getEnvironment('sd_key')
-// export const pixAi_key = getEnvironment('pixAi_key')
-// export const pixAi_modelId = getEnvironment('pixAi_modelId')
-// export const comfy_url = getEnvironment('comfy_url')
-// export const no_sns_post = getEnvironment('no_sns_post')
-// export const ServerLog = getEnvironment('ServerLog')
-// export let moveMode = getEnvironment('moveMode')
-// export const remBgUrl = getEnvironment('remBgUrl')
-// export const rembg_path = getEnvironment('rembg_path')
-// export const rembgPath = getEnvironment('rembgPath')
-// // export const remBgPrKey = getEnvironment('remBgPrKey')
-// export const remBgWoKey = getEnvironment('remBgWoKey')
-// export let filter_tools = getEnvironment('filter_tools')
-// export const comfy_params = getEnvironment('comfy_params')
-// export const fixed_model_prompt = getEnvironment('fixed_model_prompt')
-// export const comfy_workflow_i2i = getEnvironment('comfy_workflow_i2i')
-// export const comfy_workflow_t2i = getEnvironment('comfy_workflow_t2i')
-// export let bs_id = getEnvironment('bs_id')
-// export let bs_pass = getEnvironment('bs_pass')
-// export let bs_handle = getEnvironment('bs_handle')
-// export const image_width = getEnvironment('image_width')
-// export const log_path = getEnvironment('log_path')
-// export const bodyAreaRatio = getEnvironment('bodyAreaRatio')
-// export const bodyHWRatio = getEnvironment('bodyHWRatio')
-// export const bodyWindowRatioW = getEnvironment('bodyWindowRatioW')
-// export const bodyWindowRatioH = getEnvironment('bodyWindowRatioH')
-// export const time_scale = getEnvironment('time_scale')
-// export const sqlite_path = getEnvironment('sqlite_path')
-// export let tursoUrl = getEnvironment('tursoUrl')
-// export let tursoToken = getEnvironment('tursoToken')
-// export let extfeedTag = getEnvironment('feedTag')
-// export const isEnableFeedTag = extfeedTag && extfeedTag.length > 14 && extfeedTag[0] === '#' //  拡張タグは安全のため15文字以上を強制する
-// export const noImageOut = getEnvironment('noImageOut') === 'true'
-// export const noAvatarImage = getEnvironment('noAvatar') === 'true'
-//

@@ -580,7 +580,6 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       getSysEnv,
     }
   }),
-  // dependencies: [McpLogServiceLive]
 }) {
 }
 

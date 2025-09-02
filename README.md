@@ -11,6 +11,13 @@ From an MCP client such as Claude Desktop, you can give instructions to the avat
 
 <img alt="img_5.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/img_5.png" width="400"/>
 
+> Supports both Streamable-HTTP and stdio (compliant with Smithery.ai's config interface)  
+
+It can be used as a stdio-type MCP as before, or as Streamable-HTTP.  
+Although it supports multiple users, the database API must be specified per session using the Smithery.ai config interface.  
+Since it supports both Streamable-HTTP and stdio, it is expected to work as is with the previous MCP client, but if you use the previous stdio version, please use v0.0.x (v0.0.81).  
+``` npx -y @mfukushim/map-traveler-mcp@0.0.81 ```  
+
 > Now supports librechat https://www.librechat.ai/.
 
 > Now supports Smithery https://smithery.ai/server/@mfukushim/map-traveler-mcp (images are excluded because they are heavy to run).
@@ -101,8 +108,9 @@ The SNS-compatible version controls SNS input and output while having a travel c
 You will need to obtain and set access keys for multiple APIs, such as for accessing multiple Google maps and generating images.
 Use of the API may incur charges.
 
-#### Settings for using with Claude Desktop  
-claude_desktop_config.json
+#### Settings for using with Claude Desktop 
+
+- claude_desktop_config.json (stdio type)
 ```json
 {
   "mcpServers": {
@@ -144,7 +152,49 @@ claude_desktop_config.json
     }
   }
 }
+```  
+
+- claude_desktop_config.json (streamable-http type)  
+The above MT_ environment variables should be set as environment variables for the server that runs the map-traveler-mcp web service.  
+```json
+{
+  "mcpServers": {
+    "traveler": {
+      "type": "streamable-http",
+      "url": "https://(mcp server address)/mcp?config=(base64 config json)"
+    }
+  }
+}
+```  
+
+base64 config json (Smithery.ai Expansion)  
+By concatenating the json in the following format into a single line of string, converting it to base64, and setting it as (base64 setting json), you can overwrite different APIs and settings for each user session.  
+If the database is not set base64 config json, it will be shared across the entire service (the location of the traveler will be shared across the database and counted for one person).  
+We plan to reconsider the operation of assigning an individual UserId for each session once the MCP authentication mechanism has become a little clearer.  
+```json
+{
+  "MT_GOOGLE_MAP_KEY": "xxxyyyzzz",
+  "MT_TURSO_URL": "libsql://xxxyyyzzz",
+  "MT_TURSO_TOKEN": "abcdabcd",
+  "MT_BS_ID": "xyxyxyxyx",
+  "MT_BS_PASS": "1234xyz",
+  "MT_BS_HANDLE": "aabbccdd",
+  "MT_FILTER_TOOLS": "tips,set_traveler_location",
+  "MT_MOVE_MODE": "direct",
+  "MT_FEED_TAG": "#abcdefgabcdefgabcdefg"
+}
+```  
+(All json values can be omitted)  
+↓ (json text concatenation)  
+```text
+{"MT_GOOGLE_MAP_KEY": "xxxyyyzzz", "MT_TURSO_URL": "libsql://xxxyyyzzz", "MT_TURSO_TOKEN": "abcdabcd", "MT_BS_ID": "xyxyxyxyx", "MT_BS_PASS": "1234xyz", "MT_BS_HANDLE": "aabbccdd", "MT_FILTER_TOOLS": "tips,set_traveler_location", "MT_MOVE_MODE": "direct", "MT_FEED_TAG": "#abcdefgabcdefgabcdefg"}
 ```
+↓ (Set the base64 version to config=)  
+```text
+eyJNVF9HT09HTEVfTUFQX0tFWSI6ICJ4eHh5eXl6enoiLCAiTVRfVFVSU09fVVJMIjogImxpYnNxbDovL3h4eHl5eXp6eiIsICJNVF9UVVJTT19UT0tFTiI6ICJhYmNkYWJjZCIsICJNVF9CU19JRCI6ICJ4eXh5eHl4eXgiLCAiTVRfQlNfUEFTUyI6ICIxMjM0eHl6IiwgIk1UX0JTX0hBTkRMRSI6ICJhYWJiY2NkZCIsICJNVF9GSUxURVJfVE9PTFMiOiAidGlwcyxzZXRfdHJhdmVsZXJfbG9jYXRpb24iLCAiTVRfTU9WRV9NT0RFIjogImRpcmVjdCIsICJNVF9GRUVEX1RBRyI6ICIjYWJjZGVmZ2FiY2RlZmdhYmNkZWZnIn0=
+```
+
+
 > NOTE: The environment variables have been renamed to standard snake case. The MT_ prefix is ​​added because they may be used in conjunction with other environment variables, such as in librechat. The old names can still be used for backward compatibility.  
 
 Please set the following three Credentials for Google Map API.  
@@ -368,7 +418,7 @@ To use the MCP function in libreChat, use the Agents function.
 ## Smithery
 
 Please refer to https://smithery.ai/server/@mfukushim/map-traveler-mcp.  
-Remote MCP (stdio mode) is supported, but the configuration feature has been removed because image generation was too heavy to run.  
+Remote MCP (Streamable-http mode) is supported, but the configuration feature has been removed because image generation was too heavy to run.  
 Database settings can now be recorded with Turso sqlite, so if you configure Turso, your travel progress will also be saved.  
 <img alt="smithery.png" src="tools/smithery.png" width="400"/>
 
@@ -447,5 +497,6 @@ or
   https://modelcontextprotocol.io/specification/2025-06-18/server/tools  
 - Fixed an issue where some functions, such as SNS functions, could not be called regardless of the env settings due to an initialization error.  
 
+- Added support for Streamable-http. This was done in a hurry, so if you experience any issues, please consider using version 0.0.81 or similar.  
 
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/mfukushim-map-traveler-mcp-badge.png)](https://mseep.ai/app/mfukushim-map-traveler-mcp)

@@ -15,7 +15,6 @@ import {MapService} from "./MapService.js";
 import {
   __pwd,
   DbService,
-  // env,
   PersonMode
 } from "./DbService.js";
 import {StoryService} from "./StoryService.js";
@@ -49,58 +48,6 @@ const labelImage = (aiGen: string) => {
   return aiGen === 'pixAi' ? 'PixAi' : aiGen === 'sd' ? 'Stability.ai' : aiGen
 }
 
-// const server = new Server(
-//   {
-//     name: "geo-less-traveler",
-//     version: "0.2.0",
-//   },
-//   {
-//     capabilities: {
-//       resources: {
-//         listChanged: true
-//       },
-//       tools: {
-//         listChanged: true
-//       },
-//       prompts: {},
-//       sampling: {},
-//     },
-//   }
-// );
-
-// export function sendProgressNotification(progressToken: string | number, total: number, progress: number) {
-//   return Effect.tryPromise({
-//     try: () => server.notification({
-//       method: "notifications/progress",
-//       params: {
-//         progress: progress,
-//         total: total,
-//         progressToken,
-//       },
-//     }),
-//     catch: error => {
-//       logSync(`sendProgressNotification catch:${error}`)
-//       return new Error(`sendProgressNotification error:${error}`)
-//     }
-//   }).pipe(Effect.tap(() => logSync('do sendProgressNotification')))
-// }
-
-// export function sendProgressNotification(server:Server,progressToken: string | number, total: number, progress: number) {
-//   return Effect.tryPromise({
-//     try: () => server.notification({
-//       method: "notifications/progress",
-//       params: {
-//         progress: progress,
-//         total: total,
-//         progressToken,
-//       },
-//     }),
-//     catch: error => {
-//       logSync(`sendProgressNotification catch:${error}`)
-//       return new Error(`sendProgressNotification error:${error}`)
-//     }
-//   }).pipe(Effect.tap(() => logSync('do sendProgressNotification')))
-// }
 
 function sendToolListChanged(server:Server,) {
   logSync('start sendToolListChanged')
@@ -1126,8 +1073,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
        * Effect上でMCP実行
        */
       const run = (aiRuntime: ManagedRuntime.ManagedRuntime<McpLogService | McpService | DbService | StoryService | ImageService | MapService | RunnerService | SnsService | HttpClient.HttpClient,never>,smitheryConfig:Option.Option<EnvSmithery>) => {
-        // const run = (appLive: Layer.Layer<McpService | DbService | McpLogService | StoryService | ImageService | MapService | RunnerService | SnsService | HttpClient.HttpClient>,smitheryConfig:Option.Option<EnvSmithery>) => {
-        // const aiRuntime = ManagedRuntime.make(appLive)
         server.setRequestHandler(ListResourcesRequestSchema, async () => {
           return await StoryService.getResourceList().pipe(
             Effect.andThen(a => {
@@ -1142,7 +1087,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 })
               }
             }),
-            // Effect.provide(appLive),
             aiRuntime.runPromise
           )
         });
@@ -1156,9 +1100,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 text: a
               }]
             })),
-            //Effect.provide([appLive, FetchHttpClient.layer]),
-            // Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
-            //Effect.runPromise
             aiRuntime.runPromise
           ).catch(e => {
             if (e instanceof Error) {
@@ -1195,12 +1136,9 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           };
         });
 
-
         server.setRequestHandler(ListToolsRequestSchema, async () => {
           console.error('in setRequestHandler ListToolsRequestSchema')
           return await DbService.getSysMode().pipe(Effect.andThen(env => makeToolsDef(env)),
-            // Effect.provide([appLive, FetchHttpClient.layer]),
-            // Effect.runPromise
             aiRuntime.runPromise
           )
         });
@@ -1234,55 +1172,12 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
             }),
             aiRuntime.runPromise
           )
-          // return await DbService.getSysEnv().pipe(
-          //   Effect.andThen(env => {
-          //     logSync('request.params:', JSON.stringify(request.params))
-          //     env.mode.progressToken = request.params._meta?.progressToken
-          //     return toolSwitch(request,env.mode).pipe(Effect.andThen(a => env.noImageOut ? a.filter(v => v.type !== 'image') : a))
-          //   }),
-          //   Effect.andThen(a => noImageOut ? a.filter(v => v.type !== 'image') : a),
-          //   Effect.andThen(a => ({content: a})),
-          //   Effect.catchIf(a => a instanceof AnswerError, e => {
-          //     return Effect.succeed({
-          //       content: [{
-          //         type: "text",
-          //         text: e.message
-          //       }] as ToolContentResponse[]
-          //     })
-          //   }),
-          //   Effect.catchAll(e => {
-          //     return McpLogService.logError(`catch all:${e.toString()},${JSON.stringify(e)}`).pipe(Effect.as({
-          //         isError: true,
-          //         content: [{
-          //           type: "text",
-          //           text: `Sorry,unknown system error.${JSON.stringify(e)}`
-          //         } as ToolContentResponse]
-          //       }),
-          //     )
-          //   }),
-          //   aiRuntime.runPromise
-          //   // Effect.provide([appLive, FetchHttpClient.layer]),
-          //   // Effect.runPromise
-          // )
         });
 
         return Effect.gen(function *() {
             yield* DbService.initSystemMode(smitheryConfig)
           return server
         })
-        // const transport = new StdioServerTransport();
-        // const p = Effect.gen(function* () {
-        //   yield* DbService.initSystemMode()
-        //   yield* Effect.tryPromise({
-        //     try: () => {
-        //       return server.connect(transport)
-        //     },
-        //     catch: error => {
-        //       return new Error(`mcp server error:${error}`)
-        //     }
-        //   })
-        // }).pipe(Effect.provide(DbServiceLive))
-        // return Effect.runFork(p)
       }
 
 

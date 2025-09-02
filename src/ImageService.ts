@@ -13,8 +13,6 @@ import {logSync, McpLogService} from "./McpLogService.js";
 import {
   __pwd,
   DbService,
-  // env,
-  // scriptTables,
 } from "./DbService.js";
 import WebSocket from 'ws'
 import * as path from "path";
@@ -23,36 +21,14 @@ import * as fs from "node:fs";
 import {execSync} from "node:child_process";
 import {defaultAvatarId} from "./RunnerService.js";
 import {Mode, TravelerEnv} from "./EnvUtils.js";
-// import {sendProgressNotification} from "./McpService.js";
 
 export const defaultBaseCharPrompt = 'depth of field, cinematic composition, masterpiece, best quality,looking at viewer,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut'
-
-// export const widthOut = Number.parseInt(image_width || "512") || 512;
-// export const heightOut = Math.floor(widthOut * 0.75);
-
-
-// let recentImage: Buffer | undefined //  直近の1生成画像を保持する snsのpostに自動引用する
-
-// const sdKey: string = sd_key || ''
 const defaultPixAiModelId = '1648918127446573124';
-
-// const pixAiClient = new PixAIClient({
-//   apiKey: pixAi_key || '',
-//   webSocketImpl: WebSocket
-// })
 
 
 export class ImageService extends Effect.Service<ImageService>()("traveler/ImageService", {
   accessors: true,
   effect: Effect.gen(function* () {
-    // const runnerEnv = yield *DbService.getSysEnv()
-    // const widthOut = Number.parseInt(runnerEnv.image_width || "512") || 512;
-    // const heightOut = Math.floor(widthOut * 0.75);
-    // const sdKey: string = runnerEnv.sd_key || ''
-    // const pixAiClient = new PixAIClient({
-    //   apiKey: runnerEnv.pixAi_key || '',
-    //   webSocketImpl: WebSocket
-    // })
     let recentImage: Buffer | undefined //  直近の1生成画像を保持する snsのpostに自動引用する
 
     const getImageOutSize = () => {
@@ -197,10 +173,6 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             return Effect.fail(new Error(`fail sd:${opt?.width},${opt?.height},` + JSON.stringify(a)))
           }
           return Effect.succeed(Buffer.from(a.artifacts[0].base64, 'base64'))
-          // return Effect.tryPromise(() => sharp(Buffer.from(a.artifacts[0].base64, 'base64')).resize({
-          //   width: opt?.width || 1024,
-          //   height: opt?.height || 1024
-          // }).png().toBuffer())
         }),
       )
     }
@@ -331,7 +303,6 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         const {widthOut, heightOut} = yield* getImageOutSize()
         return yield* selectImageGenerator(selectGen, prompt).pipe(
           Effect.tap(a => {
-            // const data = Buffer.from(a, "base64");
             recentImage = a
             if (localDebug) {
               return Effect.async<void, Error>((resume) => fs.writeFile('tools/test/hotelPict.png', a, err => {
@@ -624,51 +595,6 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       })
     }
 
-    /*
-        const rembgFormApi = (sdImage: Buffer) => {
-          return Effect.gen(function* () {
-            yield* McpLogService.logTrace('in rembgFormApi')
-            if (!remBgPrKey) {
-              return yield* Effect.fail(new Error('no rembg Pr key'))
-            }
-            return yield* Effect.tryPromise({
-              try: () => {
-                const formData = new FormData()
-                formData.append("file", sdImage, {
-                  filename: "input.png", // ファイル名を指定（必須）
-                  contentType: "image/png" // 適切な Content-Type を指定
-                });
-                return fetch(`https://sdk.photoroom.com/v1/segment`,
-                  {
-                    method: 'POST',
-                    headers: {
-                      ...formData.getHeaders(),
-                      'x-api-key':remBgPrKey!!
-                    },
-                    body: formData.getBuffer(),
-                  }
-                )
-              },
-              catch: error => new Error(`${error}`)
-            }).pipe(
-              Effect.scoped,
-              Effect.andThen(
-                a => Effect.tryPromise(() => a.arrayBuffer())),
-              Effect.tap(a => McpLogService.logTrace('rembgFormApi out:',a.byteLength,a.toString())),
-              Effect.tap(a => {
-                if (a && a.byteLength) {
-                  return Effect.succeed(a)
-                }
-                return Effect.fail(new Error())
-              }),
-              Effect.tapError(e => McpLogService.logTrace('rembgFormApi err:',JSON.stringify(e))),
-              Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("2 seconds")))),
-              Effect.andThen(a => Buffer.from(a))
-            )
-          })
-        }
-    */
-
     const rembgApi = (sdImage: Buffer) => {
       return Effect.gen(function* () {
         yield* McpLogService.logTrace('in rembgApi')
@@ -696,7 +622,6 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             return Effect.succeed(a as { img_without_background_base64: string })
           }),
           Effect.tapError(McpLogService.logError),
-          // Effect.tap(a => McpLogService.logTrace(a)),
           Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced("5 seconds")))),
           Effect.scoped,
           Effect.andThen(a => Buffer.from(a.img_without_background_base64, "base64"))
@@ -733,8 +658,6 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         return rembgService(sdImage, env)
       } else if (env.remBgWoKey) {
         return rembgApi(sdImage)
-        // } else if (remBgPrKey) {
-        //   return rembgFormApi(sdImage)
       }
       return rembgCli(sdImage, env);
     }
@@ -929,7 +852,6 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
                   headers: {
                     ...formData.getHeaders(),
                     Accept: 'application/json',
-                    // Authorization: `Bearer ${key}`,
                   },
                   body: formData.getBuffer(),
                 }
@@ -953,7 +875,6 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         const client = yield* HttpClient.HttpClient;
         return yield* HttpClientRequest.post(`${runnerEnv.comfy_url}/prompt`).pipe(
           HttpClientRequest.setHeaders({
-            // Authorization: `Bearer ${key}`,
             Accept: "application/json",
           }),
           HttpClientRequest.bodyJson({
@@ -1031,7 +952,6 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         if (!runnerEnv.comfy_url) {
           return yield *Effect.fail(new Error('no comfy_url'))
         }
-        // const env = yield* DbService.getSysMode()
         const logTotal = params?.logTotal
         const logProgress = params?.logProgress
         yield* Effect.fork(progress(logTotal || 1, logProgress || 0, runnerEnv.mode))
@@ -1097,13 +1017,11 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       comfyApiMakeImage,
       rembgService,
       rembgApi,
-      // rembgFormApi,
       shrinkImage,
       isEnableRembg,
       getImageOutSize,
     }
   }),
-  // dependencies: [McpLogServiceLive]
 }) {
 }
 

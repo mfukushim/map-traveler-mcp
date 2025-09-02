@@ -12,6 +12,14 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 
 <img alt="img.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/img.png" width="400"/>
 
+> Streamable-HTTP/stdio 両対応しました(Smithery.ai仕様のconfigインタフェースに準拠)  
+
+今まで通りstdio型MCPとしても使えますし、Streamable-HTTP としても使えます。  
+マルチユーザ対応ですが、dbのAPIはSmithery.ai仕様のconfigインタフェースにてセッション毎指定になります。  
+Streamable-HTTP/stdio 両対応なので従来のMCPクライアントでもそのままで動く想定ですが、
+従来のstdio版を使用する場合は v0.0.x (v0.0.81) をお使いください。  
+``` npx -y @mfukushim/map-traveler-mcp@0.0.81 ```
+
 > librechat https://www.librechat.ai/ に対応しました。
 
 > Smithery https://smithery.ai/server/@mfukushim/map-traveler-mcp に対応しました(画像は重いため除外しています)。
@@ -94,7 +102,7 @@ APIの使用には課金がかかることがあります。
 
 #### Claude Desktopで使用する場合の設定  
 
-claude_desktop_config.json
+claude_desktop_config.json (stdio型)
 ```json
 {
   "mcpServers": {
@@ -137,6 +145,45 @@ claude_desktop_config.json
   }
 }
 ```
+claude_desktop_config.json (streamable-http型)
+上記のMT_環境変数はmap-traveler-mcpのwebサービスを行うサーバーの環境変数に設定してください。
+```json
+{
+  "mcpServers": {
+    "traveler": {
+      "type": "streamable-http",
+      "url": "https://(mcpサーバー)/mcp?config=(base64設定json)"
+    }
+  }
+}
+```
+base64設定json (Smithery独自拡張)  
+以下の形式のjsonを1行の文字列に連結してbase64変換したものを(base64設定json)に設定することで、ユーザのセッション毎に別のAPIや設定を上書きできます。  
+dbは個別設定しないとサービス全体で共有されます(旅人のいる場所はdbで共有され1人分になる)  
+セッション毎に個別UserIdを持たせる運用については、MCPの認証の仕組みがもう少しクリアになってから再検討する予定です。  
+```json
+{
+  "MT_GOOGLE_MAP_KEY": "xxxyyyzzz",
+  "MT_TURSO_URL": "libsql://xxxyyyzzz",
+  "MT_TURSO_TOKEN": "abcdabcd",
+  "MT_BS_ID": "xyxyxyxyx",
+  "MT_BS_PASS": "1234xyz",
+  "MT_BS_HANDLE": "aabbccdd",
+  "MT_FILTER_TOOLS": "tips,set_traveler_location",
+  "MT_MOVE_MODE": "direct",
+  "MT_FEED_TAG": "#abcdefgabcdefgabcdefg"
+}
+```
+(jsonの個々の値はすべて省略可能)  
+↓ (jsonをテキスト連結)
+```text
+{"MT_GOOGLE_MAP_KEY": "xxxyyyzzz", "MT_TURSO_URL": "libsql://xxxyyyzzz", "MT_TURSO_TOKEN": "abcdabcd", "MT_BS_ID": "xyxyxyxyx", "MT_BS_PASS": "1234xyz", "MT_BS_HANDLE": "aabbccdd", "MT_FILTER_TOOLS": "tips,set_traveler_location", "MT_MOVE_MODE": "direct", "MT_FEED_TAG": "#abcdefgabcdefgabcdefg"}
+```
+↓ (base64化したものをconfig=に設定する)  
+```text
+eyJNVF9HT09HTEVfTUFQX0tFWSI6ICJ4eHh5eXl6enoiLCAiTVRfVFVSU09fVVJMIjogImxpYnNxbDovL3h4eHl5eXp6eiIsICJNVF9UVVJTT19UT0tFTiI6ICJhYmNkYWJjZCIsICJNVF9CU19JRCI6ICJ4eXh5eHl4eXgiLCAiTVRfQlNfUEFTUyI6ICIxMjM0eHl6IiwgIk1UX0JTX0hBTkRMRSI6ICJhYWJiY2NkZCIsICJNVF9GSUxURVJfVE9PTFMiOiAidGlwcyxzZXRfdHJhdmVsZXJfbG9jYXRpb24iLCAiTVRfTU9WRV9NT0RFIjogImRpcmVjdCIsICJNVF9GRUVEX1RBRyI6ICIjYWJjZGVmZ2FiY2RlZmdhYmNkZWZnIn0=
+```
+
 > 注意:環境変数の名称を一般的なスネークケースに変更しました。librechatなどで他の環境変数と合わせて使う場合があるため、接頭語としてMT_を付けています。従来の名称も後方互換性のために使うことができます。  
 
 Google Map APIは以下の4つの権限を設定してください。  
@@ -353,7 +400,7 @@ libreChatにはMCPのリソース機能がないため、代わりに
 ## Smitheryでの実行  
 
 https://smithery.ai/server/@mfukushim/map-traveler-mcp を参照ください。  
-remote MCP(stdioモード)に対応しています。ただし画像生成は重すぎるようなので設定機能を外しています。  
+remote MCP(Streamable-http)に対応しています。ただし画像生成は重すぎるようなので設定機能を外しています。  
 db設定をTurso sqliteで記録出来るようにしたので、Tursoの設定を行えば旅の過程も保持されます。  
 <img alt="smithery.png" src="tools/smithery.png" width="400"/>
 
@@ -430,6 +477,9 @@ MCPの呼び出しを直接Effectで処理するほうがシンプルになる�
 スキーマにtitleを入れました。outputSchemaとstructured responseは将来取り入れる予定ですが今回は取り込んでいません。旅botの出力はテキストとしては単純なため構造化はまだ必要ないと考えています。  
   https://modelcontextprotocol.io/specification/2025-06-18/server/tools
 
-- 初期化の誤りによりenvの設定にかかわらずSNS関数などが呼び出せないの問題を修正しました。  
+- 初期化の誤りによりenvの設定にかかわらずSNS関数などが呼び出せないの問題を修正しました。 
+
+- Streamable-httpに対応しました。急いでやったので不具合がある場合は 0.0.81 などを使用することを検討ください。
+
 
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/mfukushim-map-traveler-mcp-badge.png)](https://mseep.ai/app/mfukushim-map-traveler-mcp)
