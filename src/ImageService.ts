@@ -4,7 +4,8 @@ import {Effect, Schedule, Option, Schema} from "effect";
 import sharp = require("sharp");
 import {HttpClient, HttpClientRequest, HttpClientResponse} from "@effect/platform";
 import dayjs from "dayjs";
-import FormData from 'form-data';
+var FormData = require('form-data');
+//import FormData from 'form-data';
 import {Jimp} from "jimp";
 import {PixAIClient} from '@pixai-art/client'
 import {type MediaBaseFragment, TaskBaseFragment} from "@pixai-art/client/types/generated/graphql.js";
@@ -21,6 +22,7 @@ import * as fs from "node:fs";
 import {execSync} from "node:child_process";
 import {defaultAvatarId} from "./RunnerService.js";
 import {Mode, TravelerEnv} from "./EnvUtils.js";
+import {GeminiImageGenerator} from "./Generators/GeminiGenerator.js";
 
 export const defaultBaseCharPrompt = 'depth of field, cinematic composition, masterpiece, best quality,looking at viewer,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut'
 const defaultPixAiModelId = '1648918127446573124';
@@ -159,7 +161,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
                     Accept: 'application/json',
                     Authorization: `Bearer ${sdKey}`,
                   },
-                  body: formData.getBuffer(),
+                  body: formData //.getBuffer(),
                 }
               )
             },
@@ -211,7 +213,9 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         Effect.gen(function* () {
           let mediaId
           if (inImage) {
-            const blob = new Blob([inImage], {type: 'image/jpeg'});
+            const buf = new ArrayBuffer(inImage.byteLength);
+            new Uint8Array(buf).set(new Uint8Array(inImage));
+            const blob = new Blob([buf], {type: 'image/jpeg'});
             const file = new File([blob], "image.jpg", {type: 'image/jpeg'})
 
             mediaId = yield* Effect.tryPromise({
@@ -809,6 +813,48 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           }
         }
       )
+    }
+
+    function makeRunnerImageV4(
+      basePhoto: Buffer,
+      withAbort = false,
+      // opt: {
+      //   sideBias?: boolean,
+      //   bodyAreaRatio?: number,// = 0.042,
+      //   bodyHWRatio?: number, // = 1.5, // 画像AIの精度が上がっているので2.3から少し減らす
+      //   bodyWindowRatioW?: number, // = {w: 0.5, h: 0.75}
+      //   bodyWindowRatioH?: number,
+      // } = {bodyAreaRatio: 0.042, bodyHWRatio: 1.5, bodyWindowRatioW: 0.5, bodyWindowRatioH: 0.75},
+      localDebug = false,
+    ) {
+      return Effect.gen(function *() {
+        const gen = yield *GeminiImageGenerator.make()
+        const env = yield* DbService.getSysEnv()
+        const {widthOut, heightOut} = yield* getImageOutSize()
+        if (!isEnableRembg(env)) {
+          //  rembg pathがない場合、画像合成しないままの画像を戻す
+          return {
+            buf: yield* Effect.tryPromise(() => sharp(basePhoto).resize({
+              width: widthOut,
+              height: heightOut
+            }).png().toBuffer()),
+            shiftX: 0,
+            shiftY: 0,
+            fit: false,
+            append: ''
+          }
+        }
+        const baseCharPrompt = yield* getBasePrompt(defaultAvatarId)
+        const {prompt, append} = yield* generatePrompt(baseCharPrompt, false, withAbort)
+
+        return {
+          buf: stayImage,
+          shiftX,
+          shiftY: innerSize.h - windowSize.h,
+          fit: !isFixedBody,
+          append: appendPrompt
+        }
+      })
     }
 
     function getRecentImageAndClear() {

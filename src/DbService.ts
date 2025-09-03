@@ -1,6 +1,6 @@
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
 
-import {Effect, Option, Schema} from "effect";
+import {Effect, Option} from "effect";
 import {drizzle, LibSQLDatabase} from 'drizzle-orm/libsql';
 import {migrate} from 'drizzle-orm/libsql/migrator';
 import {anniversary, avatar_model, avatar_sns, env_kv, run_status, runAvatar, sns_posts, SnsType} from "./db/schema.js";
@@ -14,7 +14,7 @@ import {logSync, McpLogService} from "./McpLogService.js";
 import {practiceData} from "./RunnerService.js";
 import {defaultBaseCharPrompt} from "./ImageService.js";
 import * as fs from "node:fs";
-import {EnvSmithery, ServerLog, TravelerEnv} from "./EnvUtils.js";
+import {EnvSmithery, MapEndpoint, PersonMode, RunnerEnv, ServerLog, TravelerEnv} from "./EnvUtils.js";
 import {createClient,Client} from "@libsql/client";
 
 
@@ -55,6 +55,7 @@ export function isValidFilePath(filePath: string) {
 // const db = drizzle(client || dbPath)
 // const db = drizzle(dbPath);
 
+/*
 export const DbModeSchema = Schema.Literal('memory', 'file', 'api')
 export type DbMode = typeof DbModeSchema.Type;
 export const PersonModeSchema = Schema.Literal('third', 'second')
@@ -64,6 +65,7 @@ export type MoveMode = typeof MoveModeSchema.Type;
 export const MapEndpointSchema = Schema.Literal('directions', 'places', 'timezone', 'svMeta', 'streetView', 'nearby')
 const MapEndpoint = MapEndpointSchema.literals
 export type MapEndpoint = (typeof MapEndpoint)[number];
+*/
 
 
 /*
@@ -136,9 +138,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
           authToken: tursoToken
         }):undefined
 
-      console.error('db:',dbPath,client)
       db = drizzle(client || dbPath)
-      console.error('db2:',db)
 
       return Effect.gen(function* () {
         yield* stub(migrate(db, {migrationsFolder: path.join(__pwd, 'drizzle')}));
@@ -156,7 +156,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
                 Effect.onError(cause => McpLogService.logError(`error init avatar:${cause}`)))
             }
           }),
-          Effect.andThen(a => McpLogService.logTrace(`init avatar:${JSON.stringify(a)}`))
+          // Effect.andThen(a => McpLogService.logTrace(`init avatar:${JSON.stringify(a)}`))
         )
         yield* stub(db.select().from(runAvatar)).pipe(Effect.tap(a => {
             if (a.length === 0) {
@@ -172,7 +172,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
                 Effect.onError(cause => McpLogService.logError(`error init avatar:${cause}`)))
             }
           }),
-          Effect.andThen(a => McpLogService.logTrace(`init avatar:${JSON.stringify(a)}`))
+          // Effect.andThen(a => McpLogService.logTrace(`init avatar:${JSON.stringify(a)}`))
         )
         yield* stub(db.select().from(avatar_sns)).pipe(Effect.tap(a => {
             if (a.length === 0 && travelerEnv.bs_id && travelerEnv.bs_pass && travelerEnv.bs_handle) {
@@ -189,7 +189,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
                 Effect.onError(cause => McpLogService.logError(`init bs sns:${cause}`)))
             }
           }),
-          Effect.andThen(a => McpLogService.logTrace(`init0:${JSON.stringify(a)}`))
+          // Effect.andThen(a => McpLogService.logTrace(`init0:${JSON.stringify(a)}`))
         )
         yield* stub(db.select().from(run_status)).pipe(Effect.tap(a => {
           if (a.length === 0) {
@@ -227,7 +227,6 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
     }
 
     function getEnv(key: string) {
-      console.error('getEnv:',key,db)
       return stub(db.select().from(env_kv).where(eq(env_kv.key, key))).pipe(
         Effect.andThen(takeOne),
         Effect.andThen(a => a.value))
@@ -388,6 +387,10 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       }).pipe(Effect.andThen(a => JSON.parse(a).version as string))
     }
 
+    function setEnvironment(initial:RunnerEnv) {
+      travelerEnv.setInit(initial)
+    }
+
     const initSystemMode = (extEnv:Option.Option<EnvSmithery>) => {
       //  主要なモード
       //  noTraveler: traveler未呼び出し
@@ -402,26 +405,6 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       //  noSns:いずれかのsnsのアカウントがない
       //  noBlueSky: 対話用bsアカウントがない
       //  filterTools: 使うツールのフィルタ undefinedなら可能なすべて
-      console.error('in initSystemMode:',extEnv)
-      // const envNew = {
-      //   travelerExist: true, //  まだ動的ツール切り替えはClaude desktopに入っていない。。
-      //   dbMode: 'memory' as DbMode,
-      //   isPractice: false,
-      //   anyImageAiExist: false,
-      //   anySnsExist: false,
-      //   personMode: 'third' as PersonMode,
-      //   fixedModelPrompt: false,
-      //   promptChanged: false,
-      //   noSnsPost: false,
-      //   moveMode: 'realtime' as MoveMode,
-      //   remBgUrl: undefined as string | undefined,
-      //   rembgPath: undefined as string | undefined,
-      //   loggingMode: false,
-      //   filterTools: [] as string[],
-      //   progressToken: undefined as string | number | undefined,
-      //   mapApis: new Map<MapEndpoint, string>(),
-      // }
-
       return Effect.gen(function* () {
         //  db有無の確認 dbサービスの初期化によって確認させる とコマンドon/off
         if (Option.isSome(extEnv)) {
@@ -513,9 +496,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
           addScript(travelerEnv.comfy_workflow_t2i, 't2i')
         }
 
-        yield* McpLogService.logTrace(`initSystemMode end:${JSON.stringify(travelerEnv.mode)}`)
-        // env = travelerEnv.mode
-        console.error('env:',travelerEnv.mode)
+        // yield* McpLogService.logTrace(`initSystemMode end:${JSON.stringify(travelerEnv.mode)}`)
         return travelerEnv.mode
       })
     }
@@ -578,6 +559,7 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       getSysMode,
       getScriptTable,
       getSysEnv,
+      setEnvironment,
     }
   }),
 }) {

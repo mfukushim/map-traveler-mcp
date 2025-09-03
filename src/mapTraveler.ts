@@ -34,7 +34,7 @@ import {LRUCache} from "lru-cache";
 //  session management aided by ChatGPT 5
 
 // ===== 設定 =====
-const MAX_SESSIONS = 1000;               // LRU の最大エントリ
+const MAX_SESSIONS = 20;               // LRU の最大エントリ
 const SESSION_TTL_MS = 30 * 60 * 1000;   // セッション TTL（無アクセスで破棄）
 const UNIQUE_TTL_MS  = 10 * 60 * 1000;   // uniqueData の TTL（0で無効）
 // ===============
@@ -529,7 +529,9 @@ async function main() {
   }).pipe(aiRuntime.runPromise)
 }
 
-main().catch((error) => {
-  //  MCPではconsole出力はエラーになるっぽい
-  console.error("Server error:", error);
-});
+if (process.env.VITEST !== 'true') {
+  main().catch((error) => {
+    //  MCPではconsole出力はエラーになるっぽい
+    console.error("Server error:", error);
+  });
+}

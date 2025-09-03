@@ -1,15 +1,16 @@
 import {describe, expect, it,beforeAll} from "@effect/vitest"
-import {Effect, Logger, LogLevel} from "effect";
-import {runPromise} from "effect/Effect";
+import {Effect, Layer, Logger, LogLevel, ManagedRuntime, Option} from "effect";
 import {DbService, DbServiceLive, isValidFilePath} from "../src/DbService.js";
 import dayjs from "dayjs";
+import {McpLogServiceLive} from "../src/McpLogService.js";
 
+const AppLive = Layer.mergeAll(McpLogServiceLive,DbServiceLive)
+const aiRuntime = ManagedRuntime.make(AppLive);
 
 describe("Db", () => {
   beforeAll(async () => {
-    return await DbService.initSystemMode().pipe(
-        Effect.provide([DbServiceLive]),
-        Effect.runPromise
+    return await DbService.initSystemMode(Option.none()).pipe(
+      aiRuntime.runPromise
     )
   });
 
@@ -18,11 +19,10 @@ describe("Db", () => {
     const res = await Effect.gen(function* () {
       return yield* DbService.getAvatar(1).pipe(Effect.tap(a => Effect.log(a)))
     }).pipe(
-      Effect.provide([DbService.Default]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e)),
       Effect.tap(a => Effect.log(a)),
-      runPromise
+      aiRuntime.runPromise
     )
     expect(res.id).toBe(1)
   })
@@ -32,27 +32,27 @@ describe("Db", () => {
       const now = dayjs()
       return yield* DbService.getTodayAnniversary(now).pipe(Effect.tap(a => Effect.log(a)))  //
     }).pipe(
-      Effect.provide([DbService.Default]), //  layer
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(Effect.logError),
       Effect.tap(a => Effect.log(a.length)),
-      runPromise
+      aiRuntime.runPromise
     )
     expect(res).toStrictEqual([])
   })
   it("saveEnv/getEnv", async () => {
     //  vitest --run --testNamePattern=getTodayAnniversary DbService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* DbService.saveEnv("abc","xyz").pipe(Effect.tap(a => Effect.log(a)))
+      const r = yield* DbService.saveEnv("abc","xyz").pipe(Effect.tap(a => Effect.log(a)))
+      expect(r.key).toBe('abc')
+      expect(r.value).toBe('xyz')
+      return yield* DbService.getEnv("abc").pipe(Effect.tap(a => Effect.log(a)))
     }).pipe(
-        Effect.provide([DbService.Default]),
         Logger.withMinimumLogLevel(LogLevel.Trace),
         Effect.tapError(Effect.logError),
         Effect.tap(a => Effect.log(a)),
-        runPromise
+      aiRuntime.runPromise
     )
-    expect(res.key).toBe('abc')
-    expect(res.value).toBe('xyz')
+    expect(res).toBe('xyz')
   })
   it("pathTest", async () => {
     //  vitest --run --testNamePattern=getTodayAnniversary DbService.test.ts
