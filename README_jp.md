@@ -144,7 +144,10 @@ claude_desktop_config.json (stdio型)
         "MT_IMAGE_WIDTH": "(オプション: 出力する画像の幅(pixel) デフォルトでは512)",
         "MT_NO_IMAGE": "(オプション: true=画像を出力しない 未指定=画像出力可能なら画像を出力する デフォルトでは未指定)",
         "MT_NO_AVATAR": "(オプション: true=アバター合成をせずStreetView画像そのままを出力する 未指定=アバター画像を合成する デフォルトでは未指定)",
-        "MT_FEED_TAG": "(オプション: SNSポスト時のフィードタグを指定する(#必須15文字以上) デフォルトでは#geo_less_traveler)"
+        "MT_FEED_TAG": "(オプション: SNSポスト時のフィードタグを指定する(#必須15文字以上) デフォルトでは#geo_less_traveler)",
+        "MT_MAX_SESSIONS": "(Streamable-http時の最大セッション数)",
+        "MT_SESSION_TTL_MS": "(Streamable-http時のセッション維持時間)",
+        "MT_SERVICE_TTL_MS": "(Streamable-http時のサービス維持時間)"
       }
     }
   }

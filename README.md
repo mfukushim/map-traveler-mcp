@@ -152,7 +152,10 @@ Use of the API may incur charges.
         "MT_IMAGE_WIDTH": "(Option: Output image width (pixels) Default is 512)",
         "MT_NO_IMAGE": "(Options: true = do not output image, not specified = output image if possible, default is not specified)",
         "MT_NO_AVATAR": "(Option: true = Output StreetView image as is without avatar superimposition. Not specified = Superimpose avatar image. Default is not specified.)",
-        "MT_FEED_TAG": "(Optional: Specify the feed tag when posting to SNS (#required, 15 characters or more) Default is #geo_less_traveler)"
+        "MT_FEED_TAG": "(Optional: Specify the feed tag when posting to SNS (#required, 15 characters or more) Default is #geo_less_traveler)",
+        "MT_MAX_SESSIONS": "(Maximum number of sessions when using Streamable-http)",
+        "MT_SESSION_TTL_MS": "(Session TTL when using Streamable-http)",
+        "MT_SERVICE_TTL_MS": "(Service TTL when using Streamable-http)"
       }
     }
   }

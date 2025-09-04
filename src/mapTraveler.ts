@@ -24,7 +24,7 @@ import {
   mcpAuthMetadataRouter
 } from "@modelcontextprotocol/sdk/server/auth/router.js";
 import {requireBearerAuth} from "@modelcontextprotocol/sdk/server/auth/middleware/bearerAuth.js";
-import {EnvSmitherySchema} from "./EnvUtils.js";
+import {EnvSmitherySchema, max_sessions, session_ttl_ms, unique_ttl_ms} from "./EnvUtils.js";
 import {Server} from "@modelcontextprotocol/sdk/server/index.js";
 import {StdioServerTransport} from "@modelcontextprotocol/sdk/server/stdio.js";
 import {McpLogServiceLive} from "./McpLogService.js";
@@ -34,9 +34,9 @@ import {LRUCache} from "lru-cache";
 //  session management aided by ChatGPT 5
 
 // ===== 設定 =====
-const MAX_SESSIONS = 20;               // LRU の最大エントリ
-const SESSION_TTL_MS = 30 * 60 * 1000;   // セッション TTL（無アクセスで破棄）
-const UNIQUE_TTL_MS  = 10 * 60 * 1000;   // uniqueData の TTL（0で無効）
+const MAX_SESSIONS = max_sessions ? Number.parseInt(max_sessions) || 20: 20               // LRU の最大エントリ
+const SESSION_TTL_MS = session_ttl_ms ? Number.parseInt(session_ttl_ms) || 30 * 60 * 1000: 30 * 60 * 1000;   // セッション TTL（無アクセスで破棄）
+const UNIQUE_TTL_MS  = unique_ttl_ms ? Number.parseInt(unique_ttl_ms) || 10 * 60 * 1000: 10 * 60 * 1000;   // uniqueData の TTL（0で無効）
 // ===============
 
 // type UniqueData = any;

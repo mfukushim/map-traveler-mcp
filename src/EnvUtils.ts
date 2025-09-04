@@ -2,17 +2,6 @@
 
 import * as Process from "node:process";
 import {Schema} from "effect";
-/*
-import {
-  DbMode,
-  DbModeSchema, MapEndpoint,
-  MapEndpointSchema,
-  MoveMode,
-  MoveModeSchema,
-  PersonMode,
-  PersonModeSchema
-} from "./DbService.js";
-*/
 
 export const DbModeSchema = Schema.Literal('memory', 'file', 'api')
 export type DbMode = typeof DbModeSchema.Type;
@@ -139,6 +128,9 @@ const EnvMap: [string, string][] = [
   ['ServerLog', 'MT_SERVER_LOG'],
   ['feedTag', 'MT_FEED_TAG'],
   ['log_path', 'MT_LOG_PATH'],
+  ['max_sessions', 'MT_MAX_SESSIONS'],
+  ['session_ttl_ms', 'MT_SESSION_TTL_MS'],
+  ['unique_ttl_ms', 'MT_SERVICE_TTL_MS'],
 ]
 
 function getEnvironment(name: string) {
@@ -149,6 +141,10 @@ function getEnvironment(name: string) {
 export const log_path = getEnvironment('log_path')
 
 export const ServerLog = getEnvironment('ServerLog')
+
+export const max_sessions = getEnvironment('max_sessions')
+export const session_ttl_ms = getEnvironment('session_ttl_ms')
+export const unique_ttl_ms = getEnvironment('unique_ttl_ms')
 
 
 export class TravelerEnv {
