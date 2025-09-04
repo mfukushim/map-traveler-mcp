@@ -4,8 +4,6 @@ import {Effect, Schedule, Option, Schema} from "effect";
 import sharp = require("sharp");
 import {HttpClient, HttpClientRequest, HttpClientResponse} from "@effect/platform";
 import dayjs from "dayjs";
-var FormData = require('form-data');
-//import FormData from 'form-data';
 import {Jimp} from "jimp";
 import {PixAIClient} from '@pixai-art/client'
 import {type MediaBaseFragment, TaskBaseFragment} from "@pixai-art/client/types/generated/graphql.js";
@@ -23,6 +21,8 @@ import {execSync} from "node:child_process";
 import {defaultAvatarId} from "./RunnerService.js";
 import {ImageMethod, Mode, TravelerEnv} from "./EnvUtils.js";
 import {GeminiImageGenerator} from "./Generators/GeminiGenerator.js";
+
+import FormData from "form-data";
 
 export const defaultBaseCharPrompt = 'depth of field, cinematic composition, masterpiece, best quality,looking at viewer,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut'
 export const defaultBaseCharPromptV4 = 'a Girl is school uniform,blue skirt,long socks,black pixie cut'
@@ -168,7 +168,8 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
                     Accept: 'application/json',
                     Authorization: `Bearer ${sdKey}`,
                   },
-                  body: formData //.getBuffer(),
+                  // @ts-ignore
+                  body: formData.getBuffer(),
                 }
               )
             },
@@ -596,16 +597,6 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       })
     }
 
-    /*
-        const rembg = (sdImage: Buffer) => {
-          // TODO Mac OSでなぜか現在使用不能。。。かつpython環境を内包するのでインストールが重い
-          return Effect.tryPromise({
-            try: () => transparentBackground(sdImage, "png", {fast: false}),
-            catch: error => `transparentBackground error:${error}`
-          })
-        }
-    */
-
     const rembgCli = (sdImage: Buffer, env: TravelerEnv) => {
       return Effect.gen(function* () {
         //  TODO EffectのCommandをうまく書けなかったのでnodejsの素で
@@ -657,6 +648,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
                 headers: {
                   ...formData.getHeaders(),
                 },
+                // @ts-ignore
                 body: formData.getBuffer(),
               }
             )
@@ -987,6 +979,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
                     ...formData.getHeaders(),
                     Accept: 'application/json',
                   },
+                  // @ts-ignore
                   body: formData.getBuffer(),
                 }
               )

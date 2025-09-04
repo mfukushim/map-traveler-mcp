@@ -12,6 +12,9 @@ startCommand:
       MT_GOOGLE_MAP_KEY:
         type: string
         description: Google Map API key
+      MT_GEMINI_IMAGE_KEY:
+        type: string
+        description: Gemini Image API key
       MT_TURSO_URL:
         type: string
         description: Turso sqlite API URL

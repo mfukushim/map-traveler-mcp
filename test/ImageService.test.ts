@@ -188,6 +188,7 @@ describe("Image", () => {
     const res = await Effect.gen(function* () {
       yield *DbService.setEnvironment({
         pixAi_key:process.env.pixAi_key,
+        rembg_path:process.env.rembg_path,
         GoogleMapApi_key:process.env.GoogleMapApi_key,  //  isPracticeもフラグにしているので指定しないとプリセット画像になる。。
       })
       yield *DbService.initSystemMode(Option.none())
@@ -212,6 +213,7 @@ describe("Image", () => {
     const res = await Effect.gen(function* () {
       yield *DbService.setEnvironment({
         sd_key:process.env.sd_key,
+        rembg_path:process.env.rembg_path,
         GoogleMapApi_key:process.env.GoogleMapApi_key,  //  isPracticeもフラグにしているので指定しないとプリセット画像になる。。
       })
       yield *DbService.initSystemMode(Option.none())
@@ -239,6 +241,7 @@ describe("Image", () => {
         comfy_workflow_t2i: process.env.comfy_workflow_t2i,
         comfy_workflow_i2i: process.env.comfy_workflow_i2i,
         comfy_params: process.env.comfy_params,
+        rembg_path:process.env.rembg_path,
         GoogleMapApi_key:process.env.GoogleMapApi_key,  //  isPracticeもフラグにしているので指定しないとプリセット画像になる。。
       })
       yield *DbService.initSystemMode(Option.none())
