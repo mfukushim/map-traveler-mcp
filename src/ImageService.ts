@@ -21,10 +21,12 @@ import * as os from "node:os";
 import * as fs from "node:fs";
 import {execSync} from "node:child_process";
 import {defaultAvatarId} from "./RunnerService.js";
-import {Mode, TravelerEnv} from "./EnvUtils.js";
+import {ImageMethod, Mode, TravelerEnv} from "./EnvUtils.js";
 import {GeminiImageGenerator} from "./Generators/GeminiGenerator.js";
 
 export const defaultBaseCharPrompt = 'depth of field, cinematic composition, masterpiece, best quality,looking at viewer,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut'
+export const defaultBaseCharPromptV4 = 'a Girl is school uniform,blue skirt,long socks,black pixie cut'
+
 const defaultPixAiModelId = '1648918127446573124';
 
 
@@ -48,7 +50,12 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         }
         return yield *DbService.getAvatarModel(avatarId).pipe(
           Effect.andThen(a => a.baseCharPrompt + ',anime'),
-          Effect.orElseSucceed(() => defaultBaseCharPrompt));
+          Effect.orElseSucceed(() => {
+            if (runnerEnv.useAiImageGen === 'gemini') {
+              return defaultBaseCharPromptV4
+            }
+            return defaultBaseCharPrompt;
+          }));
       })
     }
 
@@ -278,10 +285,10 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
      * @param append
      * @param localDebug
      */
-    function makeHotelPict(selectGen: string, hour: number, append ?: string, localDebug = false) {
+    function makeHotelPict(selectGen: ImageMethod|undefined, hour: number, append ?: string, localDebug = false) {
       return Effect.gen(function* () {
         const env = yield* DbService.getSysMode()
-        if (!env.anyImageAiExist || env.isPractice) {
+        if (!selectGen || env.isPractice) {
           //  画像生成AIがなければ固定ホテル画像を使う
           return yield* Effect.async<Buffer, Error>((resume) => fs.readFile(path.join(__pwd, 'assets/hotelPict.png'), (err, data) => {
             if (err) {
@@ -333,7 +340,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
      * @param localDebug
      * @private
      */
-    function makeEtcTripImage(selectGen: string, vehiclePrompt: string, timeZoneId: string, localDebug = false) {
+    function makeEtcTripImage(selectGen: ImageMethod, vehiclePrompt: string, timeZoneId: string, localDebug = false) {
       //  乗り物の旅行画像生成
       //  画像保存
       //  乗り物と緯度経度での日記生成
@@ -457,8 +464,82 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         return {prompt: `${basePrompt},${ap}`, append: ap};
       })
     }
+    /**
+     * 絵生成のpromptを生成するV4
+     * @param baseCharPrompt
+     * @param simple
+     * @param withAbort
+     * @private
+     */
+    const generatePromptV4 = (baseCharPrompt: string, simple = false, withAbort = false) => {
+      return Effect.gen(function* () {
+        const backPrompt = (simple || withAbort) ? ',(simple background:1.2)' : ',road'
+        //  ここがキャラの基本スタイル
+        const basePrompt = baseCharPrompt + backPrompt;
+        const prompt: string[] = [];
+        const faceRnd = Math.random()
+        const poseRnd = Math.random()
+        if (simple || withAbort) {
+          if (withAbort) {
+            //  電話絵は上半身のみ
+            prompt.push('upper body');
+          } else {
+            //  立ち絵背景は単調にならないようにfromを後ろと横を少し入れる(SDXLから精度が高くなったので単調化しやすい)
+            const fromRnd = Math.random()
+            if (fromRnd < 0.3) {
+              prompt.push('from back')
+            } else if (fromRnd < 0.4) {
+              prompt.push('from side')
+            }
+          }
+        } else {
+          //  通常は全身、カウボーイショット、上半身の各種をやってみる
+          // if (bodyRnd < 0.3) {
+          //   prompt.push('full body');
+          // } else if (bodyRnd < 0.6) {
+          //   prompt.push('cowboy shot');
+          // } else {
+          //   prompt.push('upper body');
+          // }
+        }
+        if (withAbort) {
+          prompt.push('surprised,(calling phone:1.2),(holding smartphone to ear:1.2)');
+        } else {
+          if (faceRnd < 0.1) {
+            prompt.push(':D');
+          } else if (faceRnd < 0.3) {
+            prompt.push('smiling');
+          } else if (faceRnd < 0.4) {
+            prompt.push('laughing');
+          } else if (faceRnd < 0.6) {
+            prompt.push('surprised');
+          } else if (faceRnd < 0.8) {
+            prompt.push('grin');
+          }
+          //  なしもある
+          if (poseRnd < 0.2) {
+            prompt.push('looking around');
+          } else if (poseRnd < 0.6) {
+            prompt.push('walking,looking sky')
+          } else if (poseRnd < 0.7) {
+            prompt.push('jumping')
+          } else {
+            prompt.push('standing')
+            //  立ちの場合に少しポーズを入れる
+            const faceRnd = Math.random()
+            if (faceRnd < 0.2) {
+              prompt.push('salute,posing,tilt my head')
+            } else if (faceRnd < 0.5) {
+              prompt.push('posing,tilt my head')
+            }
+          }
+        }
+        const ap = prompt.join(',')
+        return {prompt: `${basePrompt},${ap}`, append: ap};
+      })
+    }
 
-    const selectImageGenerator = (generatorId: string, prompt: string, inImage?: Buffer, opt?: Record<string, any>) => {
+    const selectImageGenerator = (generatorId: ImageMethod, prompt: string, inImage?: Buffer, opt?: Record<string, any>) => {
       return Effect.gen(function* () {
         const runnerEnv = yield* DbService.getSysEnv()
         switch (generatorId) {
@@ -676,7 +757,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
      */
     function makeRunnerImageV3(
       basePhoto: Buffer,
-      selectGen: string,
+      selectGen: ImageMethod,
       withAbort = false,
       opt: {
         sideBias?: boolean,
@@ -815,6 +896,13 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       )
     }
 
+    /**
+     * 旅画像生成V4
+     * nano-banana版
+     * @param basePhoto
+     * @param withAbort
+     * @param localDebug
+     */
     function makeRunnerImageV4(
       basePhoto: Buffer,
       withAbort = false,
@@ -828,31 +916,31 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       localDebug = false,
     ) {
       return Effect.gen(function *() {
-        const gen = yield *GeminiImageGenerator.make()
         const env = yield* DbService.getSysEnv()
-        const {widthOut, heightOut} = yield* getImageOutSize()
-        if (!isEnableRembg(env)) {
-          //  rembg pathがない場合、画像合成しないままの画像を戻す
-          return {
-            buf: yield* Effect.tryPromise(() => sharp(basePhoto).resize({
-              width: widthOut,
-              height: heightOut
-            }).png().toBuffer()),
-            shiftX: 0,
-            shiftY: 0,
-            fit: false,
-            append: ''
-          }
+        if (!env.GeminiImageApi_key) {
+          return yield *Effect.fail(new Error('no gemini image key'))
         }
+        const gen = yield *GeminiImageGenerator.make(env.GeminiImageApi_key);
+        const {widthOut, heightOut} = yield* getImageOutSize()
         const baseCharPrompt = yield* getBasePrompt(defaultAvatarId)
-        const {prompt, append} = yield* generatePrompt(baseCharPrompt, false, withAbort)
+        const photo = yield *Effect.tryPromise(_ => sharp(basePhoto).resize({
+          width: 512, //  最小 256 最大768 とのこと
+          height: 512
+        }).png().toBuffer())
+        const {prompt} = yield* generatePromptV4(baseCharPrompt, false, withAbort)
 
+        const res = yield *gen.execLlm('add a realistic anime girl,Colors that blend in with the surroundings.'+prompt,photo) //  nano-banana向けプロンプト追記 +prompt
+        const imageOut = yield *gen.toAnswerOut(res)
+        const out = yield *Effect.tryPromise(_ => sharp(imageOut).resize({
+          width: widthOut,
+          height: heightOut
+        }).png().toBuffer())
         return {
-          buf: stayImage,
-          shiftX,
-          shiftY: innerSize.h - windowSize.h,
-          fit: !isFixedBody,
-          append: appendPrompt
+          buf: out,
+          shiftX:0,
+          shiftY: 0,
+          fit: false,
+          append: ''
         }
       })
     }
@@ -1057,6 +1145,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       makeHotelPict,
       makeEtcTripImage,
       makeRunnerImageV3,
+      makeRunnerImageV4,
       selectImageGenerator,
       generatePrompt,
       getBasePrompt,

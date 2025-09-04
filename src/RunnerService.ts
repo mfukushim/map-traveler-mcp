@@ -30,7 +30,6 @@ dayjs.extend(utc)
 dayjs.extend(duration)
 dayjs.extend(relativeTime)
 
-// export const useAiImageGen = (pixAi_key ? 'pixAi' : sd_key ? 'sd' : comfy_url ? 'comfyUi': '')
 
 export interface LocationDetail {
   status: TripStatus;
@@ -76,11 +75,7 @@ export const practiceData: { address: string; placesPath: string; sampleImagePat
 export class RunnerService extends Effect.Service<RunnerService>()("traveler/RunnerService", {
   accessors: true,
   effect: Effect.gen(function* () {
-    // const runnerEnv = yield *DbService.getSysEnv()
-    // const useAiImageGen = (runnerEnv.pixAi_key ? 'pixAi' : runnerEnv.sd_key ? 'sd' : runnerEnv.comfy_url ? 'comfyUi': '')
     //  走行時間スケール 2で時速40kmくらい 4くらいにするか 20km/hくらい
-    // const durationScale2 = (runnerEnv.time_scale && Number.parseFloat(runnerEnv.time_scale)) || 4
-
     const isShips = (maneuver?: string) => ['ferry', 'airplane'].includes(maneuver || '')
     const maneuverIsShip = (step: typeof MapDef.GmStepSchema.Type) => isShips(step.maneuver)
 
@@ -112,15 +107,14 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
 
     const getFacilities = (loc: LocationDetail,runnerEnv: TravelerEnv, includePhoto: boolean, abort = false, localDebug = false) => {
       return Effect.gen(function* () {
-        const env = yield *DbService.getSysMode()
         const nearFacilities = yield* StoryService.getNearbyFacilities({
           lat: loc.lat,
           lng: loc.lng,
           bearing: 0
         })
-        const image = includePhoto && !runnerEnv.noImageOut && (runnerEnv.noAvatarImage || !env.anyImageAiExist) ?
+        const image = includePhoto && !runnerEnv.noImageOut && (runnerEnv.noAvatarImage || !runnerEnv.useAiImageGen) ?
           (yield* getStreetImageOnly(loc).pipe(Effect.orElseSucceed(() => undefined))):
-            includePhoto && env.anyImageAiExist && !runnerEnv.noImageOut ?
+            includePhoto && runnerEnv.useAiImageGen && !runnerEnv.noImageOut ?
           (yield* getStreetImage(loc, runnerEnv, abort, localDebug).pipe(
             Effect.andThen(a => a.buf),
             Effect.orElseSucceed(() => undefined)
@@ -175,8 +169,8 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
           text: `I'm on the ${maneuver} now. Longitude and Latitude is almost ${loc.lat},${loc.lng}`
         },
       ]
-      const useAiImageGen = (runnerEnv.pixAi_key ? 'pixAi' : runnerEnv.sd_key ? 'sd' : runnerEnv.comfy_url ? 'comfyUi': '')
-      if (includePhoto && runnerEnv.mode.anyImageAiExist && !runnerEnv.noImageOut) {
+      const useAiImageGen = runnerEnv.useAiImageGen
+      if (includePhoto && useAiImageGen && !runnerEnv.noImageOut) {
         return ImageService.makeEtcTripImage(useAiImageGen, vehiclePrompt, loc.timeZoneId).pipe(
           Effect.andThen(image => {
             out.push({type: "image", data: image.toString("base64"), mimeType: 'image/png'})
@@ -195,7 +189,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       const out: ToolContentResponse[] = [
         {type: "text", text: `I am in a hotel in ${toAddress}.`}
       ]
-      const useAiImageGen = (runnerEnv.pixAi_key ? 'pixAi' : runnerEnv.sd_key ? 'sd' : runnerEnv.comfy_url ? 'comfyUi': '')
+      const useAiImageGen = runnerEnv.useAiImageGen
       if (includePhoto) {
         return ImageService.makeHotelPict(useAiImageGen, hour, undefined).pipe(
           Effect.andThen(image1 => {
@@ -397,6 +391,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
      * stepの経過時間
      * 船と飛行機はMap通りの時間、通常の移動は自転車相当としてそのdurationScale2倍する
      * @param step
+     * @param runnerEnv
      */
     const calcStepTime = (step: typeof MapDef.GmStepSchema.Type,runnerEnv: TravelerEnv) => {
       const durationScale2 = (runnerEnv.time_scale && Number.parseFloat(runnerEnv.time_scale)) || 4
@@ -407,6 +402,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
      * 単一経路の場合と複数連結経路の場合のどちらも処理する
      * 中間経路の終点に isRelayPoint = true を付加
      * @param routeInfo
+     * @param runnerEnv
      */
     const routesToDirectionStep = (routeInfo: typeof MapDef.RouteArraySchema.Type,runnerEnv: TravelerEnv) => {
       const all = routeInfo.flatMap((r, idx) => {
@@ -628,7 +624,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         }
         //  旅開始ホテル画像、旅開始挨拶
         const runnerEnv = yield* DbService.getSysEnv()
-        const useAiImageGen = (runnerEnv.pixAi_key ? 'pixAi' : runnerEnv.sd_key ? 'sd' : runnerEnv.comfy_url ? 'comfyUi': '')
+        const useAiImageGen = runnerEnv.useAiImageGen
         const hour = now.tz(rs.startTz!).hour()
         const image1 = yield* ImageService.makeHotelPict(useAiImageGen, hour).pipe(
           Effect.andThen(a => Effect.succeed(Option.some(a))),
@@ -685,31 +681,46 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
         const bodyHWRatioJ = runnerEnv.bodyHWRatio ? {bodyHWRatio: Number.parseFloat(runnerEnv.bodyHWRatio)} : {}
         const bodyWindowRatioWJ = runnerEnv.bodyWindowRatioW ? {bodyWindowRatioW: Number.parseFloat(runnerEnv.bodyWindowRatioW)} : {}
         const bodyWindowRatioHJ = runnerEnv.bodyWindowRatioH ? {bodyWindowRatioH: Number.parseFloat(runnerEnv.bodyWindowRatioH)} : {}
-        const useAiImageGen = (runnerEnv.pixAi_key ? 'pixAi' : runnerEnv.sd_key ? 'sd' : runnerEnv.comfy_url ? 'comfyUi': '')
-        return yield* ImageService.makeRunnerImageV3(baseImage, useAiImageGen, abort, {...bodyAreaRatioJ, ...bodyHWRatioJ, ...bodyWindowRatioWJ, ...bodyWindowRatioHJ}, localDebug).pipe(
-          Effect.andThen(a => Effect.gen(function* () {
-            const buf = yield* Effect.tryPromise(() => sharp(a.buf).resize({
-              width: widthOut,
-              height: heightOut
-            }).png().toBuffer())
-            return {
-              ...a,
-              buf: buf
-            }
-          })),
+        const useAiImageGen = runnerEnv.useAiImageGen
+        return yield *Effect.gen(function *() {
+          let out
+          switch (useAiImageGen) {
+            case undefined:
+              out = {
+                buf: baseImage,
+                shiftX: 0,
+                shiftY: 0,
+                fit: false,
+                append: ''
+              }
+              break;
+            case 'gemini':
+              out = yield* ImageService.makeRunnerImageV4(baseImage,abort,localDebug)
+              break
+            default:
+              out = yield* ImageService.makeRunnerImageV3(baseImage, useAiImageGen, abort, {...bodyAreaRatioJ, ...bodyHWRatioJ, ...bodyWindowRatioWJ, ...bodyWindowRatioHJ}, localDebug)
+          }
+          const buf = yield* Effect.tryPromise(() => sharp(out.buf).resize({
+            width: widthOut,
+            height: heightOut
+          }).png().toBuffer())
+          return {
+            ...out,
+            buf: buf
+          }
+        }).pipe(Effect.orElse(() => {
           //  合成画像を失敗したらStreetViewだけでも出す
-          Effect.orElse(() => {
-            return Effect.tryPromise(() => sharp(baseImage).resize({
-              width: widthOut,
-              height: heightOut
-            }).png().toBuffer()).pipe(Effect.andThen(a => ({
-              buf: a,
-              shiftX: 0,
-              shiftY: 0,
-              fit: false,
-              append: ''
-            })));
-          }));
+          return Effect.tryPromise(() => sharp(baseImage).resize({
+            width: widthOut,
+            height: heightOut
+          }).png().toBuffer()).pipe(Effect.andThen(a => ({
+            buf: a,
+            shiftX: 0,
+            shiftY: 0,
+            fit: false,
+            append: ''
+          })));
+        }))
       })
     }
 

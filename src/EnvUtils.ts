@@ -23,6 +23,9 @@ export type MoveMode = typeof MoveModeSchema.Type;
 export const MapEndpointSchema = Schema.Literal('directions', 'places', 'timezone', 'svMeta', 'streetView', 'nearby')
 export const MapEndpoint = MapEndpointSchema.literals
 export type MapEndpoint = (typeof MapEndpoint)[number];
+const ImageMethodSchema = Schema.Literal('sd', 'pixAi', 'comfyUi','gemini')
+export type ImageMethod = typeof ImageMethodSchema.Type;
+export const ImageMethod = ImageMethodSchema.literals
 
 const RunnerEnv = Schema.partial(Schema.mutable(Schema.Struct({
     GoogleMapApi_key: Schema.String,
@@ -57,6 +60,7 @@ const RunnerEnv = Schema.partial(Schema.mutable(Schema.Struct({
     extfeedTag: Schema.String,
     noImageOut: Schema.String,
     noAvatarImage: Schema.String,
+    GeminiImageApi_key: Schema.String,
   }
 )))
 
@@ -64,6 +68,7 @@ export type RunnerEnv = typeof RunnerEnv.Type
 
 export const EnvSmitherySchema = Schema.partial(Schema.Struct({
   MT_GOOGLE_MAP_KEY: Schema.String,
+  MT_GEMINI_IMAGE_KEY: Schema.String,
   MT_TURSO_URL: Schema.String,
   MT_TURSO_TOKEN: Schema.String,
   MT_BS_ID: Schema.String,
@@ -81,7 +86,7 @@ export const ModeSchema = Schema.mutable(Schema.Struct({
   travelerExist: Schema.Boolean, //  まだ動的ツール切り替えはClaude desktopに入っていない。。
   dbMode: DbModeSchema,
   isPractice: Schema.Boolean,
-  anyImageAiExist: Schema.Boolean,
+  // anyImageAiExist: Schema.Boolean,
   anySnsExist: Schema.Boolean,
   personMode: PersonModeSchema,
   fixedModelPrompt: Schema.Boolean,
@@ -100,6 +105,7 @@ export type Mode = typeof ModeSchema.Type
 
 const EnvMap: [string, string][] = [
   ['GoogleMapApi_key', 'MT_GOOGLE_MAP_KEY'],
+  ['GeminiImageApi_key', 'MT_GEMINI_IMAGE_KEY'],
   ['mapApi_url', 'MT_MAP_API_URL'],
   ['time_scale', 'MT_TIME_SCALE'],
   ['sqlite_path', 'MT_SQLITE_PATH'],
@@ -157,6 +163,11 @@ export class TravelerEnv {
   get isEnableFeedTag(): boolean {
     return this._isEnableFeedTag;
   }
+
+  get useAiImageGen(): ImageMethod | undefined {
+    return this._useAiImageGen;
+  }
+
 
   get extfeedTag(): string | undefined {
     return this.env.extfeedTag;
@@ -278,51 +289,26 @@ export class TravelerEnv {
     return this.env.GoogleMapApi_key;
   }
 
+  get GeminiImageApi_key(): string | undefined {
+    return this.env.GeminiImageApi_key;
+  }
+
   get mode(): Mode {
     return this._mode;
   }
 
   private env: RunnerEnv = {}
-  // private _GoogleMapApi_key: string | undefined
-  // private _mapApi_url: string | undefined
-  // private _sd_key: string | undefined
-  // private _pixAi_key: string | undefined
-  // private _pixAi_modelId: string | undefined
-  // private _comfy_url: string | undefined
-  // private _no_sns_post: string | undefined
-  // private _moveMode: string | undefined
-  // private _remBgUrl: string | undefined
-  // private _rembg_path: string | undefined
-  // private _rembgPath: string | undefined
-  // private _remBgWoKey: string | undefined
-  // private _filter_tools: string | undefined
-  // private _comfy_params: string | undefined
-  // private _fixed_model_prompt: string | undefined
-  // private _comfy_workflow_i2i: string | undefined
-  // private _comfy_workflow_t2i: string | undefined
-  // private _bs_id: string | undefined
-  // private _bs_pass: string | undefined
-  // private _bs_handle: string | undefined
-  // private _image_width: string | undefined
-  // private _bodyAreaRatio: string | undefined
-  // private _bodyHWRatio: string | undefined
-  // private _bodyWindowRatioW: string | undefined
-  // private _bodyWindowRatioH: string | undefined
-  // private _time_scale: string | undefined
-  // private _sqlite_path: string | undefined
-  // private _tursoUrl: string | undefined
-  // private _tursoToken: string | undefined
-  // private _extfeedTag: string | undefined
 
   private _noImageOut: boolean;
   private _noAvatarImage: boolean;
   private _isEnableFeedTag: boolean;
+  private _useAiImageGen: ImageMethod | undefined;
 
   private _mode: Mode = {
     travelerExist: true, //  まだ動的ツール切り替えはClaude desktopに入っていない。。
     dbMode: 'memory' as DbMode,
     isPractice: false,
-    anyImageAiExist: false,
+    // anyImageAiExist: false,
     anySnsExist: false,
     personMode: 'third' as PersonMode,
     fixedModelPrompt: false,
@@ -340,6 +326,7 @@ export class TravelerEnv {
   constructor() {
     this.env = {}
     this.env.GoogleMapApi_key = getEnvironment('GoogleMapApi_key')
+    this.env.GeminiImageApi_key = getEnvironment('GeminiImageApi_key')
 
     this.env.mapApi_url = getEnvironment('mapApi_url')
     this.env.sd_key = getEnvironment('sd_key')
@@ -374,85 +361,28 @@ export class TravelerEnv {
     this._isEnableFeedTag = Boolean(this.env.extfeedTag && this.env.extfeedTag.length > 14 && this.env.extfeedTag[0] === '#') //  拡張タグは安全のため15文字以上を強制する
     this._noImageOut = getEnvironment('noImageOut') === 'true'
     this._noAvatarImage = getEnvironment('noAvatar') === 'true'
+    this._useAiImageGen = this.getUseImageMethod()
+  }
+
+  private getUseImageMethod() {
+    return this.env.GeminiImageApi_key ? 'gemini' : this.env.pixAi_key ? 'pixAi' : this.env.sd_key ? 'sd' : this.env.comfy_url ? 'comfyUi' : undefined;
   }
 
   setInit(initial:
           RunnerEnv
-  //           & {
-  //   GoogleMapApi_key?: string,
-  //   mapApi_url?: string,
-  //   sd_key?: string,
-  //   pixAi_key?: string,
-  //   pixAi_modelId?: string,
-  //   comfy_url?: string,
-  //   no_sns_post?: string,
-  //   moveMode?: string,
-  //   remBgUrl?: string,
-  //   rembg_path?: string,
-  //   rembgPath?: string,
-  //   remBgWoKey?: string,
-  //   filter_tools?: string,
-  //   comfy_params?: string,
-  //   fixed_model_prompt?: string,
-  //   comfy_workflow_i2i?: string,
-  //   comfy_workflow_t2i?: string,
-  //   bs_id?: string,
-  //   bs_pass?: string,
-  //   bs_handle?: string,
-  //   image_width?: string,
-  //   bodyAreaRatio?: string,
-  //   bodyHWRatio?: string,
-  //   bodyWindowRatioW?: string,
-  //   bodyWindowRatioH?: string,
-  //   time_scale?: string,
-  //   sqlite_path?: string,
-  //   tursoUrl?: string,
-  //   tursoToken?: string,
-  //   feedTag?: string,
-  //   noImageOut?: string,
-  //   noAvatar?: string,
-  // }
   ) {
     this.env = initial
-    // this.env.GoogleMapApi_key = initial.GoogleMapApi_key
-    // this.env.mapApi_url = initial.mapApi_url
-    // this.env.sd_key = initial.sd_key
-    // this.env.pixAi_key = initial.pixAi_key
-    // this.env.pixAi_modelId = initial.pixAi_modelId
-    // this.env.comfy_url = initial.comfy_url
-    // this.env.no_sns_post = initial.no_sns_post
-    // this.env.moveMode = initial.moveMode
-    // this.env.remBgUrl = initial.remBgUrl
-    // this.env.rembg_path = initial.rembg_path
-    // this.env.rembgPath = initial.rembgPath
-    // this.env.remBgWoKey = initial.remBgWoKey
-    // this.env.filter_tools = initial.filter_tools
-    // this.env.comfy_params = initial.comfy_params
-    // this.env.fixed_model_prompt = initial.fixed_model_prompt
-    // this.env.comfy_workflow_i2i = initial.comfy_workflow_i2i
-    // this.env.comfy_workflow_t2i = initial.comfy_workflow_t2i
-    // this.env.bs_id = initial.bs_id
-    // this.env.bs_pass = initial.bs_pass
-    // this.env.bs_handle = initial.bs_handle
-    // this.env.image_width = initial.image_width
-    // this.env.bodyAreaRatio = initial.bodyAreaRatio
-    // this.env.bodyHWRatio = initial.bodyHWRatio
-    // this.env.bodyWindowRatioW = initial.bodyWindowRatioW
-    // this.env.bodyWindowRatioH = initial.bodyWindowRatioH
-    // this.env.time_scale = initial.time_scale
-    // this.env.sqlite_path = initial.sqlite_path
-    // this.env.tursoUrl = initial.tursoUrl
-    // this.env.tursoToken = initial.tursoToken
-    // this.env.extfeedTag = initial.feedTag
 
     this._noImageOut = initial.noImageOut === 'true'
     this._noAvatarImage = initial.noAvatarImage === 'true'
 
     this._isEnableFeedTag = Boolean(this.env.extfeedTag && this.env.extfeedTag.length > 14 && this.env.extfeedTag[0] === '#') //  拡張タグは安全のため15文字以上を強制する
+    this._useAiImageGen = this.getUseImageMethod()
   }
 
   setSmitheryEnv(extEnv: EnvSmithery) {
     this.env.GoogleMapApi_key = extEnv.MT_GOOGLE_MAP_KEY || this.env.GoogleMapApi_key
+    this.env.GeminiImageApi_key = extEnv.MT_GEMINI_IMAGE_KEY || this.env.GeminiImageApi_key
     this.env.tursoUrl = extEnv.MT_TURSO_URL || this.env.tursoUrl
     this.env.tursoToken = extEnv.MT_TURSO_TOKEN || this.env.tursoToken
     this.env.bs_id = extEnv.MT_BS_ID || this.env.bs_id
@@ -461,6 +391,7 @@ export class TravelerEnv {
     this.env.filter_tools = extEnv.MT_FILTER_TOOLS || this.env.filter_tools
     this.env.moveMode = extEnv.MT_MOVE_MODE || this.env.moveMode
     this.env.extfeedTag = extEnv.MT_FEED_TAG || this.env.extfeedTag
+    this._useAiImageGen = this.getUseImageMethod()
   }
 
 }

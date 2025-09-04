@@ -105,7 +105,7 @@ describe("Image", () => {
         return "succeed";
       }),
       Effect.tapError(e => Effect.logError(e.toString())),
-      Effect.catchIf(a => a instanceof Error && a.message === 'no key', e => Effect.succeed("noKey")),
+      Effect.catchIf(a => a instanceof Error && a.message === 'no key', _ => Effect.succeed("noKey")),
       aiRuntime.runPromise
     )
     expect(typeof res).toBe('string')
@@ -130,7 +130,7 @@ describe("Image", () => {
         return "succeed";
       }),
       Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
-      Effect.catchIf(a => a instanceof Error && a.message === 'no key', e => Effect.succeed("noKey")),
+      Effect.catchIf(a => a instanceof Error && a.message === 'no key', _ => Effect.succeed("noKey")),
       aiRuntime.runPromise
     )
     expect(typeof res).toBe('string')
@@ -153,7 +153,7 @@ describe("Image", () => {
         return "succeed";
       }),
       Effect.tapError(e => Effect.logError(e.toString())),
-      Effect.catchIf(a => a instanceof Error && a.message === 'no key', e => Effect.succeed("noKey")),
+      Effect.catchIf(a => a instanceof Error && a.message === 'no key', _ => Effect.succeed("noKey")),
       aiRuntime.runPromise
     )
     expect(typeof res).toBe('string')
@@ -178,7 +178,7 @@ describe("Image", () => {
         return "succeed";
       }),
       Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
-      Effect.catchIf(a => a instanceof Error && a.message === 'no key', e => Effect.succeed("noKey")),
+      Effect.catchIf(a => a instanceof Error && a.message === 'no key', _ => Effect.succeed("noKey")),
       aiRuntime.runPromise
     )
     expect(typeof res).toBe('string')
@@ -201,7 +201,7 @@ describe("Image", () => {
           fs.writeFileSync("tools/test/makeRunnerImageV3PixAI.png", a.buf);
         }
       }),
-      Effect.catchIf(a => a.toString() === 'Error: no key', e => Effect.succeed({})),
+      Effect.catchIf(a => a.toString() === 'Error: no key', _ => Effect.succeed({})),
       // Effect.tap(a => Effect.log(a)),
       aiRuntime.runPromise
     )
@@ -225,7 +225,7 @@ describe("Image", () => {
           fs.writeFileSync("tools/test/makeRunnerImageV3Sd.png", a.buf);
         }
       }),
-      Effect.catchIf(a => a.toString() === 'Error: no key', e => Effect.succeed({})),
+      Effect.catchIf(a => a.toString() === 'Error: no key', _ => Effect.succeed({})),
       // Effect.tap(a => Effect.log(a)),
       aiRuntime.runPromise
     )
@@ -252,7 +252,31 @@ describe("Image", () => {
           fs.writeFileSync("tools/test/makeRunnerImageV3_i2iComfy.png", a.buf);
         }
       }),
-      Effect.catchIf(a => a.toString() === 'Error: no key', e => Effect.succeed({})),
+      Effect.catchIf(a => a.toString() === 'Error: no key', _ => Effect.succeed({})),
+      // Effect.tap(a => Effect.log(a)),
+      aiRuntime.runPromise
+    )
+    expect(typeof res).toBe('object')
+  },10*60*1000)
+  it("makeRunnerImageV4", async () => {
+    //  vitest --run --testNamePattern=makeRunnerImageV3_i2i ImageService.test.ts
+    const res = await Effect.gen(function* () {
+      yield *DbService.setEnvironment({
+        GoogleMapApi_key:process.env.GoogleMapApi_key,  //  isPracticeもフラグにしているので指定しないとプリセット画像になる。。
+        GeminiImageApi_key:process.env.GeminiImageApi_key
+      })
+      yield *DbService.initSystemMode(Option.none())
+      const buffer = fs.readFileSync('tools/test.jpg');
+      return yield* ImageService.makeRunnerImageV4(buffer, false, true)  //
+    }).pipe(
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.tapError(e => Effect.logError(e.toString())),
+      Effect.tap(a => {
+        if (!inGitHubAction) {
+          fs.writeFileSync("tools/test/makeRunnerImageV4.png", a.buf);
+        }
+      }),
+      Effect.catchIf(a => a.toString() === 'Error: no key', _ => Effect.succeed({})),
       // Effect.tap(a => Effect.log(a)),
       aiRuntime.runPromise
     )
@@ -278,7 +302,7 @@ describe("Image", () => {
           fs.writeFileSync("tools/test/comfyApiMakeImage_t2i.png",Buffer.from(a));
         }
       }),
-      Effect.catchIf(a => a.toString() === 'Error: no comfy_url', e => Effect.succeed({})),
+      Effect.catchIf(a => a.toString() === 'Error: no comfy_url', _ => Effect.succeed({})),
       // Effect.tap(a => Effect.log(a)),
       aiRuntime.runPromise
     )
@@ -305,7 +329,7 @@ describe("Image", () => {
           fs.writeFileSync("tools/test/comfyApiMakeImage_i2i.png",Buffer.from(a));
         }
       }),
-      Effect.catchIf(a => a.toString() === 'Error: no comfy_url', e => Effect.succeed({})),
+      Effect.catchIf(a => a.toString() === 'Error: no comfy_url', _ => Effect.succeed({})),
       // Effect.tap(a => Effect.log(a)),
       aiRuntime.runPromise
     )
@@ -326,7 +350,7 @@ describe("Image", () => {
           fs.writeFileSync("tools/test/rembgOut.png",Buffer.from(a));
         }
       }),
-      Effect.catchIf(a => a.toString() === 'Error: no rembg url', e => Effect.succeed({})),
+      Effect.catchIf(a => a.toString() === 'Error: no rembg url', _ => Effect.succeed({})),
       // Effect.tap(a => Effect.log(a)),
       aiRuntime.runPromise
     )
@@ -346,7 +370,7 @@ describe("Image", () => {
           fs.writeFileSync("tools/test/rembgOut.png",Buffer.from(a));
         }
       }),
-      Effect.catchIf(a => a.toString() === 'Error: no rembg Wo key', e => Effect.succeed({})),
+      Effect.catchIf(a => a.toString() === 'Error: no rembg Wo key', _ => Effect.succeed({})),
       // Effect.tap(a => Effect.log(a)),
       aiRuntime.runPromise
     )

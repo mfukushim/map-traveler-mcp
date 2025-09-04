@@ -206,7 +206,7 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
 Or set a db connection. Please refer to README.md.`
             )
           } else {
-            if (!runnerEnv.mode.anyImageAiExist) {
+            if (!runnerEnv.useAiImageGen) {
               textList.push('If you want to synthesize an avatar image, you will need a key for the image generation AI.' +
                 ' Currently, PixAi and Stability AI\'s SDXL 1.0 API are supported.' +
                 ' Please refer to the website of each company to obtain an API key.' +

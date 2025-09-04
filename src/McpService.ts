@@ -925,7 +925,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         if (runnerEnv.GoogleMapApi_key) {
           recentUseLabels.push(LabelGoogleMap)
         }
-        const useAiImageGen = (runnerEnv.pixAi_key ? 'pixAi' : runnerEnv.sd_key ? 'sd' : runnerEnv.comfy_url ? 'comfyUi': '')
+        const useAiImageGen = runnerEnv.useAiImageGen
         if (useAiImageGen && img) {
           recentUseLabels.push(labelImage(useAiImageGen));
         }
