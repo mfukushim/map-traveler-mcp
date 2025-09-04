@@ -1,8 +1,7 @@
 // @vitest-environment node
-import {Effect, Logger, LogLevel} from "effect";
-import {beforeAll, describe, expect, it} from "@effect/vitest"
+import {Effect, Layer, Logger, LogLevel, ManagedRuntime, Option} from "effect";
+import {describe, expect, it} from "@effect/vitest"
 import {RunnerService, RunnerServiceLive} from "../src/RunnerService.js";
-import {runPromise} from "effect/Effect";
 import {FetchHttpClient} from "@effect/platform";
 import {DbService, DbServiceLive, RunStatus} from "../src/DbService.js";
 import {MapDef, MapServiceLive} from "../src/MapService.js";
@@ -12,56 +11,58 @@ import {McpLogService, McpLogServiceLive} from "../src/McpLogService.js";
 import * as fs from "node:fs";
 import dayjs from "dayjs";
 import {AnswerError} from "../src/mapTraveler.js";
+import {McpServiceLive} from "../src/McpService.js";
+import {SnsServiceLive} from "../src/SnsService.js";
+
+const AppLive = Layer.mergeAll(McpLogServiceLive, McpServiceLive, DbServiceLive, McpServiceLive, ImageServiceLive, MapServiceLive, RunnerServiceLive, SnsServiceLive, StoryServiceLive, FetchHttpClient.layer)
+const aiRuntime = ManagedRuntime.make(AppLive);
 
 describe("Runner", () => {
-  beforeAll(async () => {
-    return await DbService.initSystemMode().pipe(
-      Effect.provide([DbServiceLive]),
-      Effect.runPromise
-    )
-  });
 
   it("getCurrentView_practice", async () => {
     //  vitest --run --testNamePattern=getCurrentView_practice RunnerService.test.ts
     const res = await Effect.gen(function* () {
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
       return yield* RunnerService.getCurrentView(dayjs(), false, false, true)  //
     }).pipe(
-      Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive, FetchHttpClient.layer]), //  layer
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(a => Effect.logError(a)),
       Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed([])),
       Effect.tap(a => Effect.log(a)),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBeInstanceOf(Array)
   })
   it("sumDurationSec", async () => {
     const s = fs.readFileSync('tools/test/routeSample.json', {encoding: 'utf-8'});
     const res = await Effect.gen(function* () {
-      return yield* RunnerService.sumDurationSec(JSON.parse(s) as typeof MapDef.RouteArraySchema.Type)
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
+      const env = yield *DbService.getSysEnv()
+      return yield* RunnerService.sumDurationSec(JSON.parse(s) as typeof MapDef.RouteArraySchema.Type,env)
     }).pipe(
-      Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive,
-        FetchHttpClient.layer, McpLogServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(Effect.logError),
       // Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed({content: []})),
       Effect.tap(a => Effect.log(a)),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBe(41216)
   })
   it("routesToDirectionStep", async () => {
     const s = fs.readFileSync('tools/test/routeSample.json', {encoding: 'utf-8'});
     const res = await Effect.gen(function* () {
-      return yield* RunnerService.routesToDirectionStep(JSON.parse(s) as typeof MapDef.RouteArraySchema.Type)
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
+      const env = yield *DbService.getSysEnv()
+      return yield* RunnerService.routesToDirectionStep(JSON.parse(s) as typeof MapDef.RouteArraySchema.Type,env)
     }).pipe(
-      Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive,
-        FetchHttpClient.layer, McpLogServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(Effect.logError),
       // Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed({content: []})),
       Effect.andThen(a => a.map(b => ({a: b.start, b: b.end}))),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toStrictEqual([
       {a: 0, b: 104,}, {a: 104, b: 276,}, {a: 276, b: 764,}, {a: 764, b: 1624,}, {a: 1624, b: 1684,}, {
@@ -105,14 +106,15 @@ describe("Runner", () => {
     const pctList = [0,5,40,60,90,100]
 
     const res = await Effect.gen(function* () {
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
       return yield* Effect.forEach(pctList, a => RunnerService.makeView(runStatus, a / 100, false, true, true, false, s))
     }).pipe(
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(Effect.logError),
       // Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed({content: []})),
       Effect.tap(a => McpLogService.logTraceToolsRes(a.flat())),
-      Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive, FetchHttpClient.layer]),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBeInstanceOf(Array)
     expect(res.flat().filter(a => a.type === 'text').every(b => ['current location is','\'I am in a hotel'].some(c => b.text?.includes(c)))).toBeTruthy()
@@ -150,6 +152,8 @@ describe("Runner", () => {
     const pctList = [0,5,40,60,90,100]
 
     const res = await Effect.gen(function* () {
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
       yield *DbService.saveRunStatus(runStatus)
       return yield* RunnerService.getElapsedView(pctList[1] / 100,s)
       // return yield* Effect.forEach(pctList, a => RunnerService.getElapsedView(a / 100))
@@ -158,8 +162,7 @@ describe("Runner", () => {
       Effect.tapError(Effect.logError),
       // Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed({content: []})),
       Effect.tap(a => McpLogService.logTraceToolsRes(a.flat())),
-      Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive, FetchHttpClient.layer]),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBeInstanceOf(Array)
     expect(res.flat().filter(a => a.type === 'text').every(b => ['current location is','\'I am in a hotel'].some(c => b.text?.includes(c)))).toBeTruthy()
@@ -170,8 +173,7 @@ describe("Runner", () => {
       Effect.tapError(Effect.logError),
       // Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed({content: []})),
       Effect.tap(a => McpLogService.logTrace('end runStatus:',a)),
-      Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive, FetchHttpClient.layer]),
-      runPromise
+      aiRuntime.runPromise,
     )
     console.log(res2)
     expect(res2.status).toBe('stop')
@@ -209,6 +211,8 @@ describe("Runner", () => {
     const pctList = [0,5,40,60,90,100]
 
     const res = await Effect.gen(function* () {
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
       yield *DbService.saveEnv("destination","Pioneer Courthouse Square, 701 SW 6th Ave, Portland, OR 97204, USA")
       yield *DbService.saveRunStatus(runStatus)
       return yield* RunnerService.getElapsedView(pctList[5] / 100,s)
@@ -218,8 +222,7 @@ describe("Runner", () => {
       Effect.tapError(Effect.logError),
       // Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed({content: []})),
       Effect.tap(a => McpLogService.logTraceToolsRes(a.flat())),
-      Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive, FetchHttpClient.layer]),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBeInstanceOf(Array)
     expect(res.flat().filter(a => a.type === 'text').every(b => ['current location is','\'I am in a hotel'].some(c => b.text?.includes(c)))).toBeTruthy()
@@ -230,8 +233,7 @@ describe("Runner", () => {
       Effect.tapError(Effect.logError),
       // Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed({content: []})),
       Effect.tap(a => McpLogService.logTrace('end runStatus:',a)),
-      Effect.provide([RunnerServiceLive, DbServiceLive, MapServiceLive, ImageServiceLive, StoryServiceLive, FetchHttpClient.layer]),
-      runPromise
+      aiRuntime.runPromise,
     )
     console.log(res2)
     expect(res2.status).toBe('stop')

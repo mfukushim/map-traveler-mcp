@@ -1,17 +1,15 @@
 // @vitest-environment node
 
-import {beforeAll, describe, expect, it} from "@effect/vitest"
-import {Effect, Logger, LogLevel} from "effect";
+import { describe, expect, it} from "@effect/vitest"
+import {Effect, Layer, Logger, LogLevel, ManagedRuntime, Option} from "effect";
 import {McpService, McpServiceLive} from "../src/McpService.js";
 import {FetchHttpClient} from "@effect/platform";
-import {runPromise} from "effect/Effect";
 import * as fs from "node:fs";
 import {McpLogService, McpLogServiceLive} from "../src/McpLogService.js";
-import {DbService, DbServiceLive, env} from "../src/DbService.js";
+import {DbService, DbServiceLive} from "../src/DbService.js";
 import {StoryServiceLive} from "../src/StoryService.js";
 import {AnswerError} from "../src/mapTraveler.js";
 import {SnsServiceLive} from "../src/SnsService.js";
-import {NodeFileSystem} from "@effect/platform-node";
 import {z} from "zod";
 import {CallToolRequestSchema} from "@modelcontextprotocol/sdk/types.js";
 import {ImageServiceLive} from "../src/ImageService.js";
@@ -20,17 +18,22 @@ import {RunnerServiceLive} from "../src/RunnerService.js";
 
 const inGitHubAction = process.env.GITHUB_ACTIONS === 'true';
 
+const AppLive = Layer.mergeAll(McpLogServiceLive, McpServiceLive, DbServiceLive, McpServiceLive, ImageServiceLive, MapServiceLive, RunnerServiceLive, SnsServiceLive, StoryServiceLive, FetchHttpClient.layer)
+const aiRuntime = ManagedRuntime.make(AppLive);
+
 describe("Mcp", () => {
-  beforeAll(async () => {
-    return await DbService.initSystemMode().pipe(
-      Effect.provide([DbServiceLive]),
-      Effect.runPromise
-    )
-  });
+  // beforeAll(async () => {
+  //   return await DbService.initSystemMode().pipe(
+  //     Effect.provide([DbServiceLive]),
+  //     Effect.runPromise
+  //   )
+  // });
   it("practice", async () => {
     //  vitest --run --testNamePattern=practice McpService.test.ts
     //  他のテストスクリプトが走行状態を作るのでこれは最初にやらないといけない
     const res = await Effect.gen(function* () {
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
       const requests: z.infer<typeof CallToolRequestSchema>[] = [
         {params: {name: "tips"}, method: "tools/call"},
         {
@@ -48,19 +51,19 @@ describe("Mcp", () => {
           method: "tools/call"
         },
       ]
-      return yield* Effect.forEach(requests, (request, i) => McpService.toolSwitch(request))
+      const env = yield *DbService.getSysEnv()
+      return yield* Effect.forEach(requests, (request, i) => McpService.toolSwitch(request,env.mode))
     }).pipe(
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => {
         return McpLogService.logTraceToolsRes(a.flat());
       }),
+      aiRuntime.runPromise,
       // Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed([])),
       // Effect.catchIf(a => a instanceof AnswerError, e => {
       //   return Effect.log(e.toString());
       // }),
-      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
-      runPromise
     )
     expect(res).toBeInstanceOf(Array)
     const mes = res.flat()
@@ -78,25 +81,28 @@ describe("Mcp", () => {
 
   it("run", async () => {
     //  vitest --run --testNamePattern=run McpService.test.ts
-    await McpService.run().pipe(
-      Effect.provide([StoryServiceLive, McpServiceLive, FetchHttpClient.layer, McpLogServiceLive]),
+    await Effect.gen(function* () {
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
+      return yield *McpService.run(aiRuntime,Option.none())
+    }).pipe(
       Logger.withMinimumLogLevel(LogLevel.Trace),
       // Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
-      Effect.provide([McpServiceLive, DbServiceLive]),
-      runPromise
+      aiRuntime.runPromise,
     )
   })
   it("tips", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
       return yield * McpService.tips()  //
     }).pipe(
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
-      Effect.provide([StoryServiceLive, McpServiceLive,ImageServiceLive, FetchHttpClient.layer]),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBeInstanceOf(Array)
     expect(res[0].text).includes('Currently in practice mode')
@@ -104,14 +110,15 @@ describe("Mcp", () => {
   it("setTravelerInfo/getTravelerInfo", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
       yield* McpService.setTravelerInfo('name is mi')
       return yield* McpService.getTravelerInfo();
     }).pipe(
-      Effect.provide([DbServiceLive, McpServiceLive, FetchHttpClient.layer]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e)),
       Effect.tap(a => Effect.log(a)),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBeInstanceOf(Array)
     expect(res[0].text).includes('name is mi')
@@ -119,7 +126,10 @@ describe("Mcp", () => {
   it("getCurrentLocationInfo追加なし", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* McpService.getCurrentLocationInfo(false, false)
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
+      const env = yield *DbService.getSysEnv()
+      return yield* McpService.getCurrentLocationInfo(false, false, env.mode)
     }).pipe(
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => {
@@ -129,8 +139,7 @@ describe("Mcp", () => {
         return Effect.logError(e.toString());
       }),
       Effect.tap(a => Effect.log(a)),
-      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
-      runPromise
+      aiRuntime.runPromise,
     )
     console.log(res)
     expect(res).toBeInstanceOf(Array)
@@ -139,7 +148,10 @@ describe("Mcp", () => {
   it("getCurrentLocationInfoすべて", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* McpService.getCurrentLocationInfo(true, true)
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
+      const env = yield *DbService.getSysEnv()
+      return yield* McpService.getCurrentLocationInfo(true, true, env.mode)
     }).pipe(
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
@@ -156,8 +168,7 @@ describe("Mcp", () => {
             }
           })
       }),
-      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBeInstanceOf(Array)
     expect(res.some((a) => a.type === 'text')).toBeTruthy()
@@ -166,80 +177,89 @@ describe("Mcp", () => {
   it("setCurrentLocation", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
       return yield* McpService.setCurrentLocation("456 Random Street, Lost City") //東京都千代田区丸の内1丁目9-1
     }).pipe(
-      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
       Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBeInstanceOf(Array)
   })
   it("setCurrentLocation存在する", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
       return yield* McpService.setCurrentLocation("Yokohama Station") //東京都千代田区丸の内1丁目9-1
     }).pipe(
-      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
       Effect.tap(a => McpLogService.log(a).pipe(Effect.provide(McpLogServiceLive))),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBeInstanceOf(Array)
   })
   it("getDestinationAddress", async () => {
     //  vitest --run --testNamePattern=getDestinationAddress McpService.test.ts
     await Effect.gen(function* () {
-      return yield* McpService.getDestinationAddress()
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
+      const env = yield *DbService.getSysEnv()
+      return yield* McpService.getDestinationAddress(env.mode)
     }).pipe(
-      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.catchIf(a => a instanceof AnswerError, e => {
         expect(e.message).toBe('The destination has not yet been decided')
         return Effect.succeed([]);
       }),
-      runPromise
+      aiRuntime.runPromise,
     )
   })
   it("setDestinationAddress存在しない", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* McpService.setDestinationAddress("456 Random Street, Lost City")  //川崎駅
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
+      const env = yield *DbService.getSysEnv()
+      return yield* McpService.setDestinationAddress("456 Random Street, Lost City",env.mode)  //川崎駅
     }).pipe(
-      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => Effect.log(a)),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBeInstanceOf(Array)
   })
   it("setDestinationAddress存在する", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* McpService.setDestinationAddress("Tokyo station")  //川崎駅
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
+      const env = yield *DbService.getSysEnv()
+      return yield* McpService.setDestinationAddress("Tokyo station", env.mode)  //川崎駅
     }).pipe(
-      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => Effect.log(a)),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBeInstanceOf(Array)
   })
   it("getTravelerInfo", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
       return yield* McpService.getTravelerInfo()
     }).pipe(
-      Effect.provide([McpServiceLive, DbServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       // Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => Effect.log(a)),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBeInstanceOf(Array)
   })
@@ -247,37 +267,43 @@ describe("Mcp", () => {
   it("startJourneyPractice", async () => {
     //  vitest --run --testNamePattern=startJourneyPractice McpService.test.ts
     const res = await Effect.gen(function* () {
-      yield* McpService.startJourney()
-      return yield* McpService.getCurrentLocationInfo(true, true)
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
+      const env = yield *DbService.getSysEnv()
+      yield* McpService.startJourney(env.mode)
+      return yield* McpService.getCurrentLocationInfo(true, true,env.mode)
     }).pipe(
-      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive, NodeFileSystem.layer]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => Effect.log(JSON.stringify(a).slice(0, 200))),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBeInstanceOf(Array)
   })
   it("stopJourneyPractice", async () => {
     //  vitest --run --testNamePattern=startJourneyPractice McpService.test.ts
     const res = await Effect.gen(function* () {
-      yield* McpService.startJourney()
-      return yield* McpService.stopJourney()
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
+      const env = yield *DbService.getSysEnv()
+      yield* McpService.startJourney(env.mode)
+      return yield* McpService.stopJourney(env.mode)
     }).pipe(
-      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => Effect.log(JSON.stringify(a).slice(0, 200))),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBeInstanceOf(Array)
   })
   it("startJourney", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
-      return yield* McpService.startJourney()
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
+      const env = yield *DbService.getSysEnv()
+      return yield* McpService.startJourney(env.mode)
     }).pipe(
-      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => Effect.log(a.map(b => {
@@ -290,17 +316,19 @@ describe("Mcp", () => {
           return b
         }))
       ),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBeInstanceOf(Array)
   })
   it("stopJourney", async () => {
     //  vitest --run --testNamePattern=stopJourney McpService.test.ts
     const res = await Effect.gen(function* () {
-      yield* McpService.startJourney()
-      return yield* McpService.stopJourney()
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
+      const env = yield *DbService.getSysEnv()
+      yield* McpService.startJourney(env.mode)
+      return yield* McpService.stopJourney(env.mode)
     }).pipe(
-      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => Effect.log(a.map(b => {
@@ -310,86 +338,96 @@ describe("Mcp", () => {
           data: b.data && b.data.slice(0, 5)
         }
       }))),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBeInstanceOf(Array)
   })
   it("snsFeedの加工", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
       return yield* McpService.getSnsFeeds()
     }).pipe(
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed([])),
       Effect.tap(a => Effect.log(a)),
-      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBeInstanceOf(Array)
   })
   it("getSnsMentions", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
       return yield* McpService.getSnsMentions(5)
     }).pipe(
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed([])),
       Effect.tap(a => Effect.log(a)),
-      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBeInstanceOf(Array)
   })
   it("replySnsWriter", async () => {
     //  vitest --run --testNamePattern=replySnsWriter McpService.test.ts
     const res = await Effect.gen(function* () {
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
       return yield* McpService.replySnsWriter("リプライテスト6", "\"at://did:plc:ygcsenazbvhyjmxeltz4fgw4/app.bsky.feed.post/3letmqctays2a-bafyreigqfjn2spwkuqziieuh5xijimyyld7dpbnpajxc7ax5bkokyyxjna\"")
     }).pipe(
-      Effect.provide([McpServiceLive, SnsServiceLive, McpLogServiceLive, DbServiceLive,ImageServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed([])),
       Effect.tap(a => Effect.log(a)),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBeInstanceOf(Array)
   })
   it("getSetting", async () => {
     //  vitest --run --testNamePattern=replySnsWriter McpService.test.ts
     const res = await Effect.gen(function* () {
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
       return yield* McpService.getSetting()
     }).pipe(
-      Effect.provide([McpServiceLive, SnsServiceLive, McpLogServiceLive, DbServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       // Effect.tapError(e => Effect.logError(e.toString())),
       // Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed([])),
       Effect.tap(a => Effect.log(a)),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBeInstanceOf(Array)
   })
   it("makeToolsDef", async () => {
     //  vitest --run --testNamePattern=replySnsWriter McpService.test.ts
     const res = await Effect.gen(function* () {
-      env.filterTools = ["tips"]
-      return yield* McpService.makeToolsDef()
+      yield *DbService.setEnvironment({
+        filter_tools:"tips",
+      })
+      // env.filterTools = ["tips"]
+      yield *DbService.initSystemMode(Option.none())
+      const env = yield *DbService.getSysEnv()
+      return yield* McpService.makeToolsDef(env.mode)
     }).pipe(
-      Effect.provide([McpServiceLive, SnsServiceLive, McpLogServiceLive, DbServiceLive]),
       Logger.withMinimumLogLevel(LogLevel.Trace),
       // Effect.tapError(e => Effect.logError(e.toString())),
       // Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed([])),
       Effect.tap(a => Effect.log(a)),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBeInstanceOf(Object)
     expect(res.tools.length).toBe(1)
-    env.filterTools = []
   })
   it("toolSwitch", async () => {
     //  vitest --run --testNamePattern=toolSwitch McpService.test.ts
     const res = await Effect.gen(function* () {
+      yield *DbService.setEnvironment({})
+      yield *DbService.initSystemMode(Option.none())
+      const env = yield *DbService.getSysEnv()
       const commands = [
         "get_traveler_view_info",
         "set_traveler_location",
@@ -414,7 +452,7 @@ describe("Mcp", () => {
         params: {name: value},
         method: "tools/call"
       }))
-      return yield* Effect.forEach(requests, (request, i) => McpService.toolSwitch(request).pipe(
+      return yield* Effect.forEach(requests, (request, i) => McpService.toolSwitch(request,env.mode).pipe(
         Effect.catchIf(a => a.toString() === 'AnswerError: no bluesky account', e => Effect.succeed([])),
         Effect.catchIf(a => a instanceof AnswerError, e => Effect.succeed([])),
       ))
@@ -422,8 +460,7 @@ describe("Mcp", () => {
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),
       Effect.tap(a => McpLogService.logTraceToolsRes(a.flat())),
-      Effect.provide([McpServiceLive, SnsServiceLive, DbServiceLive, ImageServiceLive,StoryServiceLive,FetchHttpClient.layer,MapServiceLive,RunnerServiceLive]),
-      runPromise
+      aiRuntime.runPromise,
     )
     expect(res).toBeInstanceOf(Array)
   })

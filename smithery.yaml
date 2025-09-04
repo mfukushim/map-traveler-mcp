@@ -1,7 +1,10 @@
-# Smithery configuration file: https://smithery.ai/docs/build/project-config
-
+runtime: "container"
+build:
+  dockerfile: "Dockerfile"           # Path to your Dockerfile
+  dockerBuildPath: "."               # Docker build context
 startCommand:
-  type: stdio
+  type: "http"
+  # configSchema and exampleConfig are optional - remove if no configuration needed
   configSchema:
     # JSON Schema defining the configuration options for the MCP.
     type: object
@@ -9,6 +12,9 @@ startCommand:
       MT_GOOGLE_MAP_KEY:
         type: string
         description: Google Map API key
+      MT_GEMINI_IMAGE_KEY:
+        type: string
+        description: Gemini Image API key
       MT_TURSO_URL:
         type: string
         description: Turso sqlite API URL
@@ -35,14 +41,54 @@ startCommand:
       MT_FEED_TAG:
         type: string
         description: Specify the feed tag when posting to SNS (#required, 15 characters or more) Default is #geo_less_traveler)
-  commandFunction:
-    # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
-    |-
-    (config) => {
-    const env = { ...config }
-      return {
-        command: 'node', 
-        args: ['build/esm/mapTraveler.js'], 
-        env
-      }
-    }
+  exampleConfig:                     # Optional: Example configuration
+    serverToken: "your-server-token"
+    caseSensitive: false
+
+# Smithery configuration file: https://smithery.ai/docs/build/project-config
+#startCommand:
+#  type: stdio
+#  configSchema:
+#    # JSON Schema defining the configuration options for the MCP.
+#    type: object
+#    properties:
+#      MT_GOOGLE_MAP_KEY:
+#        type: string
+#        description: Google Map API key
+#      MT_TURSO_URL:
+#        type: string
+#        description: Turso sqlite API URL
+#      MT_TURSO_TOKEN:
+#        type: string
+#        description: Turso sqlite API access token
+#      MT_BS_ID:
+#        type: string
+#        description: Bluesky sns registration address
+#      MT_BS_PASS:
+#        type: string
+#        description: bluesky sns password
+#      MT_BS_HANDLE:
+#        type: string
+#        description: bluesky sns handle name. e.g. xxxxxxxx.bsky.social
+#      MT_FILTER_TOOLS:
+#        type: string
+#        description: Directly filter the tools to be used. All are available if not specified. e.g. tips,set_traveler_location
+#      MT_MOVE_MODE:
+#        type: string
+#        description: Specify whether the movement mode is realtime or skip. default realtime
+#        default: "realtime"
+#        enum: [ "realtime", "skip" ]
+#      MT_FEED_TAG:
+#        type: string
+#        description: Specify the feed tag when posting to SNS (#required, 15 characters or more) Default is #geo_less_traveler)
+#  commandFunction:
+#    # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
+#    |-
+#    (config) => {
+#    const env = { ...config }
+#      return {
+#        command: 'node',
+#        args: ['build/esm/mapTraveler.js'],
+#        env
+#      }
+#    }

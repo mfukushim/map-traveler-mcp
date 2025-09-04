@@ -12,6 +12,18 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 
 <img alt="img.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/img.png" width="400"/>
 
+> 旅画像生成にgemini-2.5-flash-image-preview (nano-banana) を追加しました  
+
+nano-bananaに対応しました。nano-bananaのセマンティック マスクによりremBgの設定なしに短時間で旅の合成画像が生成できるようになりました。
+
+> Streamable-HTTP/stdio 両対応しました(Smithery.ai仕様のconfigインタフェースに準拠)  
+
+今まで通りstdio型MCPとしても使えますし、Streamable-HTTP としても使えます。  
+マルチユーザ対応ですが、dbのAPIはSmithery.ai仕様のconfigインタフェースにてセッション毎指定になります。  
+Streamable-HTTP/stdio 両対応なので従来のMCPクライアントでもそのままで動く想定ですが、
+従来のstdio版を使用する場合は v0.0.x (v0.0.81) をお使いください。  
+``` npx -y @mfukushim/map-traveler-mcp@0.0.81 ```
+
 > librechat https://www.librechat.ai/ に対応しました。
 
 > Smithery https://smithery.ai/server/@mfukushim/map-traveler-mcp に対応しました(画像は重いため除外しています)。
@@ -94,7 +106,7 @@ APIの使用には課金がかかることがあります。
 
 #### Claude Desktopで使用する場合の設定  
 
-claude_desktop_config.json
+claude_desktop_config.json (stdio型)
 ```json
 {
   "mcpServers": {
@@ -103,6 +115,7 @@ claude_desktop_config.json
       "args": ["-y", "@mfukushim/map-traveler-mcp"],
       "env": {
         "MT_GOOGLE_MAP_KEY":"(Google Map APIのキー)",
+        "MT_GEMINI_IMAGE_KEY": "(GeminiImageApi_keyのキー)",
         "MT_MAP_API_URL": "(オプション: Map APIカスタムエンドポイント 例 direction=https://xxxx,search=https://yyyy )",
         "MT_TIME_SCALE": "(オプション:道路での移動時間の尺度. default 4)",
         "MT_SQLITE_PATH":"(db保存ファイルのパス 例 %USERPROFILE%/Desktop/traveler.sqlite など)",
@@ -131,12 +144,55 @@ claude_desktop_config.json
         "MT_IMAGE_WIDTH": "(オプション: 出力する画像の幅(pixel) デフォルトでは512)",
         "MT_NO_IMAGE": "(オプション: true=画像を出力しない 未指定=画像出力可能なら画像を出力する デフォルトでは未指定)",
         "MT_NO_AVATAR": "(オプション: true=アバター合成をせずStreetView画像そのままを出力する 未指定=アバター画像を合成する デフォルトでは未指定)",
-        "MT_FEED_TAG": "(オプション: SNSポスト時のフィードタグを指定する(#必須15文字以上) デフォルトでは#geo_less_traveler)"
+        "MT_FEED_TAG": "(オプション: SNSポスト時のフィードタグを指定する(#必須15文字以上) デフォルトでは#geo_less_traveler)",
+        "MT_MAX_SESSIONS": "(Streamable-http時の最大セッション数)",
+        "MT_SESSION_TTL_MS": "(Streamable-http時のセッション維持時間)",
+        "MT_SERVICE_TTL_MS": "(Streamable-http時のサービス維持時間)"
       }
     }
   }
 }
 ```
+claude_desktop_config.json (streamable-http型)
+上記のMT_環境変数はmap-traveler-mcpのwebサービスを行うサーバーの環境変数に設定してください。
+```json
+{
+  "mcpServers": {
+    "traveler": {
+      "type": "streamable-http",
+      "url": "https://(mcpサーバー)/mcp?config=(base64設定json)"
+    }
+  }
+}
+```
+base64設定json (Smithery独自拡張)  
+以下の形式のjsonを1行の文字列に連結してbase64変換したものを(base64設定json)に設定することで、ユーザのセッション毎に別のAPIや設定を上書きできます。  
+dbは個別設定しないとサービス全体で共有されます(旅人のいる場所はdbで共有され1人分になる)  
+セッション毎に個別UserIdを持たせる運用については、MCPの認証の仕組みがもう少しクリアになってから再検討する予定です。  
+```json
+{
+  "MT_GOOGLE_MAP_KEY": "xxxyyyzzz",
+  "MT_GEMINI_IMAGE_KEY": "xxyyzz",
+  "MT_TURSO_URL": "libsql://xxxyyyzzz",
+  "MT_TURSO_TOKEN": "abcdabcd",
+  "MT_BS_ID": "xyxyxyxyx",
+  "MT_BS_PASS": "1234xyz",
+  "MT_BS_HANDLE": "aabbccdd",
+  "MT_FILTER_TOOLS": "tips,set_traveler_location",
+  "MT_MOVE_MODE": "direct",
+  "MT_FEED_TAG": "#abcdefgabcdefgabcdefg"
+}
+```
+(jsonの個々の値はすべて省略可能)  
+↓ (jsonをテキスト連結)
+```text
+{"MT_GOOGLE_MAP_KEY": "xxxyyyzzz", "MT_GEMINI_IMAGE_KEY": "xxyyzz", "MT_TURSO_URL": "libsql://xxxyyyzzz", "MT_TURSO_TOKEN": "abcdabcd", "MT_BS_ID": "xyxyxyxyx", "MT_BS_PASS": "1234xyz", "MT_BS_HANDLE": "aabbccdd", "MT_FILTER_TOOLS": "tips,set_traveler_location", "MT_MOVE_MODE": "direct", "MT_FEED_TAG": "#abcdefgabcdefgabcdefg"}
+```
+↓ (base64化したものをconfig=に設定する)  
+```text
+eyJNVF9HT09HTEVfTUFQX0tFWSI6ICJ4eHh5eXl6enoiLCAiTVRfR0VNSU5JX0lNQUdFX0tFWSI6ICJ4eHl5enoiLCAiTVRfVFVSU09fVVJMIjogImxpYnNxbDovL3h4eHl5eXp6eiIsICJNVF9UVVJTT19UT0tFTiI6ICJhYmNkYWJjZCIsICJNVF9CU19JRCI6ICJ4eXh5eHl4eXgiLCAiTVRfQlNfUEFTUyI6ICIxMjM0eHl6IiwgIk1UX0JTX0hBTkRMRSI6ICJhYWJiY2NkZCIsICJNVF9GSUxURVJfVE9PTFMiOiAidGlwcyxzZXRfdHJhdmVsZXJfbG9jYXRpb24iLCAiTVRfTU9WRV9NT0RFIjogImRpcmVjdCIsICJNVF9GRUVEX1RBRyI6ICIjYWJjZGVmZ2FiY2RlZmdhYmNkZWZnIn0=
+```
+
 > 注意:環境変数の名称を一般的なスネークケースに変更しました。librechatなどで他の環境変数と合わせて使う場合があるため、接頭語としてMT_を付けています。従来の名称も後方互換性のために使うことができます。  
 
 Google Map APIは以下の4つの権限を設定してください。  
@@ -353,7 +409,7 @@ libreChatにはMCPのリソース機能がないため、代わりに
 ## Smitheryでの実行  
 
 https://smithery.ai/server/@mfukushim/map-traveler-mcp を参照ください。  
-remote MCP(stdioモード)に対応しています。ただし画像生成は重すぎるようなので設定機能を外しています。  
+remote MCP(Streamable-http)に対応しています。画像生成はnano-bananaのみ使えます。  
 db設定をTurso sqliteで記録出来るようにしたので、Tursoの設定を行えば旅の過程も保持されます。  
 <img alt="smithery.png" src="tools/smithery.png" width="400"/>
 
@@ -430,6 +486,10 @@ MCPの呼び出しを直接Effectで処理するほうがシンプルになる�
 スキーマにtitleを入れました。outputSchemaとstructured responseは将来取り入れる予定ですが今回は取り込んでいません。旅botの出力はテキストとしては単純なため構造化はまだ必要ないと考えています。  
   https://modelcontextprotocol.io/specification/2025-06-18/server/tools
 
-- 初期化の誤りによりenvの設定にかかわらずSNS関数などが呼び出せないの問題を修正しました。  
+- 初期化の誤りによりenvの設定にかかわらずSNS関数などが呼び出せないの問題を修正しました。 
+
+- Streamable-httpに対応しました。急いでやったので不具合がある場合は 0.0.81 などを使用することを検討ください。
+
+- nano-banana(gemini-2.5-flash-image-preview)の画像生成に対応しました。nano-bananaを使う際はrembgに関する設定は不要です。アバターのプロンプトの特性が変わったので、従来のアバタープロンプトでは画像生成がエラーになる場合があります。その際はnano-bananaで許容されるようなアバターの姿のプロンプトに調整する必要があります。
 
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/mfukushim-map-traveler-mcp-badge.png)](https://mseep.ai/app/mfukushim-map-traveler-mcp)
