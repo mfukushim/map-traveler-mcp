@@ -11,6 +11,10 @@ From an MCP client such as Claude Desktop, you can give instructions to the avat
 
 <img alt="img_5.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/img_5.png" width="400"/>
 
+> Added gemini-2.5-flash-image-preview (nano-banana) to travel image generation  
+
+Support for nano-banana has been added. Nano-banana's semantic mask allows you to generate composite travel images in a short time without setting remBg.  
+
 > Supports both Streamable-HTTP and stdio (compliant with Smithery.ai's config interface)  
 
 It can be used as a stdio-type MCP as before, or as Streamable-HTTP.  
@@ -119,6 +123,7 @@ Use of the API may incur charges.
       "args": ["-y", "@mfukushim/map-traveler-mcp"],
       "env":{
         "MT_GOOGLE_MAP_KEY":"(Google Map API key)",
+        "MT_GEMINI_IMAGE_KEY": "(Gemini Image Api key)",
         "MT_MAP_API_URL": "(Optional: Map API custom endpoint. Example: direction=https://xxxx,places=https://yyyy )",
         "MT_TIME_SCALE": "(Optional:Scale of travel time on real roads duration. default 4)",
         "MT_SQLITE_PATH":"(db save path: e.g. %USERPROFILE%/Desktop/traveler.sqlite ,$HOME/traveler.sqlite )",
@@ -174,6 +179,7 @@ We plan to reconsider the operation of assigning an individual UserId for each s
 ```json
 {
   "MT_GOOGLE_MAP_KEY": "xxxyyyzzz",
+  "MT_GEMINI_IMAGE_KEY": "xxyyzz",
   "MT_TURSO_URL": "libsql://xxxyyyzzz",
   "MT_TURSO_TOKEN": "abcdabcd",
   "MT_BS_ID": "xyxyxyxyx",
@@ -187,11 +193,11 @@ We plan to reconsider the operation of assigning an individual UserId for each s
 (All json values can be omitted)  
 ↓ (json text concatenation)  
 ```text
-{"MT_GOOGLE_MAP_KEY": "xxxyyyzzz", "MT_TURSO_URL": "libsql://xxxyyyzzz", "MT_TURSO_TOKEN": "abcdabcd", "MT_BS_ID": "xyxyxyxyx", "MT_BS_PASS": "1234xyz", "MT_BS_HANDLE": "aabbccdd", "MT_FILTER_TOOLS": "tips,set_traveler_location", "MT_MOVE_MODE": "direct", "MT_FEED_TAG": "#abcdefgabcdefgabcdefg"}
+{"MT_GOOGLE_MAP_KEY": "xxxyyyzzz", "MT_GEMINI_IMAGE_KEY": "xxyyzz", "MT_TURSO_URL": "libsql://xxxyyyzzz", "MT_TURSO_TOKEN": "abcdabcd", "MT_BS_ID": "xyxyxyxyx", "MT_BS_PASS": "1234xyz", "MT_BS_HANDLE": "aabbccdd", "MT_FILTER_TOOLS": "tips,set_traveler_location", "MT_MOVE_MODE": "direct", "MT_FEED_TAG": "#abcdefgabcdefgabcdefg"}
 ```
 ↓ (Set the base64 version to config=)  
 ```text
-eyJNVF9HT09HTEVfTUFQX0tFWSI6ICJ4eHh5eXl6enoiLCAiTVRfVFVSU09fVVJMIjogImxpYnNxbDovL3h4eHl5eXp6eiIsICJNVF9UVVJTT19UT0tFTiI6ICJhYmNkYWJjZCIsICJNVF9CU19JRCI6ICJ4eXh5eHl4eXgiLCAiTVRfQlNfUEFTUyI6ICIxMjM0eHl6IiwgIk1UX0JTX0hBTkRMRSI6ICJhYWJiY2NkZCIsICJNVF9GSUxURVJfVE9PTFMiOiAidGlwcyxzZXRfdHJhdmVsZXJfbG9jYXRpb24iLCAiTVRfTU9WRV9NT0RFIjogImRpcmVjdCIsICJNVF9GRUVEX1RBRyI6ICIjYWJjZGVmZ2FiY2RlZmdhYmNkZWZnIn0=
+eyJNVF9HT09HTEVfTUFQX0tFWSI6ICJ4eHh5eXl6enoiLCAiTVRfR0VNSU5JX0lNQUdFX0tFWSI6ICJ4eHl5enoiLCAiTVRfVFVSU09fVVJMIjogImxpYnNxbDovL3h4eHl5eXp6eiIsICJNVF9UVVJTT19UT0tFTiI6ICJhYmNkYWJjZCIsICJNVF9CU19JRCI6ICJ4eXh5eHl4eXgiLCAiTVRfQlNfUEFTUyI6ICIxMjM0eHl6IiwgIk1UX0JTX0hBTkRMRSI6ICJhYWJiY2NkZCIsICJNVF9GSUxURVJfVE9PTFMiOiAidGlwcyxzZXRfdHJhdmVsZXJfbG9jYXRpb24iLCAiTVRfTU9WRV9NT0RFIjogImRpcmVjdCIsICJNVF9GRUVEX1RBRyI6ICIjYWJjZGVmZ2FiY2RlZmdhYmNkZWZnIn0=
 ```
 
 
@@ -418,7 +424,7 @@ To use the MCP function in libreChat, use the Agents function.
 ## Smithery
 
 Please refer to https://smithery.ai/server/@mfukushim/map-traveler-mcp.  
-Remote MCP (Streamable-http mode) is supported, but the configuration feature has been removed because image generation was too heavy to run.  
+Remote MCP (Streamable-http mode) is supported. Image generation is only available on nano-banana.  
 Database settings can now be recorded with Turso sqlite, so if you configure Turso, your travel progress will also be saved.  
 <img alt="smithery.png" src="tools/smithery.png" width="400"/>
 
@@ -498,5 +504,7 @@ or
 - Fixed an issue where some functions, such as SNS functions, could not be called regardless of the env settings due to an initialization error.  
 
 - Added support for Streamable-http. This was done in a hurry, so if you experience any issues, please consider using version 0.0.81 or similar.  
+
+- Support for nano-banana (gemini-2.5-flash-image-preview) image generation has been added. When using nano-banana, no rembg settings are required. The characteristics of the avatar prompt have changed, so image generation may fail with the previous avatar prompt. In this case, you will need to adjust the avatar appearance prompt to one that is acceptable for nano-banana.
 
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/mfukushim-map-traveler-mcp-badge.png)](https://mseep.ai/app/mfukushim-map-traveler-mcp)

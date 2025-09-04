@@ -12,6 +12,10 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 
 <img alt="img.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/img.png" width="400"/>
 
+> 旅画像生成にgemini-2.5-flash-image-preview (nano-banana) を追加しました  
+
+nano-bananaに対応しました。nano-bananaのセマンティック マスクによりremBgの設定なしに短時間で旅の合成画像が生成できるようになりました。
+
 > Streamable-HTTP/stdio 両対応しました(Smithery.ai仕様のconfigインタフェースに準拠)  
 
 今まで通りstdio型MCPとしても使えますし、Streamable-HTTP としても使えます。  
@@ -111,6 +115,7 @@ claude_desktop_config.json (stdio型)
       "args": ["-y", "@mfukushim/map-traveler-mcp"],
       "env": {
         "MT_GOOGLE_MAP_KEY":"(Google Map APIのキー)",
+        "MT_GEMINI_IMAGE_KEY": "(GeminiImageApi_keyのキー)",
         "MT_MAP_API_URL": "(オプション: Map APIカスタムエンドポイント 例 direction=https://xxxx,search=https://yyyy )",
         "MT_TIME_SCALE": "(オプション:道路での移動時間の尺度. default 4)",
         "MT_SQLITE_PATH":"(db保存ファイルのパス 例 %USERPROFILE%/Desktop/traveler.sqlite など)",
@@ -164,6 +169,7 @@ dbは個別設定しないとサービス全体で共有されます(旅人の�
 ```json
 {
   "MT_GOOGLE_MAP_KEY": "xxxyyyzzz",
+  "MT_GEMINI_IMAGE_KEY": "xxyyzz",
   "MT_TURSO_URL": "libsql://xxxyyyzzz",
   "MT_TURSO_TOKEN": "abcdabcd",
   "MT_BS_ID": "xyxyxyxyx",
@@ -177,11 +183,11 @@ dbは個別設定しないとサービス全体で共有されます(旅人の�
 (jsonの個々の値はすべて省略可能)  
 ↓ (jsonをテキスト連結)
 ```text
-{"MT_GOOGLE_MAP_KEY": "xxxyyyzzz", "MT_TURSO_URL": "libsql://xxxyyyzzz", "MT_TURSO_TOKEN": "abcdabcd", "MT_BS_ID": "xyxyxyxyx", "MT_BS_PASS": "1234xyz", "MT_BS_HANDLE": "aabbccdd", "MT_FILTER_TOOLS": "tips,set_traveler_location", "MT_MOVE_MODE": "direct", "MT_FEED_TAG": "#abcdefgabcdefgabcdefg"}
+{"MT_GOOGLE_MAP_KEY": "xxxyyyzzz", "MT_GEMINI_IMAGE_KEY": "xxyyzz", "MT_TURSO_URL": "libsql://xxxyyyzzz", "MT_TURSO_TOKEN": "abcdabcd", "MT_BS_ID": "xyxyxyxyx", "MT_BS_PASS": "1234xyz", "MT_BS_HANDLE": "aabbccdd", "MT_FILTER_TOOLS": "tips,set_traveler_location", "MT_MOVE_MODE": "direct", "MT_FEED_TAG": "#abcdefgabcdefgabcdefg"}
 ```
 ↓ (base64化したものをconfig=に設定する)  
 ```text
-eyJNVF9HT09HTEVfTUFQX0tFWSI6ICJ4eHh5eXl6enoiLCAiTVRfVFVSU09fVVJMIjogImxpYnNxbDovL3h4eHl5eXp6eiIsICJNVF9UVVJTT19UT0tFTiI6ICJhYmNkYWJjZCIsICJNVF9CU19JRCI6ICJ4eXh5eHl4eXgiLCAiTVRfQlNfUEFTUyI6ICIxMjM0eHl6IiwgIk1UX0JTX0hBTkRMRSI6ICJhYWJiY2NkZCIsICJNVF9GSUxURVJfVE9PTFMiOiAidGlwcyxzZXRfdHJhdmVsZXJfbG9jYXRpb24iLCAiTVRfTU9WRV9NT0RFIjogImRpcmVjdCIsICJNVF9GRUVEX1RBRyI6ICIjYWJjZGVmZ2FiY2RlZmdhYmNkZWZnIn0=
+eyJNVF9HT09HTEVfTUFQX0tFWSI6ICJ4eHh5eXl6enoiLCAiTVRfR0VNSU5JX0lNQUdFX0tFWSI6ICJ4eHl5enoiLCAiTVRfVFVSU09fVVJMIjogImxpYnNxbDovL3h4eHl5eXp6eiIsICJNVF9UVVJTT19UT0tFTiI6ICJhYmNkYWJjZCIsICJNVF9CU19JRCI6ICJ4eXh5eHl4eXgiLCAiTVRfQlNfUEFTUyI6ICIxMjM0eHl6IiwgIk1UX0JTX0hBTkRMRSI6ICJhYWJiY2NkZCIsICJNVF9GSUxURVJfVE9PTFMiOiAidGlwcyxzZXRfdHJhdmVsZXJfbG9jYXRpb24iLCAiTVRfTU9WRV9NT0RFIjogImRpcmVjdCIsICJNVF9GRUVEX1RBRyI6ICIjYWJjZGVmZ2FiY2RlZmdhYmNkZWZnIn0=
 ```
 
 > 注意:環境変数の名称を一般的なスネークケースに変更しました。librechatなどで他の環境変数と合わせて使う場合があるため、接頭語としてMT_を付けています。従来の名称も後方互換性のために使うことができます。  
@@ -400,7 +406,7 @@ libreChatにはMCPのリソース機能がないため、代わりに
 ## Smitheryでの実行  
 
 https://smithery.ai/server/@mfukushim/map-traveler-mcp を参照ください。  
-remote MCP(Streamable-http)に対応しています。ただし画像生成は重すぎるようなので設定機能を外しています。  
+remote MCP(Streamable-http)に対応しています。画像生成はnano-bananaのみ使えます。  
 db設定をTurso sqliteで記録出来るようにしたので、Tursoの設定を行えば旅の過程も保持されます。  
 <img alt="smithery.png" src="tools/smithery.png" width="400"/>
 
@@ -481,5 +487,6 @@ MCPの呼び出しを直接Effectで処理するほうがシンプルになる�
 
 - Streamable-httpに対応しました。急いでやったので不具合がある場合は 0.0.81 などを使用することを検討ください。
 
+- nano-banana(gemini-2.5-flash-image-preview)の画像生成に対応しました。nano-bananaを使う際はrembgに関する設定は不要です。アバターのプロンプトの特性が変わったので、従来のアバタープロンプトでは画像生成がエラーになる場合があります。その際はnano-bananaで許容されるようなアバターの姿のプロンプトに調整する必要があります。
 
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/mfukushim-map-traveler-mcp-badge.png)](https://mseep.ai/app/mfukushim-map-traveler-mcp)

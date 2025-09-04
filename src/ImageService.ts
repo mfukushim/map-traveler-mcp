@@ -918,7 +918,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       return Effect.gen(function *() {
         const env = yield* DbService.getSysEnv()
         if (!env.GeminiImageApi_key) {
-          return yield *Effect.fail(new Error('no gemini image key'))
+          return yield *Effect.fail(new Error('no key'))
         }
         const gen = yield *GeminiImageGenerator.make(env.GeminiImageApi_key);
         const {widthOut, heightOut} = yield* getImageOutSize()
