@@ -116,6 +116,7 @@ claude_desktop_config.json (stdio型)
       "env": {
         "MT_GOOGLE_MAP_KEY":"(Google Map APIのキー)",
         "MT_GEMINI_IMAGE_KEY": "(GeminiImageApi_keyのキー)",
+        "MT_MAX_RETRY_GEMINI": "(Gemini画像生成時のリトライ回数 デフォルト0回)",
         "MT_MAP_API_URL": "(オプション: Map APIカスタムエンドポイント 例 direction=https://xxxx,search=https://yyyy )",
         "MT_TIME_SCALE": "(オプション:道路での移動時間の尺度. default 4)",
         "MT_SQLITE_PATH":"(db保存ファイルのパス 例 %USERPROFILE%/Desktop/traveler.sqlite など)",
@@ -173,6 +174,7 @@ dbは個別設定しないとサービス全体で共有されます(旅人の�
 {
   "MT_GOOGLE_MAP_KEY": "xxxyyyzzz",
   "MT_GEMINI_IMAGE_KEY": "xxyyzz",
+  "MT_MAX_RETRY_GEMINI": "1",
   "MT_TURSO_URL": "libsql://xxxyyyzzz",
   "MT_TURSO_TOKEN": "abcdabcd",
   "MT_BS_ID": "xyxyxyxyx",
@@ -186,11 +188,11 @@ dbは個別設定しないとサービス全体で共有されます(旅人の�
 (jsonの個々の値はすべて省略可能)  
 ↓ (jsonをテキスト連結)
 ```text
-{"MT_GOOGLE_MAP_KEY": "xxxyyyzzz", "MT_GEMINI_IMAGE_KEY": "xxyyzz", "MT_TURSO_URL": "libsql://xxxyyyzzz", "MT_TURSO_TOKEN": "abcdabcd", "MT_BS_ID": "xyxyxyxyx", "MT_BS_PASS": "1234xyz", "MT_BS_HANDLE": "aabbccdd", "MT_FILTER_TOOLS": "tips,set_traveler_location", "MT_MOVE_MODE": "direct", "MT_FEED_TAG": "#abcdefgabcdefgabcdefg"}
+{"MT_GOOGLE_MAP_KEY": "xxxyyyzzz", "MT_GEMINI_IMAGE_KEY": "xxyyzz", "MT_MAX_RETRY_GEMINI": "1", "MT_TURSO_URL": "libsql://xxxyyyzzz", "MT_TURSO_TOKEN": "abcdabcd", "MT_BS_ID": "xyxyxyxyx", "MT_BS_PASS": "1234xyz", "MT_BS_HANDLE": "aabbccdd", "MT_FILTER_TOOLS": "tips,set_traveler_location", "MT_MOVE_MODE": "direct", "MT_FEED_TAG": "#abcdefgabcdefgabcdefg"}
 ```
 ↓ (base64化したものをconfig=に設定する)  
 ```text
-eyJNVF9HT09HTEVfTUFQX0tFWSI6ICJ4eHh5eXl6enoiLCAiTVRfR0VNSU5JX0lNQUdFX0tFWSI6ICJ4eHl5enoiLCAiTVRfVFVSU09fVVJMIjogImxpYnNxbDovL3h4eHl5eXp6eiIsICJNVF9UVVJTT19UT0tFTiI6ICJhYmNkYWJjZCIsICJNVF9CU19JRCI6ICJ4eXh5eHl4eXgiLCAiTVRfQlNfUEFTUyI6ICIxMjM0eHl6IiwgIk1UX0JTX0hBTkRMRSI6ICJhYWJiY2NkZCIsICJNVF9GSUxURVJfVE9PTFMiOiAidGlwcyxzZXRfdHJhdmVsZXJfbG9jYXRpb24iLCAiTVRfTU9WRV9NT0RFIjogImRpcmVjdCIsICJNVF9GRUVEX1RBRyI6ICIjYWJjZGVmZ2FiY2RlZmdhYmNkZWZnIn0=
+eyJNVF9HT09HTEVfTUFQX0tFWSI6ICJ4eHh5eXl6enoiLCAiTVRfR0VNSU5JX0lNQUdFX0tFWSI6ICJ4eHl5enoiLCAiTVRfTUFYX1JFVFJZX0dFTUlOSSI6ICIxIiwgIk1UX1RVUlNPX1VSTCI6ICJsaWJzcWw6Ly94eHh5eXl6enoiLCAiTVRfVFVSU09fVE9LRU4iOiAiYWJjZGFiY2QiLCAiTVRfQlNfSUQiOiAieHl4eXh5eHl4IiwgIk1UX0JTX1BBU1MiOiAiMTIzNHh5eiIsICJNVF9CU19IQU5ETEUiOiAiYWFiYmNjZGQiLCAiTVRfRklMVEVSX1RPT0xTIjogInRpcHMsc2V0X3RyYXZlbGVyX2xvY2F0aW9uIiwgIk1UX01PVkVfTU9ERSI6ICJkaXJlY3QiLCAiTVRfRkVFRF9UQUciOiAiI2FiY2RlZmdhYmNkZWZnYWJjZGVmZyJ9
 ```
 
 > 注意:環境変数の名称を一般的なスネークケースに変更しました。librechatなどで他の環境変数と合わせて使う場合があるため、接頭語としてMT_を付けています。従来の名称も後方互換性のために使うことができます。  

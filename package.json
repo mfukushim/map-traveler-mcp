@@ -1,6 +1,6 @@
 {
   "name": "@mfukushim/map-traveler-mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "bin": {
     "map-traveler-mcp": "build/esm/mapTraveler.js"
@@ -33,14 +33,16 @@
     "build:npm": "npm run build-esm",
     "build-esm": "tsc -b tsconfig.build.json",
     "start2:stdio": "pnpm build-esm && node build/esm/mapTraveler.js",
-    "start2:http": "pnpm build-esm && SET TRANSPORT=http&& node build/esm/mapTraveler.js",
+    "start2:http": "pnpm build-esm && SET TRANSPORT=http&& SET MT_MAX_SESSIONS=2&& node build/esm/mapTraveler.js",
     "build-annotate": "babel build/esm --plugins annotate-pure-calls --out-dir build/esm --source-maps",
     "check": "tsc -b tsconfig.json",
     "test": "vitest",
     "coverage": "vitest --coverage",
     "inspector:stdio": "pnpm build && cmd /c \"npx -y @modelcontextprotocol/inspector node build/esm/mapTraveler.js -e ServerLog='log,trace,error,sync'\"",
     "inspector:http": "npx -y @modelcontextprotocol/inspector",
-    "start:stdio": "node build/esm/mapTraveler.js"
+    "start": "npm run start:http",
+    "start:stdio": "node build/esm/mapTraveler.js",
+    "start:http": "TRANSPORT=http node build/esm/mapTraveler.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.33.1",

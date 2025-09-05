@@ -27,9 +27,6 @@ COPY . .
 # Build the TypeScript code
 RUN pnpm run build-esm
 
-# Set transport mode to HTTP
-ENV TRANSPORT=http
-
 # Start the server directly with node
 #CMD ["node", "dist/index.js"]
 # Runtime image
@@ -46,6 +43,9 @@ COPY --chown=node:node --from=build /app/node_modules ./node_modules
 
 # Drop privileges: run as non-root user provided by the base image
 USER node
+
+# Set transport mode to HTTP
+ENV TRANSPORT=http
 
 # Use stdio server entrypoint
 CMD ["node", "build/esm/mapTraveler.js"]

@@ -87,6 +87,53 @@ describe("Image", () => {
 
     expect(res).toBeInstanceOf(Buffer)
   })
+  it("makeHotelPictGemini", async () => {
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    const res = await Effect.gen(function* () {
+      yield *DbService.setEnvironment({
+        GoogleMapApi_key:process.env.GoogleMapApi_key,  //  isPracticeもフラグにしているので指定しないとプリセット画像になる。。
+        GeminiImageApi_key:process.env.GeminiImageApi_key
+      })
+      yield *DbService.initSystemMode(Option.none())
+      return yield* ImageService.makeHotelPict("gemini", 12)  //
+    }).pipe(
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
+      Effect.tap(a => McpLogService.log(a.length).pipe(Effect.provide(McpLogServiceLive))),
+      aiRuntime.runPromise
+    )
+
+    if (!inGitHubAction) {
+      fs.writeFileSync("tools/test/makeHotelGemini.jpg", res);
+    }
+
+    expect(res).toBeInstanceOf(Buffer)
+  })
+  it("makeEtcPictGemini", async () => {
+    //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
+    const res = await Effect.gen(function* () {
+      yield *DbService.setEnvironment({
+        GoogleMapApi_key:process.env.GoogleMapApi_key,  //  isPracticeもフラグにしているので指定しないとプリセット画像になる。。
+        GeminiImageApi_key:process.env.GeminiImageApi_key
+      })
+      yield *DbService.initSystemMode(Option.none())
+      return yield* ImageService.makeEtcTripImage("gemini", "airplane","Asia/Tokyo")  //
+    }).pipe(
+      Logger.withMinimumLogLevel(LogLevel.Trace),
+      Effect.andThen(a => {
+        if (!inGitHubAction) {
+          fs.writeFileSync("tools/test/makeEtcGemini.jpg", a);
+        }
+        return "succeed";
+      }),
+      Effect.tapError(e => McpLogService.logError(e.toString()).pipe(Effect.provide(McpLogServiceLive))),
+      Effect.tap(a => McpLogService.log(a.length).pipe(Effect.provide(McpLogServiceLive))),
+      Effect.catchIf(a => a instanceof Error && a.message === 'no key', _ => Effect.succeed(new Buffer([]))),
+      aiRuntime.runPromise
+    )
+
+    expect(res).toBeInstanceOf(Buffer)
+  })
   it("pixAiMakeT2I", async () => {
     //  vitest --run --testNamePattern=calcDomesticTravelRoute MapService.test.ts
     const res = await Effect.gen(function* () {
