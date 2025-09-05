@@ -37,7 +37,7 @@ export class GeminiImageGenerator extends GeminiBaseGenerator {
 
   execLlm(text: string,baseImage?:Buffer): Effect.Effect<GenerateContentResponse, Error> {
     const state = this;
-    console.error('prompt',text)
+    // console.error('prompt',text)
     return Effect.gen(this, function* () {
       const prompt:ContentListUnion = [{text: text }];
       if (baseImage) {
