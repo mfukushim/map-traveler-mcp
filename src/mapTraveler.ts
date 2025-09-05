@@ -132,7 +132,7 @@ function setupHttp() {
       entry.updatedAt = now;
       // 再 set で TTL も“転がす”（rolling）
       transports.set(sid, entry, {ttl: SESSION_TTL_MS});
-      console.log('update session:', now, sid)
+      // console.log('update session:', now, sid)
     } else {
       if (transports.size >= MAX_SESSIONS) {
         res.status(429).send("Too Many Requests");
@@ -140,9 +140,9 @@ function setupHttp() {
         return;
       }
       transports.delete(sid)
-      console.log('delete session:', now, sid)
+      // console.log('delete session:', now, sid)
     }
-    console.log('session num:', transports.size)
+    // console.log('session num:', transports.size)
     next();
   });
 
@@ -158,7 +158,7 @@ function setupHttp() {
       serverSet.delete(entry.userId);
       delete entry.serverUpdatedAt;
       transports.set(sid, entry, {ttl: SESSION_TTL_MS});
-      console.log('delete service,update session:', Date.now(), updatedAt, sid)
+      // console.log('delete service,update session:', Date.now(), updatedAt, sid)
     }
     next();
   });
@@ -252,21 +252,11 @@ function setupHttp() {
       const rawConfig = parseConfig ? parseConfig(req) : {};
       // Validate and parse configuration (only if you added configSchema in Step 2)
       // console.log('rawConfig:', rawConfig)
-      const smitheryConfig = Schema.decodeUnknownOption(EnvSmitherySchema)({
-        MT_GOOGLE_MAP_KEY: rawConfig?.MT_GOOGLE_MAP_KEY || undefined,
-        MT_TURSO_URL: rawConfig?.MT_TURSO_URL || undefined,
-        MT_TURSO_TOKEN: rawConfig?.MT_TURSO_TOKEN || undefined,
-        MT_BS_ID: rawConfig?.MT_BS_ID || undefined,
-        MT_BS_PASS: rawConfig?.MT_BS_PASS || undefined,
-        MT_BS_HANDLE: rawConfig?.MT_BS_HANDLE || undefined,
-        MT_FILTER_TOOLS: rawConfig?.MT_FILTER_TOOLS || undefined,
-        MT_MOVE_MODE: rawConfig?.MT_MOVE_MODE || undefined,
-        MT_FEED_TAG: rawConfig?.MT_FEED_TAG || undefined,
-      });
+      const smitheryConfig = Schema.decodeUnknownOption(EnvSmitherySchema)(rawConfig);
 
       let transport: StreamableHTTPServerTransport | undefined;
-      console.log('transports:')
-      console.log('serverSet len:', serverSet.size, Object.keys(serverSet))
+      // console.log('transports:')
+      // console.log('serverSet len:', serverSet.size, Object.keys(serverSet))
       let server: Server | undefined = undefined;
       const now = Date.now();
       const entry = transports.get(sessionId || '');
@@ -365,11 +355,11 @@ function setupHttp() {
   // MCP POST endpoint with optional auth
   const mcpPostHandler = async (req: Request, res: Response) => {
     const sessionId = req.headers['mcp-session-id'] as string | undefined;
-    if (sessionId) {
-      console.log(`#POST Received MCP request for session: ${sessionId}`);
-    } else {
-      console.log('#POST Request body:', req.body);
-    }
+    // if (sessionId) {
+    //   console.log(`#POST Received MCP request for session: ${sessionId}`);
+    // } else {
+    //   console.log('#POST Request body:', req.body);
+    // }
 
     if (useOAuth && req.auth) {
       console.log('Authenticated user:', req.auth);
@@ -390,7 +380,7 @@ function setupHttp() {
 
   // Handle GET requests for SSE streams (using built-in support from StreamableHTTP)
   const mcpGetHandler = async (req: Request, res: Response) => {
-    console.log('#GET Request:');
+    // console.log('#GET Request:');
     const sessionId = req.headers['mcp-session-id'] as string | undefined;
     const entry = transports.get(sessionId || '');
     if (!sessionId || !entry) {
@@ -426,7 +416,7 @@ function setupHttp() {
 
   // Handle DELETE requests for session termination (according to MCP spec)
   const mcpDeleteHandler = async (req: Request, res: Response) => {
-    console.log('#DELETE Request:');
+    // console.log('#DELETE Request:');
     const sessionId = req.headers['mcp-session-id'] as string | undefined;
     const entry = transports.get(sessionId || '');
     if (!sessionId || !entry) {
@@ -435,7 +425,7 @@ function setupHttp() {
     }
     const transport = entry.transport;
 
-    console.log(`Received session termination request for session ${sessionId}`);
+    // console.log(`Received session termination request for session ${sessionId}`);
 
     try {
       await transport.handleRequest(req, res);
