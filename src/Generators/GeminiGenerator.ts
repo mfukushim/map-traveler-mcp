@@ -37,6 +37,7 @@ export class GeminiImageGenerator extends GeminiBaseGenerator {
 
   execLlm(text: string,baseImage?:Buffer): Effect.Effect<GenerateContentResponse, Error> {
     const state = this;
+    console.error('prompt',text)
     return Effect.gen(this, function* () {
       const prompt:ContentListUnion = [{text: text }];
       if (baseImage) {
@@ -59,10 +60,13 @@ export class GeminiImageGenerator extends GeminiBaseGenerator {
         },
       }).pipe(
         Effect.timeout('1 minute'),
-        Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced('5 seconds')))),
+        Effect.retry(Schedule.recurs(1).pipe(Schedule.intersect(Schedule.spaced('1 seconds')))),
         Effect.catchIf(a => a instanceof TimeoutException, _ => Effect.fail(new Error(`gemini API error:timeout`))),
       );
-    }).pipe(Effect.catchAll(e => Effect.fail(new Error(`${e}`))));
+    }).pipe(Effect.catchAll(e => {
+      console.error('geminiImage catch error:');
+      return Effect.fail(new Error(`${e}`));
+    }));
   }
 
   toAnswerOut(responseOut: GenerateContentResponse) {

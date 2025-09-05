@@ -43,6 +43,9 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         return {widthOut, heightOut}
       }))
     }
+
+    const regDel = /\((.+):.+\)/
+
     const getBasePrompt = (avatarId: number) => {
       return Effect.gen(function* () {
         const runnerEnv = yield* DbService.getSysEnv()
@@ -50,7 +53,20 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           return runnerEnv.fixed_model_prompt
         }
         return yield* DbService.getAvatarModel(avatarId).pipe(
-          Effect.andThen(a => a.baseCharPrompt + ',anime'),
+          Effect.andThen(a => {
+            //  geminiの場合 (word:n.n)様式の指定値はエラーになりやすいのでdbに入っていたら強制除去する
+            if (runnerEnv.useAiImageGen === 'gemini') {
+              return a.baseCharPrompt.split(',').map(v => {
+                const s = v.replace(regDel, '$1')
+                if (s.includes('masterpiece') || s.includes('best quality') || s.includes('loli')
+                  || s.includes('looking at viewer')|| s.includes('depth of field')|| s.includes('cinematic composition')) {
+                  return []
+                }
+                return [s]
+              }).flat().join(',')+ ',anime'
+            }
+            return a.baseCharPrompt + ',anime';
+          }),
           Effect.orElseSucceed(() => {
             if (runnerEnv.useAiImageGen === 'gemini') {
               return defaultBaseCharPromptV4
@@ -916,7 +932,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         if (!env.GeminiImageApi_key) {
           return yield* Effect.fail(new Error('no key'))
         }
-        const maxRetry = env.maxRetryGemini ? (Number.parseInt(env.maxRetryGemini) || 0)+1 : 1
+        const maxRetry = env.maxRetryGemini ? (Number.parseInt(env.maxRetryGemini) || 0) : 0
         const gen = yield* GeminiImageGenerator.make(env.GeminiImageApi_key);
         const {widthOut, heightOut} = yield* getImageOutSize()
         const baseCharPrompt = yield* getBasePrompt(defaultAvatarId)
