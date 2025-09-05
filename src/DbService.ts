@@ -1,7 +1,7 @@
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
 
-import {Effect, Layer, Option} from "effect";
-import {drizzle} from 'drizzle-orm/libsql';
+import {Effect, Option} from "effect";
+import {drizzle, LibSQLDatabase} from 'drizzle-orm/libsql';
 import {migrate} from 'drizzle-orm/libsql/migrator';
 import {anniversary, avatar_model, avatar_sns, env_kv, run_status, runAvatar, sns_posts, SnsType} from "./db/schema.js";
 import {and, desc, eq, inArray, or} from "drizzle-orm";
@@ -10,22 +10,12 @@ import 'dotenv/config'
 import {fileURLToPath} from 'url';
 import {dirname} from 'path';
 import * as path from "node:path";
-import {logSync, McpLogService, McpLogServiceLive} from "./McpLogService.js";
+import {logSync, McpLogService} from "./McpLogService.js";
 import {practiceData} from "./RunnerService.js";
-import {defaultBaseCharPrompt} from "./ImageService.js";
+import {defaultBaseCharPrompt, defaultBaseCharPromptV4} from "./ImageService.js";
 import * as fs from "node:fs";
-import {
-  bs_handle,
-  bs_id,
-  bs_pass, comfy_params,
-  comfy_url, comfy_workflow_i2i, comfy_workflow_t2i, filter_tools, fixed_model_prompt,
-  GoogleMapApi_key,
-  mapApi_url, moveMode, no_sns_post,
-  pixAi_key, rembg_path, rembgPath, remBgUrl,
-  sd_key, ServerLog,
-  sqlite_path, tursoToken, tursoUrl
-} from "./EnvUtils.js";
-import {createClient} from "@libsql/client";
+import {EnvSmithery, MapEndpoint, PersonMode, RunnerEnv, ServerLog, TravelerEnv} from "./EnvUtils.js";
+import {createClient,Client} from "@libsql/client";
 
 
 const __filename = fileURLToPath(import.meta.url);
@@ -53,50 +43,16 @@ export function isValidFilePath(filePath: string) {
   }
 }
 
-const dbPath = sqlite_path && isValidFilePath(expandPath(sqlite_path)) ?
-  'file:' + path.normalize(expandPath(sqlite_path)).replaceAll('\\', '/') : ':memory:'
-
-const client = tursoUrl && tursoToken ?
-  createClient({
-  url: tursoUrl,
-  authToken: tursoToken
-}):undefined
-
-const db = drizzle(client || dbPath)
-// const db = drizzle(dbPath);
-
-export type DbMode = 'memory' | 'file' | 'api';
-export type PersonMode = 'third' | 'second';
-export type MoveMode = 'realtime' | 'skip';
-const MapEndpoint = ['directions', 'places', 'timezone', 'svMeta', 'streetView', 'nearby'] as const;
-export type MapEndpoint = (typeof MapEndpoint)[number];
-
-
-export const env = {
-  travelerExist: true, //  まだ動的ツール切り替えはClaude desktopに入っていない。。
-  dbMode: 'memory' as DbMode,
-  isPractice: false,
-  anyImageAiExist: false,
-  anySnsExist: false,
-  personMode: 'third' as PersonMode,
-  fixedModelPrompt: false,
-  promptChanged: false,
-  noSnsPost: false,
-  moveMode: 'realtime' as MoveMode,
-  remBgUrl: undefined as string | undefined,
-  rembgPath: undefined as string | undefined,
-  loggingMode: false,
-  filterTools: [] as string[],
-  progressToken: undefined as string | number | undefined,
-  mapApis: new Map<MapEndpoint, string>(),
-}
-
-export const scriptTables = new Map<string, { script: any, nodeNameToId: Map<string, number> }>();
 
 
 export class DbService extends Effect.Service<DbService>()("traveler/DbService", {
   accessors: true,
   effect: Effect.gen(function* () {
+    const travelerEnv = new TravelerEnv()
+    console.error('start DbService')
+    const dbPath = travelerEnv.sqlite_path && isValidFilePath(expandPath(travelerEnv.sqlite_path)) ?
+      'file:' + path.normalize(expandPath(travelerEnv.sqlite_path)).replaceAll('\\', '/') : ':memory:'
+    const scriptTables = new Map<string, { script: any, nodeNameToId: Map<string, number> }>();
 
     const stub = <T>(qy: Promise<T>) => Effect.tryPromise({
       try: () => qy,
@@ -104,8 +60,20 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
         return new Error(`${error}`);
       }
     })
+    let client:Client|undefined
+    let db:LibSQLDatabase<Record<string, never>> & { $client: Client }
 
-    function init() {
+    const getScriptTable = () => scriptTables
+
+    function init(tursoUrl?:string,tursoToken?:string) {
+      client = tursoUrl && tursoToken ?
+        createClient({
+          url: tursoUrl,
+          authToken: tursoToken
+        }):undefined
+
+      db = drizzle(client || dbPath)
+
       return Effect.gen(function* () {
         yield* stub(migrate(db, {migrationsFolder: path.join(__pwd, 'drizzle')}));
         //  暫定のdb初期値
@@ -115,14 +83,13 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
               return stub(db.insert(avatar_model).values({
                 id: 1,
                 comment: '',
-                baseCharPrompt: defaultBaseCharPrompt,
+                baseCharPrompt: travelerEnv.useAiImageGen === 'gemini' ? defaultBaseCharPromptV4: defaultBaseCharPrompt,
                 created: created,
                 modelName: '',
               }).returning()).pipe(
                 Effect.onError(cause => McpLogService.logError(`error init avatar:${cause}`)))
             }
           }),
-          Effect.andThen(a => McpLogService.logTrace(`init avatar:${JSON.stringify(a)}`))
         )
         yield* stub(db.select().from(runAvatar)).pipe(Effect.tap(a => {
             if (a.length === 0) {
@@ -138,15 +105,14 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
                 Effect.onError(cause => McpLogService.logError(`error init avatar:${cause}`)))
             }
           }),
-          Effect.andThen(a => McpLogService.logTrace(`init avatar:${JSON.stringify(a)}`))
         )
         yield* stub(db.select().from(avatar_sns)).pipe(Effect.tap(a => {
-            if (a.length === 0 && bs_id && bs_pass && bs_handle) {
+            if (a.length === 0 && travelerEnv.bs_id && travelerEnv.bs_pass && travelerEnv.bs_handle) {
               return stub(db.insert(avatar_sns).values({
                 assignAvatarId: 1,
                 snsType: "bs",
-                snsHandleName: bs_handle,
-                snsId: bs_id,
+                snsHandleName: travelerEnv.bs_handle,
+                snsId: travelerEnv.bs_id,
                 feedSeenAt: 0,
                 mentionSeenAt: 0,
                 created: created,
@@ -155,7 +121,6 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
                 Effect.onError(cause => McpLogService.logError(`init bs sns:${cause}`)))
             }
           }),
-          Effect.andThen(a => McpLogService.logTrace(`init0:${JSON.stringify(a)}`))
         )
         yield* stub(db.select().from(run_status)).pipe(Effect.tap(a => {
           if (a.length === 0) {
@@ -353,7 +318,11 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       }).pipe(Effect.andThen(a => JSON.parse(a).version as string))
     }
 
-    const initSystemMode = () => {
+    function setEnvironment(initial:RunnerEnv) {
+      travelerEnv.setInit(initial)
+    }
+
+    const initSystemMode = (extEnv:Option.Option<EnvSmithery>) => {
       //  主要なモード
       //  noTraveler: traveler未呼び出し
       //  memoryDb: メモリdbを使う
@@ -369,77 +338,81 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       //  filterTools: 使うツールのフィルタ undefinedなら可能なすべて
       return Effect.gen(function* () {
         //  db有無の確認 dbサービスの初期化によって確認させる とコマンドon/off
-        yield* init()
-        env.progressToken = undefined
+        if (Option.isSome(extEnv)) {
+          travelerEnv.setSmitheryEnv(extEnv.value)
+        }
+
+        yield* init(Option.getOrNull(extEnv)?.MT_TURSO_URL || travelerEnv.tursoUrl,Option.getOrNull(extEnv)?.MT_TURSO_TOKEN || travelerEnv.tursoToken);
+        travelerEnv.mode.progressToken = undefined
         if (client) {
-          env.dbMode = "api";
+          travelerEnv.mode.dbMode = "api";
         } else {
           if (dbPath !== ':memory:') {
-            env.dbMode = "file";
+            travelerEnv.mode.dbMode = "file";
           }
         }
         yield* getEnv('travelerExist').pipe(
           Effect.andThen(a => {
-            env.travelerExist = a !== ''
+            travelerEnv.mode.travelerExist = a !== ''
           }),
           Effect.orElseSucceed(() => {
-            env.travelerExist = true // memoryモードで動くときはシンプルにコマンド存在にする
+            travelerEnv.mode.travelerExist = true // memoryモードで動くときはシンプルにコマンド存在にする
           }))
         const setting = yield* getEnvs(['personMode', 'promptChanged'])
 
         //  Google Map APIがなければ強制的に練習モード ある場合は設定に従う
         //  APIがあるなら通常モード
-        env.isPractice = !(GoogleMapApi_key || mapApi_url);
-        if (sd_key || pixAi_key || comfy_url) {
-          env.anyImageAiExist = true
+        travelerEnv.mode.isPractice = !(travelerEnv.GoogleMapApi_key || travelerEnv.mapApi_url);
+        // if (travelerEnv.useAiImageGen) {
+        //   travelerEnv.mode.anyImageAiExist = true
+        // }
+        if ((travelerEnv.bs_id && travelerEnv.bs_pass && travelerEnv.bs_handle)) {
+          travelerEnv.mode.anySnsExist = true
         }
-        if ((bs_id && bs_pass && bs_handle)) {
-          env.anySnsExist = true
-        }
-        if (no_sns_post) {
-          env.noSnsPost = true;
+        if (travelerEnv.no_sns_post) {
+          travelerEnv.mode.noSnsPost = true;
         }
         if (ServerLog) {
-          env.loggingMode = true
+          travelerEnv.mode.loggingMode = true
         }
-        if (moveMode === 'skip') {
-          env.moveMode = "skip"
+        if (travelerEnv.moveMode === 'skip') {
+          travelerEnv.mode.moveMode = "skip"
         }
-        if (remBgUrl) {
-          env.remBgUrl = remBgUrl
+        if (travelerEnv.remBgUrl) {
+          travelerEnv.mode.remBgUrl = travelerEnv.remBgUrl
         }
-        if (rembg_path || rembgPath) {
-          env.rembgPath = rembgPath || rembg_path
+        if (travelerEnv.rembg_path || travelerEnv.rembgPath) {
+          travelerEnv.mode.rembgPath = travelerEnv.rembgPath || travelerEnv.rembg_path
         }
         //  デフォルトは三人称モード
-        env.personMode = !setting.personMode ? 'third' : setting.personMode as PersonMode;
-        yield* saveEnv('personMode', env.personMode as string)
+        travelerEnv.mode.personMode = !setting.personMode ? 'third' : setting.personMode as PersonMode;
+        yield* saveEnv('personMode', travelerEnv.mode.personMode as string)
 
-        if (filter_tools) {
-          env.filterTools = filter_tools.trim().split(',').map(value => value.trim())
+        if (travelerEnv.filter_tools) {
+          travelerEnv.mode.filterTools = travelerEnv.filter_tools.trim().split(',').map(value => value.trim())
         }
 
-        logSync('comfy_params:', comfy_params)
+        logSync('comfy_params:', travelerEnv.comfy_params)
 
-        env.promptChanged = !!setting.promptChanged
-        yield* saveEnv('promptChanged', env.promptChanged ? '1' : '')
+        travelerEnv.mode.promptChanged = !!setting.promptChanged
+        yield* saveEnv('promptChanged', travelerEnv.mode.promptChanged ? '1' : '')
 
-        if (fixed_model_prompt) {
-          env.fixedModelPrompt = true
+        if (travelerEnv.fixed_model_prompt) {
+          travelerEnv.mode.fixedModelPrompt = true
         }
 
-        if (env.isPractice) {
+        if (travelerEnv.mode.isPractice) {
           yield* practiceRunStatus();
         }
-        if (mapApi_url) {
-          const s = mapApi_url.split(',')
+        if (travelerEnv.mapApi_url) {
+          const s = travelerEnv.mapApi_url.split(',')
           s.forEach(value => {
             const match = value.match(/(\w+)=([\w:\/.\-_]+)/);
             if (match) {
               const key = match[1]
               const val = match[2]
               if (MapEndpoint.includes(key as MapEndpoint)) {
-                env.mapApis.set(key as MapEndpoint, val)
+                travelerEnv.mode.mapApis.set(key as MapEndpoint, val)
               }
             }
           })
@@ -447,14 +420,15 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
 
         const files = yield* Effect.tryPromise(() => fs.promises.readdir(path.join(__pwd, `assets/comfy`)))
         files.map(a => addScript(path.join(__pwd, `assets/comfy`, a)));
-        if (comfy_workflow_i2i) {
-          addScript(comfy_workflow_i2i, 'i2i')
+        if (travelerEnv.comfy_workflow_i2i) {
+          addScript(travelerEnv.comfy_workflow_i2i, 'i2i')
         }
-        if (comfy_workflow_t2i) {
-          addScript(comfy_workflow_t2i, 't2i')
+        if (travelerEnv.comfy_workflow_t2i) {
+          addScript(travelerEnv.comfy_workflow_t2i, 't2i')
         }
 
-        yield* McpLogService.logTrace(`initSystemMode end:${JSON.stringify(env)}`)
+        // yield* McpLogService.logTrace(`initSystemMode end:${JSON.stringify(travelerEnv.mode)}`)
+        return travelerEnv.mode
       })
     }
 
@@ -486,9 +460,16 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       return {name: name, script: parse, nodeNameToId: map1};
     }
 
+    function getSysMode() {
+      return travelerEnv.mode
+    }
+
+    function getSysEnv() {
+      return travelerEnv
+    }
 
     return {
-      init,
+      // init,
       initSystemMode,
       updateRoute,
       getAvatar,
@@ -506,10 +487,13 @@ export class DbService extends Effect.Service<DbService>()("traveler/DbService",
       getEnvOption,
       saveEnv,
       getVersion,
+      getSysMode,
+      getScriptTable,
+      getSysEnv,
+      setEnvironment,
     }
   }),
-  dependencies: [McpLogServiceLive]
 }) {
 }
 
-export const DbServiceLive = Layer.merge(DbService.Default, McpLogServiceLive)
+export const DbServiceLive = DbService.Default

@@ -4,7 +4,7 @@ import { defineConfig } from "vitest/config"
 export default defineConfig({
   plugins: [],
   test: {
-    globalSetup: [path.join(__dirname, "globalSetup.ts")],
+    // globalSetup: [path.join(__dirname, "globalSetup.ts")],
     setupFiles: [path.join(__dirname, "setupTests.ts")],
     include: ["./test/**/*.test.ts"],
     globals: true,

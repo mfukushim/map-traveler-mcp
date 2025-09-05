@@ -4,11 +4,10 @@ import {Effect, Option, Schedule} from "effect";
 import dayjs from "dayjs";
 import timezone = require("dayjs/plugin/timezone")
 import {MapDef, MapService} from "./MapService.js";
-import {__pwd, DbService, env} from "./DbService.js";
+import {__pwd, DbService} from "./DbService.js";
 import {McpLogService} from "./McpLogService.js";
 import * as path from "node:path";
 import * as fs from "node:fs";
-import {bs_handle, bs_id, bs_pass, extfeedTag, isEnableFeedTag} from "./EnvUtils.js";
 import {ImageService} from "./ImageService.js";
 
 dayjs.extend(timezone)
@@ -182,7 +181,8 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
       return Effect.gen(function *() {
         const textList: string[] = []
         const imagePathList: string[] = []
-        if (env.isPractice) {
+        const runnerEnv = yield *DbService.getSysEnv()
+        if (runnerEnv.mode.isPractice) {
           textList.push('Currently in practice mode. You can only go to fixed locations.' +
             ' To switch to normal mode, you need to obtain and set a Google Map API key.' +
             ' key for detail: https://developers.google.com/maps/documentation/streetview/get-api-key ' +
@@ -196,7 +196,7 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
 `
           )
         } else {
-          if (env.dbMode === "memory") {
+          if (runnerEnv.mode.dbMode === "memory") {
             textList.push('Since the database is not currently set, the configuration information will be lost when you exit.' +
               ' Please specify the path of the saved database file in the configuration file(claude_desktop_config.json).' +
               `claude_desktop_config.json\n
@@ -206,7 +206,7 @@ export class StoryService extends Effect.Service<StoryService>()("traveler/Story
 Or set a db connection. Please refer to README.md.`
             )
           } else {
-            if (!env.anyImageAiExist) {
+            if (!runnerEnv.useAiImageGen) {
               textList.push('If you want to synthesize an avatar image, you will need a key for the image generation AI.' +
                 ' Currently, PixAi and Stability AI\'s SDXL 1.0 API are supported.' +
                 ' Please refer to the website of each company to obtain an API key.' +
@@ -222,7 +222,7 @@ or
 `
               )
             }
-            const enableRembg = yield *ImageService.isEnableRembg()
+            const enableRembg = yield *ImageService.isEnableRembg(runnerEnv)
             if (!enableRembg) {
               textList.push('In order to synthesize avatar images, your PC must be running Python and install rembg.' +
                 ` Please install Python and rembg on your PC using information from the Internet.\n
@@ -238,7 +238,7 @@ To keep your pc environment clean, I recommend using a Python virtual environmen
 Or set a Rembg API, Please refer to README.md.`)
             }
             //  基本動作状態
-            const bsEnable = bs_id && bs_pass && bs_handle
+            const bsEnable = runnerEnv.bs_id && runnerEnv.bs_pass && runnerEnv.bs_handle
             if (!bsEnable) {
               textList.push('Optional: Set up a Bluesky SNS account\n' +
                 'By setting your registered address, password, and handle for Bluesky SNS, you can post travel information on the SNS and obtain and interact with other people\'s travel information.\n' +
@@ -254,11 +254,11 @@ Or set a Rembg API, Please refer to README.md.`)
 `
               )
             } else {
-              if (extfeedTag && !isEnableFeedTag) {
+              if (runnerEnv.extfeedTag && !runnerEnv.isEnableFeedTag) {
                 textList.push('I detected an external feed tag "MT_FEED_TAG", but it was not used. external feed tags must start with a # and be at least 15 characters long.\n')
               }
             }
-            if (!env.promptChanged && !env.fixedModelPrompt) {
+            if (!runnerEnv.mode.promptChanged && !runnerEnv.mode.fixedModelPrompt) {
               textList.push('You can change the appearance of your avatar by directly telling the AI what you want it to look like, or by specifying a prompt to show its appearance with set_avatar_prompt.\n')
             }
             textList.push('You can play a tiny role play game using the scenario in carBattle.txt. Have fun!')

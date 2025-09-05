@@ -7,7 +7,6 @@ import dayjs from "dayjs";
 import {McpLogService} from "./McpLogService.js";
 import {DbService} from "./DbService.js";
 import {AnswerError} from "./mapTraveler.js";
-import {bs_handle, bs_id, bs_pass} from "./EnvUtils.js";
 
 
 type SnsType = "bs" | "tw" | "md" | "sk";
@@ -36,13 +35,14 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
 
       function reLogin() {
         return Effect.gen(function* () {
-          if (!(bs_id && bs_pass && bs_handle)) return yield* Effect.fail(new AnswerError('no bluesky account'));
+          const runnerEnv = yield *DbService.getSysEnv()
+          if (!(runnerEnv.bs_id && runnerEnv.bs_pass && runnerEnv.bs_handle)) return yield* Effect.fail(new AnswerError('no bluesky account'));
           if (isLogin) return yield* Effect.succeed(true);
           yield* Effect.tryPromise({
             try: () => {
               return agent.login({
-                identifier: bs_id || '',
-                password: bs_pass || '',
+                identifier: runnerEnv.bs_id || '',
+                password: runnerEnv.bs_pass || '',
               })
             },
             catch: error => new Error(`${error}`)
@@ -131,7 +131,10 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
       }
 
       function getOwnProfile() {
-        return bs_handle ? getProfile(bs_handle!) : Effect.fail(new Error('no bs handle'));
+        return Effect.gen(function *() {
+          const runnerEnv = yield *DbService.getSysEnv()
+          return runnerEnv.bs_handle ? yield *getProfile(runnerEnv.bs_handle!) : yield *Effect.fail(new Error('no bs handle'));
+        })
       }
 
       function getProfile(handle: string) {
@@ -165,6 +168,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
     function getFeed(feed: string, length ?: number) {
       return Effect.gen(function* () {
         yield* reLogin()
+        const runnerEnv = yield *DbService.getSysEnv()
         const snsInfo = yield* DbService.getAvatarSns(1, 'bs')
         yield* McpLogService.logTrace(`getFeed:feedSeenAt:${dayjs.unix(snsInfo.feedSeenAt).toISOString()}`)
         const feedData = yield* Effect.tryPromise(() => agent.app.bsky.feed.getFeed({
@@ -174,7 +178,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
           Effect.tap(a => !a.success && Effect.fail(new Error('getFeed error'))),
           Effect.tap(a => a.data.feed.map(v => McpLogService.logTrace(`getFeed post:${dayjs(v.post.indexedAt).toISOString()}`))),
           Effect.andThen(a => {
-            return a.data.feed.filter(v => (dayjs(v.post.indexedAt).unix() > snsInfo.feedSeenAt) && v.post.author.handle !== bs_handle)
+            return a.data.feed.filter(v => (dayjs(v.post.indexedAt).unix() > snsInfo.feedSeenAt) && v.post.author.handle !== runnerEnv.bs_handle)
           }),
           Effect.retry(Schedule.recurs(2).pipe(Schedule.intersect(Schedule.spaced("10 seconds"))))
         )
@@ -187,6 +191,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
     function searchPosts(query: string, length ?: number) {
       return Effect.gen(function* () {
         yield* reLogin()
+        const runnerEnv = yield *DbService.getSysEnv()
         const snsInfo = yield* DbService.getAvatarSns(1, 'bs')
         yield* McpLogService.logTrace(`searchPosts:feedSeenAt:${dayjs.unix(snsInfo.feedSeenAt).toISOString()}`)
         const feedData = yield* Effect.tryPromise(() => agent.app.bsky.feed.searchPosts({
@@ -196,7 +201,7 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
           Effect.tap(a => !a.success && Effect.fail(new Error('getFeed error'))),
           Effect.tap(a => a.data.posts.map(v => McpLogService.logTrace(`getFeed post:${dayjs(v.indexedAt).toISOString()}`))),
           Effect.andThen(a => {
-            return a.data.posts.filter(v => (dayjs(v.indexedAt).unix() > snsInfo.feedSeenAt) && v.author.handle !== bs_handle)
+            return a.data.posts.filter(v => (dayjs(v.indexedAt).unix() > snsInfo.feedSeenAt) && v.author.handle !== runnerEnv.bs_handle)
           }),
           Effect.retry(Schedule.recurs(2).pipe(Schedule.intersect(Schedule.spaced("10 seconds"))))
         )
@@ -222,12 +227,13 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
         const sliceLen = appendNeedText.length + 1
         return Effect.gen(function* () {
           const postIds: { snsType: SnsType; id: number }[] = []
+          const runnerEnv = yield *DbService.getSysEnv()
           yield* reLogin()
           const bsPostId = yield* bsPost(
             [message.slice(0, 300 - sliceLen), appendNeedText].join('\n'), undefined, image); //  bsは300文字らしい
           postIds.push({
             snsType: 'bs',
-            id: yield* DbService.saveSnsPost(JSON.stringify(bsPostId), bs_handle!)
+            id: yield* DbService.saveSnsPost(JSON.stringify(bsPostId), runnerEnv.bs_handle!)
           })
           //  TODO 他sns
           return postIds
@@ -241,13 +247,14 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
         const sliceLen = appendNeedText.length + 1
         return Effect.gen(function* () {
           const postIds: { snsType: SnsType; id: number }[] = []
+          const runnerEnv = yield *DbService.getSysEnv()
           yield* reLogin()
           const split = replyId.split('-');
           const bsPostId = yield* bsPost(
             [message.slice(0, 300 - sliceLen), appendNeedText].join('\n'), {uri: split[0], cid: split[1]},image); //  bsは300文字らしい
           postIds.push({
             snsType: 'bs',
-            id: yield* DbService.saveSnsPost(JSON.stringify(bsPostId), bs_handle!)
+            id: yield* DbService.saveSnsPost(JSON.stringify(bsPostId), runnerEnv.bs_handle!)
           })
           //  当面はbsのみ
           return postIds
@@ -256,7 +263,12 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
 
       function addLike(id:string) {
         const split = id.split('-');
-        return addBsLike(split[0],split[1]).pipe(Effect.andThen(a =>  DbService.saveSnsPost(JSON.stringify(a), bs_handle!)))
+        return addBsLike(split[0],split[1]).pipe(Effect.andThen(a => {
+          return Effect.gen(function *() {
+            const runnerEnv = yield *DbService.getSysEnv()
+            return yield *DbService.saveSnsPost(JSON.stringify(a), runnerEnv.bs_handle!);
+          })
+        }))
       }
 
       function getNotification(seenAtEpoch?: number,limit=50) {
@@ -270,10 +282,11 @@ export class SnsService extends Effect.Service<SnsService>()("traveler/SnsServic
           )
           const max = notification.data.notifications.reduce((p, c) => Math.max(p, dayjs(c.indexedAt).unix()), snsInfo.mentionSeenAt)
           yield* DbService.updateSnsMentionSeenAt(1, 'bs', max)
+          const runnerEnv = yield *DbService.getSysEnv()
 
           const seedEpoch = seenAtEpoch || snsInfo.mentionSeenAt
           //  TODO 現状 followは外す
-          return notification.data.notifications.filter(v => (dayjs(v.indexedAt).unix() > seedEpoch && v.reason !== "follow") && v.author.handle !== bs_handle).map(value => {
+          return notification.data.notifications.filter(v => (dayjs(v.indexedAt).unix() > seedEpoch && v.reason !== "follow") && v.author.handle !== runnerEnv.bs_handle).map(value => {
             if (value.reason === "reply") {
               return {
                 uri: value.uri, //  reply記事そのもの

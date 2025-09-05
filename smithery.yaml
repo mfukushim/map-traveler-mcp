@@ -1,7 +1,10 @@
-# Smithery configuration file: https://smithery.ai/docs/build/project-config
-
+runtime: "container"
+build:
+  dockerfile: "Dockerfile"           # Path to your Dockerfile
+  dockerBuildPath: "."               # Docker build context
 startCommand:
-  type: stdio
+  type: "http"
+  # configSchema and exampleConfig are optional - remove if no configuration needed
   configSchema:
     # JSON Schema defining the configuration options for the MCP.
     type: object
@@ -9,6 +12,12 @@ startCommand:
       MT_GOOGLE_MAP_KEY:
         type: string
         description: Google Map API key
+      MT_GEMINI_IMAGE_KEY:
+        type: string
+        description: Gemini Image API key
+      MT_MAX_RETRY_GEMINI:
+        type: string
+        description: Gemini Image retry count
       MT_TURSO_URL:
         type: string
         description: Turso sqlite API URL
@@ -35,20 +44,3 @@ startCommand:
       MT_FEED_TAG:
         type: string
         description: Specify the feed tag when posting to SNS (#required, 15 characters or more) Default is #geo_less_traveler)
-      MT_NO_IMAGE:
-        type: string
-        description: true = do not output image, not specified = output image if possible, default is not specified
-      MT_NO_AVATAR:
-        type: string
-        description: true = Output StreetView image as is without avatar superimposition. Not specified = Superimpose avatar image. Default is not specified.
-  commandFunction:
-    # A JS function that produces the CLI command based on the given config to start the MCP on stdio.
-    |-
-    (config) => {
-    const env = { ...config }
-      return {
-        command: 'node', 
-        args: ['build/esm/mapTraveler.js'], 
-        env
-      }
-    }

@@ -1,8 +1,7 @@
 /*! map-traveler-mcp | MIT License | https://github.com/mfukushim/map-traveler-mcp */
 
-import {Effect, Option} from "effect"
+import {Effect, ManagedRuntime, Option} from "effect"
 import {Server} from "@modelcontextprotocol/sdk/server/index.js";
-import {StdioServerTransport} from "@modelcontextprotocol/sdk/server/stdio.js";
 import {
   CallToolRequestSchema,
   GetPromptRequestSchema,
@@ -11,35 +10,24 @@ import {
   ListToolsRequestSchema,
   ReadResourceRequestSchema, Tool,
 } from "@modelcontextprotocol/sdk/types.js";
-import {defaultAvatarId, RunnerService, RunnerServiceLive, useAiImageGen} from "./RunnerService.js";
-import {MapService, MapServiceLive} from "./MapService.js";
+import {defaultAvatarId, RunnerService} from "./RunnerService.js";
+import {MapService} from "./MapService.js";
 import {
   __pwd,
   DbService,
-  DbServiceLive,
-  env,
-  PersonMode
 } from "./DbService.js";
-import {StoryService, StoryServiceLive} from "./StoryService.js";
-import {FetchHttpClient, HttpClient} from "@effect/platform";
-import {defaultBaseCharPrompt, ImageService, ImageServiceLive} from "./ImageService.js";
-import {logSync, McpLogService, McpLogServiceLive} from "./McpLogService.js";
+import {StoryService} from "./StoryService.js";
+import {HttpClient} from "@effect/platform";
+import {defaultBaseCharPrompt, ImageService} from "./ImageService.js";
+import {logSync, McpLogService} from "./McpLogService.js";
 import {AnswerError} from "./mapTraveler.js";
-import {AtPubNotification, SnsService, SnsServiceLive} from "./SnsService.js";
+import {AtPubNotification, SnsService} from "./SnsService.js";
 import {PostView} from "@atproto/api/dist/client/types/app/bsky/feed/defs.js";
 import * as path from "path";
 import * as fs from "node:fs";
 import {z} from "zod";
 import dayjs from "dayjs";
-import {
-  bodyAreaRatio,
-  bodyHWRatio,
-  bodyWindowRatioH,
-  bodyWindowRatioW,
-  bs_handle, extfeedTag,
-  GoogleMapApi_key, isEnableFeedTag,
-  noImageOut
-} from "./EnvUtils.js";
+import {EnvSmithery, Mode, PersonMode} from "./EnvUtils.js";
 
 //  Toolのcontentの定義だがzodから持ってくると重いのでここで定義
 export interface ToolContentResponse {
@@ -50,8 +38,6 @@ export interface ToolContentResponse {
   resource?: any;
 }
 
-//  bluesky SNS用固定feed
-const feedTag = isEnableFeedTag && extfeedTag ? extfeedTag : "#geo_less_traveler"
 const feedUri = "at://did:plc:ygcsenazbvhyjmxeltz4fgw4/app.bsky.feed.generator/marble_square25"
 
 const LabelGoogleMap = 'Google Map'
@@ -61,43 +47,8 @@ const labelImage = (aiGen: string) => {
   return aiGen === 'pixAi' ? 'PixAi' : aiGen === 'sd' ? 'Stability.ai' : aiGen
 }
 
-const server = new Server(
-  {
-    name: "geo-less-traveler",
-    version: "0.1.0",
-  },
-  {
-    capabilities: {
-      resources: {
-        listChanged: true
-      },
-      tools: {
-        listChanged: true
-      },
-      prompts: {},
-      sampling: {},
-    },
-  }
-);
 
-export function sendProgressNotification(progressToken: string | number, total: number, progress: number) {
-  return Effect.tryPromise({
-    try: () => server.notification({
-      method: "notifications/progress",
-      params: {
-        progress: progress,
-        total: total,
-        progressToken,
-      },
-    }),
-    catch: error => {
-      logSync(`sendProgressNotification catch:${error}`)
-      return new Error(`sendProgressNotification error:${error}`)
-    }
-  }).pipe(Effect.tap(() => logSync('do sendProgressNotification')))
-}
-
-function sendToolListChanged() {
+function sendToolListChanged(server:Server,) {
   logSync('start sendToolListChanged')
   return Effect.tryPromise({
     try: () => server.sendToolListChanged(),
@@ -109,24 +60,79 @@ function sendToolListChanged() {
   }).pipe(Effect.tap(() => logSync('sendToolListChanged put')))
 }
 
-function sendLoggingMessage(message: string, level = 'info') {
-  return Effect.tryPromise({
-    try: () => server.sendLoggingMessage({
-      level: level as "info" | "error" | "debug" | "notice" | "warning" | "critical" | "alert" | "emergency",
-      data: message,
-    }),
-    catch: error => {
-      McpLogService.logError(`sendLoggingMessage catch:${error}`)
-      return new Error(`sendLoggingMessage error:${error}`)
-    }
-  })
-}
-
 
 export class McpService extends Effect.Service<McpService>()("traveler/McpService", {
   accessors: true,
   effect: Effect.gen(function* () {
-      //  region tool定義
+    // const runnerEnv = yield *DbService.getSysEnv()
+    //  bluesky SNS用固定feed
+    function getFeedTag() {
+      return DbService.getSysEnv().pipe(Effect.andThen(runnerEnv => runnerEnv.isEnableFeedTag && runnerEnv.extfeedTag ? runnerEnv.extfeedTag : "#geo_less_traveler"))
+    }
+
+    const server = new Server(
+      {
+        name: "geo-less-traveler",
+        version: "0.2.0",
+      },
+      {
+        capabilities: {
+          resources: {
+            listChanged: true
+          },
+          tools: {
+            listChanged: true
+          },
+          prompts: {},
+          sampling: {},
+        },
+      }
+    );
+
+    function sendProgressNotification(progressToken: string | number, total: number, progress: number) {
+      return Effect.tryPromise({
+        try: () => server.notification({
+          method: "notifications/progress",
+          params: {
+            progress: progress,
+            total: total,
+            progressToken,
+          },
+        }),
+        catch: error => {
+          // logSync(`sendProgressNotification catch:${error}`)
+          return new Error(`sendProgressNotification error:${error}`)
+        }
+      }) //.pipe(Effect.tap(() => logSync('do sendProgressNotification')))
+    }
+
+    // function sendToolListChanged() {
+    //   logSync('start sendToolListChanged')
+    //   return Effect.tryPromise({
+    //     try: () => server.sendToolListChanged(),
+    //     catch: error => {
+    //       //  MCPではstdoutは切られている
+    //       McpLogService.logError(`sendToolListChanged error:${error}`)
+    //       return new Error(`sendToolListChanged error:${error}`)
+    //     }
+    //   }).pipe(Effect.tap(() => logSync('sendToolListChanged put')))
+    // }
+    //
+    function sendLoggingMessage(message: string, level = 'info') {
+      return Effect.tryPromise({
+        try: () => server.sendLoggingMessage({
+          level: level as "info" | "error" | "debug" | "notice" | "warning" | "critical" | "alert" | "emergency",
+          data: message,
+        }),
+        catch: error => {
+          // McpLogService.logError(`sendLoggingMessage catch:${error}`)
+          return new Error(`sendLoggingMessage error:${error}`)
+        }
+      })
+    }
+    //  region tool定義
+    const makeToolsDef = (env:Mode) => {
+
       const SETTING_COMMANDS: Tool[] = [
         {
           name: "tips",  //  pythonがあったらよいとか、db設定がよいとか、tipsを取得する。tipsの取得を行うのはproject側スクリプトとか、script batchとか
@@ -357,7 +363,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         },
       ]
 
-      const makeToolsDef = () => {
         const def = () => {
           if (env.isPractice) {
             return [
@@ -481,11 +486,11 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           }
         )
       }
-      const setPersonMode = (person: string) => {
+      const setPersonMode = (person: string,env:Mode) => {
         const mode: PersonMode = person === 'second_person' ? 'second' : 'third'
         env.personMode = mode
         return DbService.saveEnv('personMode', mode).pipe(
-          Effect.tap(() => sendToolListChanged()),
+          Effect.tap(() => sendToolListChanged(server)),
           Effect.andThen(a => [{type: "text", text: `Person mode set as follows: ${a.value}`} as ToolContentResponse])
         )
       }
@@ -516,17 +521,18 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       const getSetting = () => {
         return Effect.gen(function* () {
           const version = yield* DbService.getVersion()
+          const runnerEnv = yield *DbService.getSysEnv()
           const envText = 'A json of current environment settings\n' +
-            Object.entries(env).map(([key, value]) => {
+            Object.entries(runnerEnv.mode).map(([key, value]) => {
               return `${key}= ${JSON.stringify(value)}`
             }).join('\n') +
             '\nList of Image settings\n' +
-            (bodyAreaRatio ? `bodyAreaRatio=${bodyAreaRatio}\n` : '') +
-            (bodyHWRatio ? `bodyHWRatio=${bodyHWRatio}\n` : '') +
-            (bodyWindowRatioW ? `bodyWindowRatioW=${bodyWindowRatioW}\n` : '') +
-            (bodyWindowRatioH ? `bodyWindowRatioH=${bodyWindowRatioH}\n` : '') +
-            (noImageOut ? `noImage=true\n` : '') +
-            (isEnableFeedTag ? `feedTag=${extfeedTag}\n` : '') +
+            (runnerEnv.bodyAreaRatio ? `bodyAreaRatio=${runnerEnv.bodyAreaRatio}\n` : '') +
+            (runnerEnv.bodyHWRatio ? `bodyHWRatio=${runnerEnv.bodyHWRatio}\n` : '') +
+            (runnerEnv.bodyWindowRatioW ? `bodyWindowRatioW=${runnerEnv.bodyWindowRatioW}\n` : '') +
+            (runnerEnv.bodyWindowRatioH ? `bodyWindowRatioH=${runnerEnv.bodyWindowRatioH}\n` : '') +
+            (runnerEnv.noImageOut ? `noImage=true\n` : '') +
+            (runnerEnv.isEnableFeedTag ? `feedTag=${runnerEnv.extfeedTag}\n` : '') +
             `version=${version}\n`
           return [{
             type: "text",
@@ -534,7 +540,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           } as ToolContentResponse]
         })
       }
-      const setAvatarPrompt = (prompt: string) => {
+      const setAvatarPrompt = (prompt: string,env:Mode) => {
         return DbService.updateBasePrompt(defaultAvatarId, prompt).pipe(
           Effect.andThen(a => [{
               type: "text",
@@ -557,11 +563,11 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         )
       }
 
-      const getCurrentLocationInfo = (includePhoto: boolean, includeNearbyFacilities: boolean) => {
+      const getCurrentLocationInfo = (includePhoto: boolean, includeNearbyFacilities: boolean,env:Mode) => {
         return RunnerService.getCurrentView(dayjs(), includePhoto, includeNearbyFacilities, env.isPractice)
       }
 
-      const getElapsedView = (timeElapsedPercentage: number) => {
+      const getElapsedView = (timeElapsedPercentage: number,env:Mode) => {
         if (env.isPractice) {
           return practiceNotUsableMessage
         }
@@ -579,13 +585,14 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       )
 
       const setCurrentLocation = (location: string) => {
-        if (env.isPractice) {
-          return practiceNotUsableMessage
-        }
         if (!location) {
           throw new AnswerError("Location address is required");
         }
         return Effect.gen(function* () {
+          const runnerEnv = yield* DbService.getSysEnv()
+          if (runnerEnv.mode.isPractice) {
+            return yield *practiceNotUsableMessage
+          }
           const address = yield* MapService.getMapLocation(location)
           if (Option.isNone(address)) {
             return yield* Effect.fail(new AnswerError("I don't know where you're talking about. location not found"))
@@ -632,7 +639,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           } as ToolContentResponse]
         })
       }
-      const getDestinationAddress = () => {
+      const getDestinationAddress = (env:Mode) => {
         if (env.isPractice) {
           return practiceNotUsableMessage
         }
@@ -640,7 +647,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           Effect.andThen(a => [{type: "text", text: `Current destination is "${a}"`} as ToolContentResponse])
         )
       }
-      const setDestinationAddress = (address: string) => {
+      const setDestinationAddress = (address: string,env:Mode) => {
         if (env.isPractice) {
           return practiceNotUsableMessage
         }
@@ -648,7 +655,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           Effect.andThen(a => [{type: "text", text: a.message} as ToolContentResponse])
         )
       }
-      const startJourney = () => {
+      const startJourney = (env:Mode) => {
         return RunnerService.startJourney(env.isPractice).pipe(
           Effect.andThen(a => {
             const out: ToolContentResponse[] = [{type: "text", text: a.text}]
@@ -663,14 +670,14 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           })
         )
       }
-      const stopJourney = () => {
+      const stopJourney = (env:Mode) => {
         return RunnerService.stopJourney(env.isPractice)
       }
 
-      const setTravelerExist = (callKick: boolean) => {
+      const setTravelerExist = (callKick: boolean,env:Mode) => {
         env.travelerExist = callKick
         return McpLogService.log(`enter setTravelerExist:${callKick}`).pipe(
-          Effect.tap(() => sendToolListChanged()),
+          Effect.tap(() => sendToolListChanged(server)),
           Effect.andThen(() => {
             return [{
               type: "text",
@@ -720,6 +727,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           yield* McpLogService.logTrace(`mentionPostText:${mentionPostText.text}`)
           yield* McpLogService.logTrace(`repliedPostText:${repliedPostText}`)
           yield* McpLogService.logTrace(`visitorPostText:${recentVisitorPost}`)
+          const feedTag = yield *getFeedTag()
           return {
             visitorName,
             recentVisitorPost: recentVisitorPost,
@@ -836,8 +844,10 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         //  特定タグを含むものしか読み取れない。現在から一定期間しか読み取れない。最大件数がある。その他固定フィルタ機能を置く
         //  自身は除去する
         return Effect.gen(function* () {
-          const posts = isEnableFeedTag ? yield* SnsService.searchPosts(feedTag, 4) : yield* SnsService.getFeed(feedUri, 4).pipe(Effect.andThen(a => a.map(v => v.post)));
-          const detectFeeds = posts.filter(v => v.author.handle !== bs_handle)
+          const env = yield *DbService.getSysEnv()
+          const feedTag = yield *getFeedTag()
+          const posts = env.isEnableFeedTag ? yield* SnsService.searchPosts(feedTag, 4) : yield* SnsService.getFeed(feedUri, 4).pipe(Effect.andThen(a => a.map(v => v.post)));
+          const detectFeeds = posts.filter(v => v.author.handle !== env.bs_handle)
             .reduce((p, c) => {
               //  同一ハンドルの直近1件のみ
               if (!p.find(v => v.author.handle === c.author.handle)) p.push(c)
@@ -873,7 +883,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         })
       }
 
-      const addLike = (id: string) => {
+      const addLike = (id: string,env:Mode) => {
         //  TODO 固定フィルタ
         return Effect.gen(function* () {
           if (env.noSnsPost) {
@@ -906,12 +916,16 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         })
       }
 
-      function* recentImage() {
+      function recentImage() {
+      return Effect.gen(function *() {
         const img = yield* ImageService.getRecentImageAndClear().pipe(Effect.tap(a => McpLogService.logTrace(`sns image:${a !== undefined}`)))
         const recentUseLabels = []
-        if (GoogleMapApi_key) {
+        const runnerEnv = yield *DbService.getSysEnv()
+        // const env = yield *DbService.getSysEnv()
+        if (runnerEnv.GoogleMapApi_key) {
           recentUseLabels.push(LabelGoogleMap)
         }
+        const useAiImageGen = runnerEnv.useAiImageGen
         if (useAiImageGen && img) {
           recentUseLabels.push(labelImage(useAiImageGen));
         }
@@ -923,19 +937,22 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           } : undefined
           , appendLicence
         };
+
+      })
       }
 
       const replySnsWriter = (message: string, id: string) => {
         //  TODO 固定フィルタ
         return Effect.gen(function* () {
-          if (env.noSnsPost) {
+          const runnerEnv = yield* DbService.getSysEnv()
+          if (runnerEnv.mode.noSnsPost) {
             const noMes = [
               {
                 type: "text",
-                text: env.loggingMode ? "posted to log." : "Posting to SNS is stopped by env settings."
+                text: runnerEnv.mode.loggingMode ? "posted to log." : "Posting to SNS is stopped by env settings."
               }
             ] as ToolContentResponse[]
-            if (env.loggingMode) {
+            if (runnerEnv.mode.loggingMode) {
               return yield* McpLogService.log(message).pipe(Effect.andThen(() => noMes))
             }
             return yield* Effect.succeed(noMes)
@@ -949,6 +966,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
 
           //  追加ライセンスの文字列をclient LLMに制御させることは信頼できないので、直近の生成行為に対する文字列を強制付加する
           //  @メンションは今は表示名に対して付けているので邪魔にはなっていない ただ除去したほうが無難な可能性がある
+          const feedTag = yield *getFeedTag()
           return yield* SnsService.snsReply(message.replaceAll("@", ""), ` ${feedTag} ${appendLicence} `, id2, img).pipe(
             Effect.andThen(() => [
                 {
@@ -965,22 +983,24 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         //  特定タグを強制付加する 長すぎは強制的に切る 特定ライセンス記述を強制付加する その他固定フィルタ機能を置く
         //  TODO 固定フィルタ
         return Effect.gen(function* () {
-          if (env.noSnsPost) {
+          const runnerEnv = yield* DbService.getSysEnv()
+          if (runnerEnv.mode.noSnsPost) {
             const noMes = [
               {
                 type: "text",
-                text: env.loggingMode ? "posted to log." : "Posting to SNS is stopped by env settings."
+                text: runnerEnv.mode.loggingMode ? "posted to log." : "Posting to SNS is stopped by env settings."
               }
             ] as ToolContentResponse[]
-            return yield* Effect.succeed(noMes).pipe(Effect.tap(() => env.loggingMode && McpLogService.logTrace(message)))
+            return yield* Effect.succeed(noMes).pipe(Effect.tap(() => runnerEnv.mode.loggingMode && McpLogService.logTrace(message)))
           }
           const {img, appendLicence} = yield* recentImage();
+          const feedTag = yield *getFeedTag()
           //  @メンションは今は表示名に対して付けているので邪魔にはなっていない ただ除去したほうが表示的に邪魔にならないだろう
           return yield* SnsService.snsPost(message.replaceAll("@", ""), ` ${feedTag} ${appendLicence} `, img).pipe(
             Effect.andThen(() => [
                 {
                   type: "text",
-                  text: "posted" + (extfeedTag && !isEnableFeedTag ? '. But the feed tag is posted by default.' : '')
+                  text: "posted" + (runnerEnv.extfeedTag && !runnerEnv.isEnableFeedTag ? '. But the feed tag is posted by default.' : '')
                 }
               ] as ToolContentResponse[]
             )
@@ -989,7 +1009,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       }
       //  endregion
 
-      const toolSwitch = (request: z.infer<typeof CallToolRequestSchema>) => {
+      const toolSwitch = (request: z.infer<typeof CallToolRequestSchema>,env:Mode) => {
         switch (request.params.name) {
           case "tips":
             return tips()
@@ -1002,35 +1022,35 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           case "get_setting":
             return getSetting()
           case "set_avatar_prompt":
-            return setAvatarPrompt(String(request.params.arguments?.prompt))
+            return setAvatarPrompt(String(request.params.arguments?.prompt),env)
           case "reset_avatar_prompt":
             return resetAvatarPrompt()
           case "get_current_view_info":
           case "get_traveler_view_info":
-            return getCurrentLocationInfo(request.params.arguments?.includePhoto as boolean, request.params.arguments?.includeNearbyFacilities as boolean)
+            return getCurrentLocationInfo(request.params.arguments?.includePhoto as boolean, request.params.arguments?.includeNearbyFacilities as boolean,env)
           case "reach_a_percentage_of_destination":
-            return getElapsedView(request.params.arguments?.timeElapsedPercentage as number)
+            return getElapsedView(request.params.arguments?.timeElapsedPercentage as number,env)
           case "get_traveler_location":
-            return getCurrentLocationInfo(false, true)
+            return getCurrentLocationInfo(false, true,env)
           case "set_current_location":
           case "set_traveler_location":
             return setCurrentLocation(String(request.params.arguments?.address))
           case "get_destination_address":
           case "get_traveler_destination_address":
-            return getDestinationAddress()
+            return getDestinationAddress(env)
           case "set_destination_address":
           case "set_traveler_destination_address":
-            return setDestinationAddress(String(request.params.arguments?.address))
+            return setDestinationAddress(String(request.params.arguments?.address),env)
           case "start_journey":
           case "start_traveler_journey":
-            return startJourney()
+            return startJourney(env)
           case "stop_journey":
           case "stop_traveler_journey":
-            return stopJourney()
+            return stopJourney(env)
           case "call_traveler":
-            return setTravelerExist(true)
+            return setTravelerExist(true,env)
           case "kick_traveler":
-            return setTravelerExist(false)
+            return setTravelerExist(false,env)
           case "get_sns_mentions":
             return getSnsMentions(10)
           case "read_sns_reader":
@@ -1042,7 +1062,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           case "reply_sns_writer":
             return replySnsWriter(String(request.params.arguments?.message), String(request.params.arguments?.id))
           case "add_like":
-            return addLike(String(request.params.arguments?.id))
+            return addLike(String(request.params.arguments?.id),env)
           default:
             return Effect.fail(new Error(`Unknown tool:${request.params.name}`));
         }
@@ -1051,7 +1071,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
       /**
        * Effect上でMCP実行
        */
-      const run = () => {
+      const run = (aiRuntime: ManagedRuntime.ManagedRuntime<McpLogService | McpService | DbService | StoryService | ImageService | MapService | RunnerService | SnsService | HttpClient.HttpClient,never>,smitheryConfig:Option.Option<EnvSmithery>) => {
         server.setRequestHandler(ListResourcesRequestSchema, async () => {
           return await StoryService.getResourceList().pipe(
             Effect.andThen(a => {
@@ -1066,8 +1086,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 })
               }
             }),
-            Effect.provide([DbServiceLive, StoryServiceLive]),
-            Effect.runPromise
+            aiRuntime.runPromise
           )
         });
         server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
@@ -1080,8 +1099,7 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 text: a
               }]
             })),
-            Effect.provide([MapServiceLive, DbServiceLive, StoryServiceLive, RunnerServiceLive, FetchHttpClient.layer, ImageServiceLive]),
-            Effect.runPromise
+            aiRuntime.runPromise
           ).catch(e => {
             if (e instanceof Error) {
               throw new Error(e.message);
@@ -1117,20 +1135,21 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
           };
         });
 
-
         server.setRequestHandler(ListToolsRequestSchema, async () => {
-          return await makeToolsDef().pipe(Effect.runPromise)
+          return await DbService.getSysMode().pipe(Effect.andThen(env => makeToolsDef(env)),
+            aiRuntime.runPromise
+          )
         });
 
         server.setRequestHandler(CallToolRequestSchema, async (request: z.infer<typeof CallToolRequestSchema>) => {
-          return await McpLogService.logTrace(request.params.name).pipe(
-            Effect.andThen(() => {
-              logSync('request.params:', JSON.stringify(request.params))
-              env.progressToken = request.params._meta?.progressToken
-              return toolSwitch(request)
-            }),
-            Effect.andThen(a => noImageOut ? a.filter(v => v.type !== 'image') : a),
-            Effect.andThen(a => ({content: a})),
+          return await Effect.gen(function *() {
+            const env = yield *DbService.getSysEnv()
+            logSync('request.params:', JSON.stringify(request.params))
+            env.mode.progressToken = request.params._meta?.progressToken
+            const a = yield *toolSwitch(request,env.mode)
+            const b = env.noImageOut ? a.filter(v => v.type !== 'image') : a
+            return {content: b}
+          }).pipe(
             Effect.catchIf(a => a instanceof AnswerError, e => {
               return Effect.succeed({
                 content: [{
@@ -1149,32 +1168,14 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
                 }),
               )
             }),
-            Effect.provide([DbServiceLive, StoryServiceLive, MapServiceLive, FetchHttpClient.layer, ImageServiceLive, RunnerServiceLive, SnsServiceLive]),
-            Effect.runPromise)
+            aiRuntime.runPromise
+          )
         });
 
-        const transport = new StdioServerTransport();
-        const p = Effect.gen(function* () {
-          yield* DbService.initSystemMode()
-          yield* Effect.tryPromise({
-            try: () => {
-              return server.connect(transport)
-            },
-            catch: error => {
-              return new Error(`mcp server error:${error}`)
-            }
-          })
-        }).pipe(Effect.provide(DbServiceLive))
-        return Effect.runFork(p)
-        // return DbService.initSystemMode().pipe(Effect.andThen(() => Effect.tryPromise({
-        //     try: () => {
-        //       return server.connect(transport)
-        //     },
-        //     catch: error => {
-        //       return new Error(`mcp server error:${error}`)
-        //     }
-        //   })),
-        //   Effect.provide([DbServiceLive]))
+        return Effect.gen(function *() {
+            yield* DbService.initSystemMode(smitheryConfig)
+          return server
+        })
       }
 
 
@@ -1197,10 +1198,11 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         toolSwitch,
         getSetting,
         makeToolsDef,
+        sendProgressNotification,
       }
     }
   ),
-  dependencies: [DbServiceLive, McpLogServiceLive, StoryServiceLive, MapServiceLive, FetchHttpClient.layer, ImageServiceLive, RunnerServiceLive, SnsServiceLive],
+  // dependencies: [DbServiceLive, McpLogServiceLive, StoryServiceLive, MapServiceLive, FetchHttpClient.layer, ImageServiceLive, RunnerServiceLive, SnsServiceLive],
 }) {
 }
 
