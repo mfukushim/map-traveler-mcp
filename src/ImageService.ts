@@ -23,6 +23,7 @@ import {ImageMethod, Mode, TravelerEnv} from "./EnvUtils.js";
 import {GeminiImageGenerator} from "./Generators/GeminiGenerator.js";
 
 import FormData from "form-data";
+import {TimeoutException} from "effect/Cause";
 
 export const defaultBaseCharPrompt = 'depth of field, cinematic composition, masterpiece, best quality,looking at viewer,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut'
 export const defaultBaseCharPromptV4 = 'a Girl is school uniform,blue skirt,long socks,black pixie cut'
@@ -48,7 +49,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         if (runnerEnv.fixed_model_prompt) {
           return runnerEnv.fixed_model_prompt
         }
-        return yield *DbService.getAvatarModel(avatarId).pipe(
+        return yield* DbService.getAvatarModel(avatarId).pipe(
           Effect.andThen(a => a.baseCharPrompt + ',anime'),
           Effect.orElseSucceed(() => {
             if (runnerEnv.useAiImageGen === 'gemini') {
@@ -72,7 +73,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     }
 
 
-    function sdMakeTextToImage(prompt: string,runnerEnv: TravelerEnv, opt?: {
+    function sdMakeTextToImage(prompt: string, runnerEnv: TravelerEnv, opt?: {
       width?: number,
       height?: number,
       sampler?: string,
@@ -135,7 +136,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
 
     }
 
-    function sdMakeImageToImage(prompt: string,runnerEnv: TravelerEnv, inImage: Buffer, opt?: {
+    function sdMakeImageToImage(prompt: string, runnerEnv: TravelerEnv, inImage: Buffer, opt?: {
       width?: number,
       height?: number,
       sampler?: string,
@@ -187,7 +188,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       )
     }
 
-    function sdMakeImage(prompt: string,runnerEnv: TravelerEnv, inImage?: Buffer, opt?: {
+    function sdMakeImage(prompt: string, runnerEnv: TravelerEnv, inImage?: Buffer, opt?: {
       width?: number,
       height?: number,
       sampler?: string,
@@ -199,10 +200,10 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       if (!sdKey) {
         return Effect.fail(new Error('no key'))
       }
-      return inImage ? sdMakeImageToImage(prompt,runnerEnv, inImage, opt) : sdMakeTextToImage(prompt,runnerEnv, opt);
+      return inImage ? sdMakeImageToImage(prompt, runnerEnv, inImage, opt) : sdMakeTextToImage(prompt, runnerEnv, opt);
     }
 
-    function pixAiMakeImage(prompt: string,runnerEnv: TravelerEnv, inImage?: Buffer, opt?: {
+    function pixAiMakeImage(prompt: string, runnerEnv: TravelerEnv, inImage?: Buffer, opt?: {
       width?: number,
       height?: number,
       sampler?: string,
@@ -286,7 +287,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
      * @param append
      * @param localDebug
      */
-    function makeHotelPict(selectGen: ImageMethod|undefined, hour: number, append ?: string, localDebug = false) {
+    function makeHotelPict(selectGen: ImageMethod | undefined, hour: number, append ?: string, localDebug = false) {
       return Effect.gen(function* () {
         const env = yield* DbService.getSysMode()
         if (!selectGen || env.isPractice) {
@@ -474,7 +475,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
      */
     const generatePromptV4 = (baseCharPrompt: string, simple = false, withAbort = false) => {
       return Effect.gen(function* () {
-        const backPrompt = (simple || withAbort) ? ',(simple background:1.2)' : ',road'
+        const backPrompt = (simple || withAbort) ? ',simple background' : ',road'
         //  ここがキャラの基本スタイル
         const basePrompt = baseCharPrompt + backPrompt;
         const prompt: string[] = [];
@@ -504,7 +505,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           // }
         }
         if (withAbort) {
-          prompt.push('surprised,(calling phone:1.2),(holding smartphone to ear:1.2)');
+          prompt.push('surprised,calling phone,holding smartphone to ear');
         } else {
           if (faceRnd < 0.1) {
             prompt.push(':D');
@@ -545,7 +546,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         const runnerEnv = yield* DbService.getSysEnv()
         switch (generatorId) {
           case 'pixAi':
-            return yield* pixAiMakeImage(prompt,runnerEnv, inImage, opt)
+            return yield* pixAiMakeImage(prompt, runnerEnv, inImage, opt)
           case 'comfyUi': {
             const optList = runnerEnv.comfy_params ? runnerEnv.comfy_params.split(',').map(a => {
               const b = a.split('=');
@@ -561,8 +562,11 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             }
             return yield* comfyApiMakeImage(prompt, inImage, optC);
           }
+          case 'gemini': {
+            return yield* geminiMakeImage(prompt, runnerEnv, inImage, opt)
+          }
           default:
-            return yield* sdMakeImage(prompt,runnerEnv, inImage, opt)
+            return yield* sdMakeImage(prompt, runnerEnv, inImage, opt)
         }
       })
     };
@@ -907,33 +911,59 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       // } = {bodyAreaRatio: 0.042, bodyHWRatio: 1.5, bodyWindowRatioW: 0.5, bodyWindowRatioH: 0.75},
       localDebug = false,
     ) {
-      return Effect.gen(function *() {
+      return Effect.gen(function* () {
         const env = yield* DbService.getSysEnv()
         if (!env.GeminiImageApi_key) {
-          return yield *Effect.fail(new Error('no key'))
+          return yield* Effect.fail(new Error('no key'))
         }
-        const gen = yield *GeminiImageGenerator.make(env.GeminiImageApi_key);
+        const maxRetry = env.maxRetryGemini ? (Number.parseInt(env.maxRetryGemini) || 0)+1 : 1
+        const gen = yield* GeminiImageGenerator.make(env.GeminiImageApi_key);
         const {widthOut, heightOut} = yield* getImageOutSize()
         const baseCharPrompt = yield* getBasePrompt(defaultAvatarId)
-        const photo = yield *Effect.tryPromise(_ => sharp(basePhoto).resize({
+        const photo = yield* Effect.tryPromise(_ => sharp(basePhoto).resize({
           width: 512, //  最小 256 最大768 とのこと
           height: 512
         }).png().toBuffer())
-        const {prompt} = yield* generatePromptV4(baseCharPrompt, false, withAbort)
+        return yield* Effect.gen(function* () {
+          const {prompt} = yield* generatePromptV4(baseCharPrompt, false, withAbort)
 
-        const res = yield *gen.execLlm('add a realistic anime girl,Colors that blend in with the surroundings.'+prompt,photo) //  nano-banana向けプロンプト追記 +prompt
-        const imageOut = yield *gen.toAnswerOut(res)
-        const out = yield *Effect.tryPromise(_ => sharp(imageOut).resize({
+          const res = yield* gen.execLlm('add a realistic anime girl,Colors that blend in with the surroundings.' + prompt, photo) //  nano-banana向けプロンプト追記 +prompt
+          const imageOut = yield* gen.toAnswerOut(res)
+          const out = yield* Effect.tryPromise(_ => sharp(imageOut).resize({
+            width: widthOut,
+            height: heightOut
+          }).png().toBuffer())
+          return {
+            buf: out,
+            shiftX: 0,
+            shiftY: 0,
+            fit: false,
+            append: ''
+          }
+        }).pipe(
+          Effect.timeout('1 minute'),
+          Effect.retry(Schedule.recurs(maxRetry).pipe(Schedule.intersect(Schedule.spaced('5 seconds')))),
+          Effect.catchIf(a => a instanceof TimeoutException, _ => Effect.fail(new Error(`gemini API error:timeout`))),)
+      })
+    }
+
+    function geminiMakeImage(prompt: string, runnerEnv: TravelerEnv, inImage?: Buffer, opt?: Record<string, any>) {
+      return Effect.gen(function* () {
+        if (!runnerEnv.GeminiImageApi_key) {
+          return yield* Effect.fail(new Error('no key'))
+        }
+        const gen = yield* GeminiImageGenerator.make(runnerEnv.GeminiImageApi_key);
+        const {widthOut, heightOut} = yield* getImageOutSize()
+        const photo = inImage ? yield* Effect.tryPromise(_ => sharp(inImage).resize({
+          width: 512, //  最小 256 最大768 とのこと
+          height: 512
+        }).png().toBuffer()) : undefined
+        const res = yield* gen.execLlm(prompt, photo) //  nano-banana向けプロンプト追記 +prompt
+        const imageOut = yield* gen.toAnswerOut(res)
+        return yield* Effect.tryPromise(_ => sharp(imageOut).resize({
           width: widthOut,
           height: heightOut
         }).png().toBuffer())
-        return {
-          buf: out,
-          shiftX:0,
-          shiftY: 0,
-          fit: false,
-          append: ''
-        }
       })
     }
 
@@ -955,7 +985,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       return JSON.parse(scr)
     }
 
-    function comfyUploadImage(inImage: Buffer,runnerEnv:TravelerEnv, opt?: {
+    function comfyUploadImage(inImage: Buffer, runnerEnv: TravelerEnv, opt?: {
       width?: number,
       height?: number,
     }) {
@@ -998,7 +1028,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     function comfyUpExecPrompt(script: any) {
       //  TODO comfyの場合のファイルアップロード。。
       return Effect.gen(function* () {
-        const runnerEnv = yield *DbService.getSysEnv()
+        const runnerEnv = yield* DbService.getSysEnv()
         const client = yield* HttpClient.HttpClient;
         return yield* HttpClientRequest.post(`${runnerEnv.comfy_url}/prompt`).pipe(
           HttpClientRequest.setHeaders({
@@ -1024,7 +1054,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       })
     }
 
-    function downloadOutput(prompt_id: string,runnerEnv:TravelerEnv, needKeyNum: number = 1) {
+    function downloadOutput(prompt_id: string, runnerEnv: TravelerEnv, needKeyNum: number = 1) {
 
       const sc = Schema.Record({
         key: Schema.String,
@@ -1075,15 +1105,15 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
 
     function comfyApiMakeImage(prompt: string, inImage?: Buffer, params?: Record<string, any>) {
       return Effect.gen(function* () {
-        const runnerEnv = yield *DbService.getSysEnv()
+        const runnerEnv = yield* DbService.getSysEnv()
         if (!runnerEnv.comfy_url) {
-          return yield *Effect.fail(new Error('no comfy_url'))
+          return yield* Effect.fail(new Error('no comfy_url'))
         }
         const logTotal = params?.logTotal
         const logProgress = params?.logProgress
         yield* Effect.fork(progress(logTotal || 1, logProgress || 0, runnerEnv.mode))
 
-        const uploadFileName = inImage ? yield* comfyUploadImage(inImage,runnerEnv, params,).pipe(Effect.andThen(a => Effect.succeedSome(a))) : Option.none()
+        const uploadFileName = inImage ? yield* comfyUploadImage(inImage, runnerEnv, params,).pipe(Effect.andThen(a => Effect.succeedSome(a))) : Option.none()
         //  uploadFileNameはプロンプトスクリプト内で置き換えなければならないので
         const scriptName = inImage ? (runnerEnv.comfy_workflow_i2i ? 'i2i' : 'i2i_sample') : (runnerEnv.comfy_workflow_t2i ? 't2i' : 't2i_sample')
         const scriptTables = yield* DbService.getScriptTable()
@@ -1115,7 +1145,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         const script = mergeParams(sdT2i.script, sdT2i.nodeNameToId, outParam)
         const ret = yield* comfyUpExecPrompt(script)
 
-        return yield* downloadOutput(ret.prompt_id,runnerEnv, 1).pipe(
+        return yield* downloadOutput(ret.prompt_id, runnerEnv, 1).pipe(
           Effect.tap(a => a.length !== 1 && a.length !== 2 && Effect.fail(new Error('download fail'))),
           Effect.andThen(a => Buffer.from(a[0])))
       });
@@ -1123,9 +1153,9 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     }
 
     function shrinkImage(image: Buffer) {
-      return Effect.gen(function *() {
+      return Effect.gen(function* () {
         const {widthOut, heightOut} = yield* getImageOutSize()
-        return yield *Effect.tryPromise(() => sharp(image).resize({
+        return yield* Effect.tryPromise(() => sharp(image).resize({
           width: widthOut,
           height: heightOut
         }).png().toBuffer())

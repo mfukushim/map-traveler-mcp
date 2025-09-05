@@ -1136,7 +1136,6 @@ export class McpService extends Effect.Service<McpService>()("traveler/McpServic
         });
 
         server.setRequestHandler(ListToolsRequestSchema, async () => {
-          console.error('in setRequestHandler ListToolsRequestSchema')
           return await DbService.getSysMode().pipe(Effect.andThen(env => makeToolsDef(env)),
             aiRuntime.runPromise
           )

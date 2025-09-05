@@ -124,6 +124,7 @@ Use of the API may incur charges.
       "env":{
         "MT_GOOGLE_MAP_KEY":"(Google Map API key)",
         "MT_GEMINI_IMAGE_KEY": "(Gemini Image Api key)",
+        "MT_MAX_RETRY_GEMINI": "(Number of retries when generating Gemini images Default: 0)",
         "MT_MAP_API_URL": "(Optional: Map API custom endpoint. Example: direction=https://xxxx,places=https://yyyy )",
         "MT_TIME_SCALE": "(Optional:Scale of travel time on real roads duration. default 4)",
         "MT_SQLITE_PATH":"(db save path: e.g. %USERPROFILE%/Desktop/traveler.sqlite ,$HOME/traveler.sqlite )",
@@ -183,6 +184,7 @@ We plan to reconsider the operation of assigning an individual UserId for each s
 {
   "MT_GOOGLE_MAP_KEY": "xxxyyyzzz",
   "MT_GEMINI_IMAGE_KEY": "xxyyzz",
+  "MT_MAX_RETRY_GEMINI": "1",
   "MT_TURSO_URL": "libsql://xxxyyyzzz",
   "MT_TURSO_TOKEN": "abcdabcd",
   "MT_BS_ID": "xyxyxyxyx",
@@ -196,15 +198,15 @@ We plan to reconsider the operation of assigning an individual UserId for each s
 (All json values can be omitted)  
 ↓ (json text concatenation)  
 ```text
-{"MT_GOOGLE_MAP_KEY": "xxxyyyzzz", "MT_GEMINI_IMAGE_KEY": "xxyyzz", "MT_TURSO_URL": "libsql://xxxyyyzzz", "MT_TURSO_TOKEN": "abcdabcd", "MT_BS_ID": "xyxyxyxyx", "MT_BS_PASS": "1234xyz", "MT_BS_HANDLE": "aabbccdd", "MT_FILTER_TOOLS": "tips,set_traveler_location", "MT_MOVE_MODE": "direct", "MT_FEED_TAG": "#abcdefgabcdefgabcdefg"}
+{"MT_GOOGLE_MAP_KEY": "xxxyyyzzz", "MT_GEMINI_IMAGE_KEY": "xxyyzz", "MT_MAX_RETRY_GEMINI": "1", "MT_TURSO_URL": "libsql://xxxyyyzzz", "MT_TURSO_TOKEN": "abcdabcd", "MT_BS_ID": "xyxyxyxyx", "MT_BS_PASS": "1234xyz", "MT_BS_HANDLE": "aabbccdd", "MT_FILTER_TOOLS": "tips,set_traveler_location", "MT_MOVE_MODE": "direct", "MT_FEED_TAG": "#abcdefgabcdefgabcdefg"}
 ```
 ↓ (Set the base64 version to config=)  
 ```text
-eyJNVF9HT09HTEVfTUFQX0tFWSI6ICJ4eHh5eXl6enoiLCAiTVRfR0VNSU5JX0lNQUdFX0tFWSI6ICJ4eHl5enoiLCAiTVRfVFVSU09fVVJMIjogImxpYnNxbDovL3h4eHl5eXp6eiIsICJNVF9UVVJTT19UT0tFTiI6ICJhYmNkYWJjZCIsICJNVF9CU19JRCI6ICJ4eXh5eHl4eXgiLCAiTVRfQlNfUEFTUyI6ICIxMjM0eHl6IiwgIk1UX0JTX0hBTkRMRSI6ICJhYWJiY2NkZCIsICJNVF9GSUxURVJfVE9PTFMiOiAidGlwcyxzZXRfdHJhdmVsZXJfbG9jYXRpb24iLCAiTVRfTU9WRV9NT0RFIjogImRpcmVjdCIsICJNVF9GRUVEX1RBRyI6ICIjYWJjZGVmZ2FiY2RlZmdhYmNkZWZnIn0=
+eyJNVF9HT09HTEVfTUFQX0tFWSI6ICJ4eHh5eXl6enoiLCAiTVRfR0VNSU5JX0lNQUdFX0tFWSI6ICJ4eHl5enoiLCAiTVRfTUFYX1JFVFJZX0dFTUlOSSI6ICIxIiwgIk1UX1RVUlNPX1VSTCI6ICJsaWJzcWw6Ly94eHh5eXl6enoiLCAiTVRfVFVSU09fVE9LRU4iOiAiYWJjZGFiY2QiLCAiTVRfQlNfSUQiOiAieHl4eXh5eHl4IiwgIk1UX0JTX1BBU1MiOiAiMTIzNHh5eiIsICJNVF9CU19IQU5ETEUiOiAiYWFiYmNjZGQiLCAiTVRfRklMVEVSX1RPT0xTIjogInRpcHMsc2V0X3RyYXZlbGVyX2xvY2F0aW9uIiwgIk1UX01PVkVfTU9ERSI6ICJkaXJlY3QiLCAiTVRfRkVFRF9UQUciOiAiI2FiY2RlZmdhYmNkZWZnYWJjZGVmZyJ9
 ```
 
 
-> NOTE: The environment variables have been renamed to standard snake case. The MT_ prefix is ​​added because they may be used in conjunction with other environment variables, such as in librechat. The old names can still be used for backward compatibility.  
+> NOTE: The environment variables have been renamed to standard snake case. The MT_ prefix is added because they may be used in conjunction with other environment variables, such as in librechat. The old names can still be used for backward compatibility.  
 
 Please set the following three Credentials for Google Map API.  
 - Street View Static API

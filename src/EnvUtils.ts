@@ -12,7 +12,7 @@ export type MoveMode = typeof MoveModeSchema.Type;
 export const MapEndpointSchema = Schema.Literal('directions', 'places', 'timezone', 'svMeta', 'streetView', 'nearby')
 export const MapEndpoint = MapEndpointSchema.literals
 export type MapEndpoint = (typeof MapEndpoint)[number];
-const ImageMethodSchema = Schema.Literal('sd', 'pixAi', 'comfyUi','gemini')
+const ImageMethodSchema = Schema.Literal('sd', 'pixAi', 'comfyUi', 'gemini')
 export type ImageMethod = typeof ImageMethodSchema.Type;
 export const ImageMethod = ImageMethodSchema.literals
 
@@ -50,6 +50,7 @@ const RunnerEnv = Schema.partial(Schema.mutable(Schema.Struct({
     noImageOut: Schema.String,
     noAvatarImage: Schema.String,
     GeminiImageApi_key: Schema.String,
+    maxRetryGemini: Schema.String,
   }
 )))
 
@@ -66,6 +67,7 @@ export const EnvSmitherySchema = Schema.partial(Schema.Struct({
   MT_FILTER_TOOLS: Schema.String,
   MT_MOVE_MODE: Schema.String,
   MT_FEED_TAG: Schema.String,
+  MT_MAX_RETRY_GEMINI: Schema.String,
 }))
 
 export type EnvSmithery = typeof EnvSmitherySchema.Type
@@ -75,7 +77,6 @@ export const ModeSchema = Schema.mutable(Schema.Struct({
   travelerExist: Schema.Boolean, //  まだ動的ツール切り替えはClaude desktopに入っていない。。
   dbMode: DbModeSchema,
   isPractice: Schema.Boolean,
-  // anyImageAiExist: Schema.Boolean,
   anySnsExist: Schema.Boolean,
   personMode: PersonModeSchema,
   fixedModelPrompt: Schema.Boolean,
@@ -95,6 +96,7 @@ export type Mode = typeof ModeSchema.Type
 const EnvMap: [string, string][] = [
   ['GoogleMapApi_key', 'MT_GOOGLE_MAP_KEY'],
   ['GeminiImageApi_key', 'MT_GEMINI_IMAGE_KEY'],
+  ['maxRetryGemini', 'MT_MAX_RETRY_GEMINI'],
   ['mapApi_url', 'MT_MAP_API_URL'],
   ['time_scale', 'MT_TIME_SCALE'],
   ['sqlite_path', 'MT_SQLITE_PATH'],
@@ -130,7 +132,7 @@ const EnvMap: [string, string][] = [
   ['log_path', 'MT_LOG_PATH'],
   ['max_sessions', 'MT_MAX_SESSIONS'],
   ['session_ttl_ms', 'MT_SESSION_TTL_MS'],
-  ['unique_ttl_ms', 'MT_SERVICE_TTL_MS'],
+  ['service_ttl_ms', 'MT_SERVICE_TTL_MS'],
 ]
 
 function getEnvironment(name: string) {
@@ -144,7 +146,7 @@ export const ServerLog = getEnvironment('ServerLog')
 
 export const max_sessions = getEnvironment('max_sessions')
 export const session_ttl_ms = getEnvironment('session_ttl_ms')
-export const unique_ttl_ms = getEnvironment('unique_ttl_ms')
+export const service_ttl_ms = getEnvironment('service_ttl_ms')
 
 
 export class TravelerEnv {
@@ -165,6 +167,9 @@ export class TravelerEnv {
   }
 
 
+  get maxRetryGemini(): string | undefined {
+    return this.env.maxRetryGemini;
+  }
   get extfeedTag(): string | undefined {
     return this.env.extfeedTag;
   }
@@ -353,6 +358,7 @@ export class TravelerEnv {
     this.env.tursoUrl = getEnvironment('tursoUrl')
     this.env.tursoToken = getEnvironment('tursoToken')
     this.env.extfeedTag = getEnvironment('feedTag')
+    this.env.maxRetryGemini = getEnvironment('maxRetryGemini')
 
     this._isEnableFeedTag = Boolean(this.env.extfeedTag && this.env.extfeedTag.length > 14 && this.env.extfeedTag[0] === '#') //  拡張タグは安全のため15文字以上を強制する
     this._noImageOut = getEnvironment('noImageOut') === 'true'
@@ -387,6 +393,7 @@ export class TravelerEnv {
     this.env.filter_tools = extEnv.MT_FILTER_TOOLS || this.env.filter_tools
     this.env.moveMode = extEnv.MT_MOVE_MODE || this.env.moveMode
     this.env.extfeedTag = extEnv.MT_FEED_TAG || this.env.extfeedTag
+    this.env.maxRetryGemini = extEnv.MT_MAX_RETRY_GEMINI || this.env.maxRetryGemini
     this._useAiImageGen = this.getUseImageMethod()
   }
 
