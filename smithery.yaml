@@ -44,6 +44,3 @@ startCommand:
       MT_FEED_TAG:
         type: string
         description: Specify the feed tag when posting to SNS (#required, 15 characters or more) Default is #geo_less_traveler)
-  exampleConfig:                     # Optional: Example configuration
-    serverToken: "your-server-token"
-    caseSensitive: false
