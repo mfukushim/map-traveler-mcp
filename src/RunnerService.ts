@@ -695,7 +695,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
               }
               break;
             case 'gemini':
-              out = yield* ImageService.makeRunnerImageV4(baseImage,abort,localDebug)
+              out = yield* ImageService.makeRunnerImageV4(baseImage,runnerEnv.avatar_image_uri,abort,localDebug)
               break
             default:
               out = yield* ImageService.makeRunnerImageV3(baseImage, useAiImageGen, abort, {...bodyAreaRatioJ, ...bodyHWRatioJ, ...bodyWindowRatioWJ, ...bodyWindowRatioHJ}, localDebug)

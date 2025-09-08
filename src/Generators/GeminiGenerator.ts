@@ -35,17 +35,24 @@ export class GeminiImageGenerator extends GeminiBaseGenerator {
     return Effect.succeed(new GeminiImageGenerator(apiKey));
   }
 
-  execLlm(text: string,baseImage?:Buffer): Effect.Effect<GenerateContentResponse, Error> {
+  execLlm(text: string,baseImage?:Buffer,charImage?:Buffer): Effect.Effect<GenerateContentResponse, Error> {
     const state = this;
     // console.error('prompt',text)
     return Effect.gen(this, function* () {
       const prompt:ContentListUnion = [{text: text }];
       if (baseImage) {
-        const base64Image = baseImage.toString("base64");
         prompt.push({
           inlineData: {
             mimeType: "image/png",
-            data: base64Image,
+            data: baseImage.toString("base64"),
+          },
+        })
+      }
+      if (charImage) {
+        prompt.push({
+          inlineData: {
+            mimeType: "image/png",
+            data: charImage.toString("base64"),
           },
         })
       }
