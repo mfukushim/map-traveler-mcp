@@ -317,7 +317,7 @@ describe("Image", () => {
       })
       yield *DbService.initSystemMode(Option.none())
       const buffer = fs.readFileSync('tools/test.jpg');
-      return yield* ImageService.makeRunnerImageV4(buffer, false, true)  //
+      return yield* ImageService.makeRunnerImageV4(buffer, undefined, false, true)  //
     }).pipe(
       Logger.withMinimumLogLevel(LogLevel.Trace),
       Effect.tapError(e => Effect.logError(e.toString())),

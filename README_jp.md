@@ -117,6 +117,7 @@ claude_desktop_config.json (stdio型)
         "MT_GOOGLE_MAP_KEY":"(Google Map APIのキー)",
         "MT_GEMINI_IMAGE_KEY": "(GeminiImageApi_keyのキー)",
         "MT_MAX_RETRY_GEMINI": "(Gemini画像生成時のリトライ回数 デフォルト0回)",
+        "MT_AVATAR_IMAGE_URI": "(Gemini画像生成時のキャラクタ参照画像uri (file:// または https:// )",
         "MT_MAP_API_URL": "(オプション: Map APIカスタムエンドポイント 例 direction=https://xxxx,search=https://yyyy )",
         "MT_TIME_SCALE": "(オプション:道路での移動時間の尺度. default 4)",
         "MT_SQLITE_PATH":"(db保存ファイルのパス 例 %USERPROFILE%/Desktop/traveler.sqlite など)",
@@ -175,6 +176,7 @@ dbは個別設定しないとサービス全体で共有されます(旅人の�
   "MT_GOOGLE_MAP_KEY": "xxxyyyzzz",
   "MT_GEMINI_IMAGE_KEY": "xxyyzz",
   "MT_MAX_RETRY_GEMINI": "1",
+  "MT_AVATAR_IMAGE_URI": "file:///C:/Users/xxxx/Desktop/avatar.png",
   "MT_TURSO_URL": "libsql://xxxyyyzzz",
   "MT_TURSO_TOKEN": "abcdabcd",
   "MT_BS_ID": "xyxyxyxyx",
@@ -438,6 +440,8 @@ db設定をTurso sqliteで記録出来るようにしたので、Tursoの設定�
    https://note.com/marble_walkers/n/n6db937573eaa
 10. Smithery, Turso libSQL, rembg APIに対応しました   
     https://note.com/marble_walkers/n/ne3b3c0f99707
+11. Streamable-HTTP対応  
+    https://note.com/marble_walkers/n/n030063f22dc0
 
 
 #### ソースコードについての追記  
@@ -493,5 +497,7 @@ MCPの呼び出しを直接Effectで処理するほうがシンプルになる�
 - Streamable-httpに対応しました。急いでやったので不具合がある場合は 0.0.81 などを使用することを検討ください。
 
 - nano-banana(gemini-2.5-flash-image-preview)の画像生成に対応しました。nano-bananaを使う際はrembgに関する設定は不要です。アバターのプロンプトの特性が変わったので、従来のアバタープロンプトでは画像生成がエラーになる場合があります。その際はnano-bananaで許容されるようなアバターの姿のプロンプトに調整する必要があります。
+
+- nano-bananaの画像生成にて、MT_AVATAR_IMAGE_URIでキャラクタ元画像を参照できるようにしました。著作権に抵触しないようにご利用ください。
 
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/mfukushim-map-traveler-mcp-badge.png)](https://mseep.ai/app/mfukushim-map-traveler-mcp)

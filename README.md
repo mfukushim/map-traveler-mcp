@@ -125,6 +125,7 @@ Use of the API may incur charges.
         "MT_GOOGLE_MAP_KEY":"(Google Map API key)",
         "MT_GEMINI_IMAGE_KEY": "(Gemini Image Api key)",
         "MT_MAX_RETRY_GEMINI": "(Number of retries when generating Gemini images Default: 0)",
+        "MT_AVATAR_IMAGE_URI": "(Character reference image uri (file:// or https://) when generating Gemini image)",
         "MT_MAP_API_URL": "(Optional: Map API custom endpoint. Example: direction=https://xxxx,places=https://yyyy )",
         "MT_TIME_SCALE": "(Optional:Scale of travel time on real roads duration. default 4)",
         "MT_SQLITE_PATH":"(db save path: e.g. %USERPROFILE%/Desktop/traveler.sqlite ,$HOME/traveler.sqlite )",
@@ -185,6 +186,7 @@ We plan to reconsider the operation of assigning an individual UserId for each s
   "MT_GOOGLE_MAP_KEY": "xxxyyyzzz",
   "MT_GEMINI_IMAGE_KEY": "xxyyzz",
   "MT_MAX_RETRY_GEMINI": "1",
+  "MT_AVATAR_IMAGE_URI": "file:///C:/Users/xxxx/Desktop/avatar.png",
   "MT_TURSO_URL": "libsql://xxxyyyzzz",
   "MT_TURSO_TOKEN": "abcdabcd",
   "MT_BS_ID": "xyxyxyxyx",
@@ -457,6 +459,8 @@ Database settings can now be recorded with Turso sqlite, so if you configure Tur
    https://note.com/marble_walkers/n/n6db937573eaa
 10. Support Smithery, Turso libSQL, and rembg API   
    https://note.com/marble_walkers/n/ne3b3c0f99707
+11. Streamable-HTTP support  
+    https://note.com/marble_walkers/n/n030063f22dc0
 
 
 #### Additional about the source code
@@ -511,5 +515,7 @@ or
 - Added support for Streamable-http. This was done in a hurry, so if you experience any issues, please consider using version 0.0.81 or similar.  
 
 - Support for nano-banana (gemini-2.5-flash-image-preview) image generation has been added. When using nano-banana, no rembg settings are required. The characteristics of the avatar prompt have changed, so image generation may fail with the previous avatar prompt. In this case, you will need to adjust the avatar appearance prompt to one that is acceptable for nano-banana.
+
+- When generating images for nano-banana, you can now reference the original character image with MT_AVATAR_IMAGE_URI. Please use it in a way that does not infringe on copyrights.
 
 [![MseeP.ai Security Assessment Badge](https://mseep.net/pr/mfukushim-map-traveler-mcp-badge.png)](https://mseep.ai/app/mfukushim-map-traveler-mcp)
