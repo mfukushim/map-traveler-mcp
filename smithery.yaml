@@ -18,6 +18,9 @@ startCommand:
       MT_MAX_RETRY_GEMINI:
         type: string
         description: Gemini Image retry count
+      MT_AVATAR_IMAGE_URI:
+        type: string
+        description: Character reference image uri
       MT_TURSO_URL:
         type: string
         description: Turso sqlite API URL
