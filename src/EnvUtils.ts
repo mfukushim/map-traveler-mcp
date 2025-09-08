@@ -31,7 +31,8 @@ const RunnerEnv = Schema.partial(Schema.mutable(Schema.Struct({
     remBgWoKey: Schema.String,
     filter_tools: Schema.String,
     comfy_params: Schema.String,
-    fixed_model_prompt: Schema.String,
+  fixed_model_prompt: Schema.String,
+  avatar_image_uri: Schema.String,
     comfy_workflow_i2i: Schema.String,
     comfy_workflow_t2i: Schema.String,
     bs_id: Schema.String,
@@ -61,6 +62,7 @@ export const EnvSmitherySchema = Schema.partial(Schema.Struct({
   MT_GEMINI_IMAGE_KEY: Schema.String,
   MT_TURSO_URL: Schema.String,
   MT_TURSO_TOKEN: Schema.String,
+  MT_AVATAR_IMAGE_URI: Schema.String,
   MT_BS_ID: Schema.String,
   MT_BS_PASS: Schema.String,
   MT_BS_HANDLE: Schema.String,
@@ -114,6 +116,7 @@ const EnvMap: [string, string][] = [
   ['comfy_workflow_i2i', 'MT_COMFY_WORKFLOW_I2I'],
   ['comfy_params', 'MT_COMFY_PARAMS'],
   ['fixed_model_prompt', 'MT_FIXED_MODEL_PROMPT'],
+  ['avatar_image_uri', 'MT_AVATAR_IMAGE_URI'],
   ['bodyAreaRatio', 'MT_BODY_AREA_RATIO'],
   ['bodyHWRatio', 'MT_BODY_HW_RATIO'],
   ['bodyWindowRatioW', 'MT_BODY_WINDOW_RATIO_W'],
@@ -234,6 +237,10 @@ export class TravelerEnv {
     return this.env.fixed_model_prompt;
   }
 
+  get avatar_image_uri(): string | undefined {
+    return this.env.avatar_image_uri;
+  }
+
   get comfy_params(): string | undefined {
     return this.env.comfy_params;
   }
@@ -343,6 +350,7 @@ export class TravelerEnv {
     this.env.filter_tools = getEnvironment('filter_tools')
     this.env.comfy_params = getEnvironment('comfy_params')
     this.env.fixed_model_prompt = getEnvironment('fixed_model_prompt')
+    this.env.avatar_image_uri = getEnvironment('avatar_image_uri')
     this.env.comfy_workflow_i2i = getEnvironment('comfy_workflow_i2i')
     this.env.comfy_workflow_t2i = getEnvironment('comfy_workflow_t2i')
     this.env.bs_id = getEnvironment('bs_id')
@@ -385,6 +393,7 @@ export class TravelerEnv {
   setSmitheryEnv(extEnv: EnvSmithery) {
     this.env.GoogleMapApi_key = extEnv.MT_GOOGLE_MAP_KEY || this.env.GoogleMapApi_key
     this.env.GeminiImageApi_key = extEnv.MT_GEMINI_IMAGE_KEY || this.env.GeminiImageApi_key
+    this.env.avatar_image_uri = extEnv.MT_AVATAR_IMAGE_URI || this.env.avatar_image_uri
     this.env.tursoUrl = extEnv.MT_TURSO_URL || this.env.tursoUrl
     this.env.tursoToken = extEnv.MT_TURSO_TOKEN || this.env.tursoToken
     this.env.bs_id = extEnv.MT_BS_ID || this.env.bs_id

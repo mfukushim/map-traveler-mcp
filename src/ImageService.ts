@@ -24,6 +24,7 @@ import {GeminiImageGenerator} from "./Generators/GeminiGenerator.js";
 
 import FormData from "form-data";
 import {TimeoutException} from "effect/Cause";
+import {fileURLToPath} from "url";
 
 export const defaultBaseCharPrompt = 'depth of field, cinematic composition, masterpiece, best quality,looking at viewer,(solo:1.1),(1 girl:1.1),loli,school uniform,blue skirt,long socks,black pixie cut'
 export const defaultBaseCharPromptV4 = 'a Girl is school uniform,blue skirt,long socks,black pixie cut'
@@ -111,7 +112,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         if (param.buf) {
           param.list.push({text: param.buf, weight: 1})
         }
-        yield* McpLogService.logTrace(`sdMakeTextToImage:${JSON.stringify(param.list)}`);
+        // yield* McpLogService.logTrace(`sdMakeTextToImage:${JSON.stringify(param.list)}`);
         if (param.list.length > 10) {
           return yield* Effect.fail(new Error('param weight too long'))
         }
@@ -133,7 +134,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           }),
           Effect.flatMap(client.execute),
           Effect.flatMap(a => a.json),
-          Effect.tap(a => McpLogService.logTrace('sdMakeTextToImage:' + JSON.stringify(a).slice(0, 200))),
+          // Effect.tap(a => McpLogService.logTrace('sdMakeTextToImage:' + JSON.stringify(a).slice(0, 200))),
           Effect.andThen(a => a as { artifacts: { base64: string, finishReason: string, seed: number }[] }),
           Effect.flatMap(a => {
             if (!a.artifacts || a.artifacts.length === 0 || a.artifacts.some(b => b.finishReason !== 'SUCCESS')) {
@@ -193,7 +194,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             catch: error => new Error(`${error}`)
           })),
         Effect.andThen(a => a.json()),
-        Effect.tap(a => McpLogService.logTrace('sdMakeImageToImage:' + JSON.stringify(a).slice(0, 200))),
+        // Effect.tap(a => McpLogService.logTrace('sdMakeImageToImage:' + JSON.stringify(a).slice(0, 200))),
         Effect.andThen(a => a as { artifacts: { base64: string, finishReason: string, seed: number }[] }),
         Effect.flatMap(a => {
           if (!a.artifacts || a.artifacts.length === 0 || a.artifacts.some(b => b.finishReason !== 'SUCCESS')) {
@@ -252,8 +253,8 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           }
           return mediaId
         }).pipe(
-          Effect.tap(a => McpLogService.logTrace(`uploadMedia ${a}`)),
-          Effect.tapError(a => McpLogService.logError(`uploadMedia error ${a}`)),
+          // Effect.tap(a => McpLogService.logTrace(`uploadMedia ${a}`)),
+          // Effect.tapError(a => McpLogService.logError(`uploadMedia error ${a}`)),
           Effect.andThen(a => {
             const body = a ? {
               prompts: prompt,
@@ -273,7 +274,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
               catch: error => new Error(`generateImage fail:${error}`)
             }).pipe(Effect.timeout('1 minute'))
           }),
-          Effect.tap(a => McpLogService.logTrace(`generateImage ${a.status}`)),
+          // Effect.tap(a => McpLogService.logTrace(`generateImage ${a.status}`)),
           Effect.tapError(a => McpLogService.logError(`generateImage ${a}`)),
           Effect.andThen(task => {
             return Effect.tryPromise({
@@ -305,8 +306,8 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
      */
     function makeHotelPict(selectGen: ImageMethod | undefined, hour: number, append ?: string, localDebug = false) {
       return Effect.gen(function* () {
-        const env = yield* DbService.getSysMode()
-        if (!selectGen || env.isPractice) {
+        const env = yield* DbService.getSysEnv()
+        if (!selectGen || env.mode.isPractice) {
           //  画像生成AIがなければ固定ホテル画像を使う
           return yield* Effect.async<Buffer, Error>((resume) => fs.readFile(path.join(__pwd, 'assets/hotelPict.png'), (err, data) => {
             if (err) {
@@ -315,7 +316,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             resume(Effect.succeed(data));
           })).pipe(Effect.andThen(a => Buffer.from(a)))
         }
-        const baseCharPrompt = yield* getBasePrompt(defaultAvatarId)
+        const baseCharPrompt = selectGen === 'gemini' && env.avatar_image_uri ? 'Add the person in the image provided to.': yield* getBasePrompt(defaultAvatarId)
         let prompt = baseCharPrompt + ',';
         if (hour < 6 || hour >= 19) {
           prompt += 'hotel room,desk,drink,laptop computer,talking to computer,sitting,window,night,(pyjamas:1.3)'
@@ -368,6 +369,7 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       //  対応する会話イベントがあるかどうかを確認してログを抽出する
       return Effect.gen(function* () {
         //  設定日時に対応した画像を生成する
+        const env = yield *DbService.getSysEnv()
         const appendPrompts: string[] = []
         appendPrompts.push(vehiclePrompt)
         const now = dayjs()
@@ -383,7 +385,8 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         }
         const {widthOut, heightOut} = yield* getImageOutSize()
         const appendPrompt = appendPrompts.join(',')
-        const baseCharPrompt = yield* getBasePrompt(defaultAvatarId)
+        const baseCharPrompt = selectGen === 'gemini' && env.avatar_image_uri ? 'Add the person in the image provided to.': yield* getBasePrompt(defaultAvatarId)
+        // const baseCharPrompt = yield* getBasePrompt(defaultAvatarId)
         const prompt = `${baseCharPrompt},${appendPrompt}`
         return yield* selectImageGenerator(selectGen, prompt).pipe(
           Effect.tap(a => {
@@ -912,19 +915,14 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
      * 旅画像生成V4
      * nano-banana版
      * @param basePhoto
+     * @param modelPhotoUri
      * @param withAbort
      * @param localDebug
      */
     function makeRunnerImageV4(
       basePhoto: Buffer,
+      modelPhotoUri?: string,
       withAbort = false,
-      // opt: {
-      //   sideBias?: boolean,
-      //   bodyAreaRatio?: number,// = 0.042,
-      //   bodyHWRatio?: number, // = 1.5, // 画像AIの精度が上がっているので2.3から少し減らす
-      //   bodyWindowRatioW?: number, // = {w: 0.5, h: 0.75}
-      //   bodyWindowRatioH?: number,
-      // } = {bodyAreaRatio: 0.042, bodyHWRatio: 1.5, bodyWindowRatioW: 0.5, bodyWindowRatioH: 0.75},
       localDebug = false,
     ) {
       return Effect.gen(function* () {
@@ -941,9 +939,20 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           height: 512
         }).png().toBuffer())
         return yield* Effect.gen(function* () {
-          const {prompt} = yield* generatePromptV4(baseCharPrompt, false, withAbort)
+          let addPrompt = ''
+          let charImage:Buffer|undefined
+          const {prompt, append} = yield* generatePromptV4(baseCharPrompt, false, withAbort);
+          if (modelPhotoUri) {
+            charImage = yield* getAvatarTemplateImage(modelPhotoUri);
+            addPrompt = 'Create a new image by combining the elements from the provided images. Add a realistic anime girl in the second image to the first image. Natural coloring that blends in with the surroundings.'+append
+          } else {
+            addPrompt = 'Using the provided image, add a realistic anime girl,Natural coloring that blends in with the surroundings.' + prompt
+          }
+          // yield *McpLogService.logTrace('modelPhotoUri',modelPhotoUri)
+          // yield *McpLogService.logTrace('addPrompt',addPrompt)
+          // yield *McpLogService.logTrace('charImage',charImage ? charImage.length: undefined)
 
-          const res = yield* gen.execLlm('add a realistic anime girl,Colors that blend in with the surroundings.' + prompt, photo) //  nano-banana向けプロンプト追記 +prompt
+          const res = yield* gen.execLlm(addPrompt, photo, charImage) //  nano-banana向けプロンプト追記 +prompt
           const imageOut = yield* gen.toAnswerOut(res)
           const out = yield* Effect.tryPromise(_ => sharp(imageOut).resize({
             width: widthOut,
@@ -973,7 +982,8 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         const photo = inImage ? yield* Effect.tryPromise(_ => sharp(inImage).resize({
           width: 512, //  最小 256 最大768 とのこと
           height: 512
-        }).png().toBuffer()) : undefined
+        }).png().toBuffer()) : runnerEnv.avatar_image_uri ? yield* getAvatarTemplateImage(runnerEnv.avatar_image_uri):undefined
+
         const res = yield* gen.execLlm(prompt, photo) //  nano-banana向けプロンプト追記 +prompt
         const imageOut = yield* gen.toAnswerOut(res)
         return yield* Effect.tryPromise(_ => sharp(imageOut).resize({
@@ -1178,6 +1188,25 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
       })
     }
 
+    function getAvatarTemplateImage(modelPhotoUri: string) {
+      return Effect.gen(function *() {
+        let likeBuffer: Buffer
+        if (modelPhotoUri.startsWith('file://')) {
+          const filePath = fileURLToPath(new URL(modelPhotoUri));
+          likeBuffer = fs.readFileSync(filePath);
+        } else if (modelPhotoUri.startsWith('https://') || modelPhotoUri.startsWith('http://')) {
+          likeBuffer = yield * HttpClient.get(modelPhotoUri).pipe(
+            Effect.andThen((response) => response.arrayBuffer),
+            Effect.andThen(a => Buffer.from(a)),
+            Effect.scoped,
+          )
+        }
+        return yield * Effect.tryPromise(_ => sharp(likeBuffer).resize({
+          width: 512, //  最小 256 最大768 とのこと
+          height: 512
+        }).png().toBuffer())
+      })
+    }
 
     return {
       getRecentImageAndClear,
