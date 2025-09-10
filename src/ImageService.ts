@@ -944,20 +944,18 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
           const {prompt, append} = yield* generatePromptV4(baseCharPrompt, false, withAbort);
           if (modelPhotoUri) {
             charImage = yield* getAvatarTemplateImage(modelPhotoUri);
-            addPrompt = 'Create a new image by combining the elements from the provided images. Add a realistic anime girl in the second image to the first image. Natural coloring that blends in with the surroundings.'+append
+            addPrompt = `Add the girl in the second image ${append}, to the first image. Matching colors and shadows to the landscape.`
+            // addPrompt = 'Create a new image by combining the elements from the provided images. Add a realistic anime girl in the second image to the first image. Natural coloring that blends in with the surroundings.'+append
           } else {
-            addPrompt = 'Using the provided image, add a realistic anime girl,Natural coloring that blends in with the surroundings.' + prompt
+            addPrompt = 'Using the provided image, add a realistic anime girl,Matching colors and shadows to the landscape.' + prompt
           }
-          // yield *McpLogService.logTrace('modelPhotoUri',modelPhotoUri)
-          // yield *McpLogService.logTrace('addPrompt',addPrompt)
-          // yield *McpLogService.logTrace('charImage',charImage ? charImage.length: undefined)
-
           const res = yield* gen.execLlm(addPrompt, photo, charImage) //  nano-banana向けプロンプト追記 +prompt
           const imageOut = yield* gen.toAnswerOut(res)
           const out = yield* Effect.tryPromise(_ => sharp(imageOut).resize({
             width: widthOut,
             height: heightOut
           }).png().toBuffer())
+          recentImage = out
           return {
             buf: out,
             shiftX: 0,
@@ -1189,13 +1187,18 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
     }
 
     function getAvatarTemplateImage(modelPhotoUri: string) {
+      const strings = modelPhotoUri.split('|');
+      let uri = modelPhotoUri
+      if (strings.length > 1) {
+        uri = strings[Math.floor(Math.random() * strings.length)]
+      }
       return Effect.gen(function *() {
         let likeBuffer: Buffer
-        if (modelPhotoUri.startsWith('file://')) {
-          const filePath = fileURLToPath(new URL(modelPhotoUri));
+        if (uri.startsWith('file://')) {
+          const filePath = fileURLToPath(new URL(uri));
           likeBuffer = fs.readFileSync(filePath);
-        } else if (modelPhotoUri.startsWith('https://') || modelPhotoUri.startsWith('http://')) {
-          likeBuffer = yield * HttpClient.get(modelPhotoUri).pipe(
+        } else if (uri.startsWith('https://') || uri.startsWith('http://')) {
+          likeBuffer = yield * HttpClient.get(uri).pipe(
             Effect.andThen((response) => response.arrayBuffer),
             Effect.andThen(a => Buffer.from(a)),
             Effect.scoped,
