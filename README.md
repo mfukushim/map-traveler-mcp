@@ -125,7 +125,7 @@ Use of the API may incur charges.
         "MT_GOOGLE_MAP_KEY":"(Google Map API key)",
         "MT_GEMINI_IMAGE_KEY": "(Gemini Image Api key)",
         "MT_MAX_RETRY_GEMINI": "(Number of retries when generating Gemini images Default: 0)",
-        "MT_AVATAR_IMAGE_URI": "(Character reference image uri (file:// or https://) when generating Gemini image)",
+        "MT_AVATAR_IMAGE_URI": "(Character reference image uri (file:// or https://) when generating Gemini image. Multiple settings can be made by separating them with the '|'. When multiple settings are made, they will be selected randomly.)",
         "MT_MAP_API_URL": "(Optional: Map API custom endpoint. Example: direction=https://xxxx,places=https://yyyy )",
         "MT_TIME_SCALE": "(Optional:Scale of travel time on real roads duration. default 4)",
         "MT_SQLITE_PATH":"(db save path: e.g. %USERPROFILE%/Desktop/traveler.sqlite ,$HOME/traveler.sqlite )",
@@ -461,6 +461,8 @@ Database settings can now be recorded with Turso sqlite, so if you configure Tur
    https://note.com/marble_walkers/n/ne3b3c0f99707
 11. Streamable-HTTP support  
     https://note.com/marble_walkers/n/n030063f22dc0
+12. Nano-Banana support  
+    https://note.com/marble_walkers/n/n5d49514dddec  
 
 
 #### Additional about the source code

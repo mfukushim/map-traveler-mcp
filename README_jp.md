@@ -117,7 +117,7 @@ claude_desktop_config.json (stdio型)
         "MT_GOOGLE_MAP_KEY":"(Google Map APIのキー)",
         "MT_GEMINI_IMAGE_KEY": "(GeminiImageApi_keyのキー)",
         "MT_MAX_RETRY_GEMINI": "(Gemini画像生成時のリトライ回数 デフォルト0回)",
-        "MT_AVATAR_IMAGE_URI": "(Gemini画像生成時のキャラクタ参照画像uri (file:// または https:// )",
+        "MT_AVATAR_IMAGE_URI": "(Gemini画像生成時のキャラクタ参照画像uri (file:// または https:// |文字区切りで複数設定可能。複数時はランダムで選択する))",
         "MT_MAP_API_URL": "(オプション: Map APIカスタムエンドポイント 例 direction=https://xxxx,search=https://yyyy )",
         "MT_TIME_SCALE": "(オプション:道路での移動時間の尺度. default 4)",
         "MT_SQLITE_PATH":"(db保存ファイルのパス 例 %USERPROFILE%/Desktop/traveler.sqlite など)",
@@ -442,6 +442,8 @@ db設定をTurso sqliteで記録出来るようにしたので、Tursoの設定�
     https://note.com/marble_walkers/n/ne3b3c0f99707
 11. Streamable-HTTP対応  
     https://note.com/marble_walkers/n/n030063f22dc0
+12. Nano-Banana対応  
+    https://note.com/marble_walkers/n/n5d49514dddec  
 
 
 #### ソースコードについての追記  
