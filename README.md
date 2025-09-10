@@ -461,6 +461,8 @@ Database settings can now be recorded with Turso sqlite, so if you configure Tur
    https://note.com/marble_walkers/n/ne3b3c0f99707
 11. Streamable-HTTP support  
     https://note.com/marble_walkers/n/n030063f22dc0
+12. Nano-Banana support  
+    https://note.com/marble_walkers/n/n5d49514dddec  
 
 
 #### Additional about the source code

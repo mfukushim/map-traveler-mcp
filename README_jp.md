@@ -442,6 +442,8 @@ db設定をTurso sqliteで記録出来るようにしたので、Tursoの設定�
     https://note.com/marble_walkers/n/ne3b3c0f99707
 11. Streamable-HTTP対応  
     https://note.com/marble_walkers/n/n030063f22dc0
+12. Nano-Banana対応  
+    https://note.com/marble_walkers/n/n5d49514dddec  
 
 
 #### ソースコードについての追記  
