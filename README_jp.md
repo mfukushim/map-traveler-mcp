@@ -12,9 +12,12 @@ Claude DesktopなどのMCP clientから、アバターに指示をして、移�
 
 <img alt="img.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/img.png" width="400"/>
 
+> MCP Registry に対応中  https://blog.modelcontextprotocol.io/posts/2025-09-08-mcp-registry-preview/
+
 > 旅画像生成にgemini-2.5-flash-image-preview (nano-banana) を追加しました  
 
-nano-bananaに対応しました。nano-bananaのセマンティック マスクによりremBgの設定なしに短時間で旅の合成画像が生成できるようになりました。
+nano-bananaに対応しました。nano-bananaのセマンティック マスクによりremBgの設定なしに短時間で旅の合成画像が生成できるようになりました。  
+従来の画像合成もそのまま可能ですが、Gemini nano-bananaの利用を推奨します。  
 
 > Streamable-HTTP/stdio 両対応しました(Smithery.ai仕様のconfigインタフェースに準拠)  
 
