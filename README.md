@@ -11,9 +11,12 @@ From an MCP client such as Claude Desktop, you can give instructions to the avat
 
 <img alt="img_5.png" src="https://raw.githubusercontent.com/mfukushim/map-traveler-mcp/for_image/tools/img_5.png" width="400"/>
 
+> Preparing for MCP Registry Support https://blog.modelcontextprotocol.io/posts/2025-09-08-mcp-registry-preview/  
+
 > Added gemini-2.5-flash-image-preview (nano-banana) to travel image generation  
 
 Support for nano-banana has been added. Nano-banana's semantic mask allows you to generate composite travel images in a short time without setting remBg.  
+Although conventional image synthesis is still possible, we recommend using Gemini nano-banana.  
 
 > Supports both Streamable-HTTP and stdio (compliant with Smithery.ai's config interface)  
 

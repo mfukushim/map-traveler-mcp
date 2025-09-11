@@ -20,7 +20,7 @@ startCommand:
         description: Gemini Image retry count
       MT_AVATAR_IMAGE_URI:
         type: string
-        description: Character reference image uri
+        description: Character reference image uri. Multiple settings can be made by separating them with the '|'
       MT_TURSO_URL:
         type: string
         description: Turso sqlite API URL
