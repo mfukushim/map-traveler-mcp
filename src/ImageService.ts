@@ -316,22 +316,29 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
             resume(Effect.succeed(data));
           })).pipe(Effect.andThen(a => Buffer.from(a)))
         }
-        const baseCharPrompt = selectGen === 'gemini' && env.avatar_image_uri ? 'Add the person in the image provided to.': yield* getBasePrompt(defaultAvatarId)
-        let prompt = baseCharPrompt + ',';
+        let avatarImage:Buffer|undefined
+        let prompt = '';
+        let room = ''
         if (hour < 6 || hour >= 19) {
-          prompt += 'hotel room,desk,drink,laptop computer,talking to computer,sitting,window,night,(pyjamas:1.3)'
+          room += 'hotel room,desk,drink,laptop computer,talking to computer,sitting,window,night,(pyjamas:1.3)'
         } else if (hour < 11) {
-          prompt += 'hotel room,desk,drink,laptop computer,talking to computer,sitting,window,morning'
+          room += 'hotel room,desk,drink,laptop computer,talking to computer,sitting,window,morning'
         } else if (hour < 16) {
-          prompt += 'cafe terrace,outdoor dining table,outdoor bistro chair,drink,laptop computer,talking to computer,sitting,noon'
+          room += 'cafe terrace,outdoor dining table,outdoor bistro chair,drink,laptop computer,talking to computer,sitting,noon'
         } else {
-          prompt += 'cafe terrace,outdoor dining table,outdoor bistro chair,drink,laptop computer,talking to computer,sitting,evening'
+          room += 'cafe terrace,outdoor dining table,outdoor bistro chair,drink,laptop computer,talking to computer,sitting,evening'
         }
         if (append) {
-          prompt += `,${append}`
+          room += `,${append}`
         }
-        const {widthOut, heightOut} = yield* getImageOutSize()
-        return yield* selectImageGenerator(selectGen, prompt).pipe(
+        if (selectGen === 'gemini' && env.avatar_image_uri) {
+          prompt = 'Using the provided image, create a realistic anime girl in ' + room
+          avatarImage = yield *getAvatarTemplateImage(env.avatar_image_uri);
+        } else {
+          prompt = (yield* getBasePrompt(defaultAvatarId)) + room
+        }
+        const {widthOut, heightOut} = yield* getImageOutSize();
+        return yield* selectImageGenerator(selectGen, prompt,avatarImage).pipe(
           Effect.tap(a => {
             recentImage = a
             if (localDebug) {
@@ -385,10 +392,15 @@ export class ImageService extends Effect.Service<ImageService>()("traveler/Image
         }
         const {widthOut, heightOut} = yield* getImageOutSize()
         const appendPrompt = appendPrompts.join(',')
-        const baseCharPrompt = selectGen === 'gemini' && env.avatar_image_uri ? 'Add the person in the image provided to.': yield* getBasePrompt(defaultAvatarId)
-        // const baseCharPrompt = yield* getBasePrompt(defaultAvatarId)
-        const prompt = `${baseCharPrompt},${appendPrompt}`
-        return yield* selectImageGenerator(selectGen, prompt).pipe(
+        let avatarImage:Buffer|undefined
+        let prompt = '';
+        if (selectGen === 'gemini' && env.avatar_image_uri) {
+          prompt = 'Using the provided image, create a realistic anime girl in ' + appendPrompt
+          avatarImage = yield *getAvatarTemplateImage(env.avatar_image_uri);
+        } else {
+          prompt = (yield* getBasePrompt(defaultAvatarId)) + appendPrompt
+        }
+        return yield* selectImageGenerator(selectGen, prompt,avatarImage).pipe(
           Effect.tap(a => {
             recentImage = a
             if (localDebug) {
