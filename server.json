@@ -1,276 +1,277 @@
 {
-  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-07-09/server.schema.json",
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-09-16/server.schema.json",
   "name": "io.github.mfukushim/map-traveler-mcp",
   "description": "Virtual traveler library for MCP",
   "status": "active",
   "repository": {
-    "url": "https://github.com/mfukushim/map-traveler-mcp",
+    "url": "https://github.com//mfukushim/map-traveler-mcp",
     "source": "github"
   },
-  "version": "0.1.4",
+  "version": "0.1.5",
   "packages": [
     {
-      "registry_type": "npm",
-      "registry_base_url": "https://registry.npmjs.org",
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@mfukushim/map-traveler-mcp",
       "version": "0.1.4",
       "transport": {
         "type": "stdio"
       },
-      "environment_variables": [
+      "environmentVariables": [
         {
           "description": "[Map] Google Map API key",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": true,
+          "isSecret": true,
           "name": "MT_GOOGLE_MAP_KEY"
         },
         {
           "description": "[Image.gemini] Gemini Image Api key",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": true,
+          "isSecret": true,
           "name": "MT_GEMINI_IMAGE_KEY"
         },
         {
           "description": "[Image.gemini] Number of retries when generating Gemini images Default: 0",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_MAX_RETRY_GEMINI"
         },
         {
           "description": "[Image.gemini] Character reference image uri (file:// or https://) when generating Gemini image. Multiple settings can be made by separating them with the '|'. When multiple settings are made, they will be selected randomly.",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_AVATAR_IMAGE_URI"
         },
         {
           "description": "[Map.etc] Optional: Map API custom endpoint. Example: direction=https://xxxx,places=https://yyyy ",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_MAP_API_URL"
         },
         {
           "description": "[Map] Optional:Scale of travel time on real roads duration. default 4",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_TIME_SCALE"
         },
         {
           "description": "[db.local] db save path: e.g. %USERPROFILE%/Desktop/traveler.sqlite ,$HOME/traveler.sqlite ",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_SQLITE_PATH"
         },
         {
           "description": "[db.api] Turso sqlite API URL",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_TURSO_URL"
         },
         {
           "description": "[db.api] Turso sqlite API access token",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": true,
+          "isSecret": true,
           "name": "MT_TURSO_TOKEN"
         },
         {
           "description": "[rembg.local] absolute path of the installed rembg cli",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_REMBG_PATH"
         },
         {
           "description": "[rembg.api] withoutbg.com rembg API URL",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_REMBG_URL"
         },
         {
           "description": "[rembg.api] withoutbg.com rembg API key",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": true,
+          "isSecret": true,
           "name": "MT_REMBG_WO_KEY"
         },
         {
           "description": "[Image.pixAi] pixAi API key",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": true,
+          "isSecret": true,
           "name": "MT_PIXAI_KEY"
         },
         {
           "description": "[Image.sd] Stability.ai image generation API key",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": true,
+          "isSecret": true,
           "name": "MT_SD_KEY"
         },
         {
           "description": "[Image.pixAi] Optional: pixAi ModelId, if not set use default model 1648918127446573124 ",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_PIXAI_MODEL_ID"
         },
         {
           "description": "[Image.local.ComfyUi] Option: Generate image using ComfyUI API at specified URL. Example: http://192.168.1.100:8188",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_COMFY_URL"
         },
         {
           "description": "[Image.local.ComfyUi] Optional: Path to API workflow file when using text to image with ComfyUI. If not specified: assets/comfy/t2i_sample.json",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_COMFY_WORKFLOW_T2I"
         },
         {
           "description": "[Image.local.ComfyUi] Optional: Path of API workflow file when image to image in ComfyUI. If not specified: assets/comfy/i2i_sample.json",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_COMFY_WORKFLOW_I2I"
         },
         {
           "description": "[Image.local.ComfyUi] Optional: Variable values to send to the workflow via comfyUI API",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_COMFY_PARAMS"
         },
         {
           "description": "[Image] Optional: Fixed avatar generation prompt. You will no longer be able to change your avatar during conversations.",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_FIXED_MODEL_PROMPT"
         },
         {
           "description": "[Image] Optional: Acceptable avatar image area ratio. default 0.042",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_BODY_AREA_RATIO"
         },
         {
           "description": "[Image] Optional: Acceptable avatar image aspect ratios. default 1.5~2.3",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_BODY_HW_RATIO"
         },
         {
           "description": "[Image] Optional: Avatar composite window horizontal ratio. default 0.5",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_BODY_WINDOW_RATIO_W"
         },
         {
           "description": "[Image] Optional: Avatar composite window aspect ratio. default 0.75",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_BODY_WINDOW_RATIO_H"
         },
         {
           "description": "[Sns.Bs] Bluesky sns registration address",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_BS_ID"
         },
         {
           "description": "[Sns.Bs] bluesky sns password",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": true,
+          "isSecret": true,
           "name": "MT_BS_PASS"
         },
         {
           "description": "[Sns.Bs] bluesky sns handle name: e.g. xxxxxxxx.bsky.social ",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_BS_HANDLE"
         },
         {
           "description": "[etc] Optional: Directly filter the tools to be used. All are available if not specified. e.g. tips,set_traveler_location",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_FILTER_TOOLS"
         },
         {
           "description": "[etc] Option: Specify whether the movement mode is 'realtime' or 'skip'. default realtime",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_MOVE_MODE"
         },
         {
           "description": "[Image] Option: Output image width (pixels) Default is 512",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_IMAGE_WIDTH"
         },
         {
           "description": "[Image] Options: 'true' = do not output image, not specified = output image if possible, default is not specified",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_NO_IMAGE"
         },
         {
           "description": "[Image] Option: 'true' = Output StreetView image as is without avatar superimposition. Not specified = Superimpose avatar image. Default is not specified.",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_NO_AVATAR"
         },
         {
           "description": "[Sns] Optional: Specify the feed tag when posting to SNS (#required, 15 characters or more) Default is #geo_less_traveler",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_FEED_TAG"
         },
         {
           "description": "[Streamable-http] Maximum number of sessions when using Streamable-http",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_MAX_SESSIONS"
         },
         {
           "description": "[Streamable-http] Session TTL when using Streamable-http",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_SESSION_TTL_MS"
         },
         {
           "description": "[Streamable-http] Service TTL when using Streamable-http",
-          "is_required": false,
+          "isRequired": false,
           "format": "string",
-          "is_secret": false,
+          "isSecret": false,
           "name": "MT_SERVICE_TTL_MS"
         }
       ]
+
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
   "name": "@mfukushim/map-traveler-mcp",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "type": "module",
   "mcpName": "io.github.mfukushim/map-traveler-mcp",
   "bin": {
