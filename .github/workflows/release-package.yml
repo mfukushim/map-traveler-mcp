@@ -40,18 +40,18 @@ jobs:
       - run: pnpm publish --provenance --access public --no-git-checks
         env:
           NODE_AUTH_TOKEN: ${{secrets.NPM_TOKEN}}
-      - name: Install MCP Publisher
-        run: |
-          # Build publisher from source (requires Go)
-          git clone https://github.com/modelcontextprotocol/registry publisher-repo
-          cd publisher-repo
-          make publisher
-          cp cmd/publisher/bin/mcp-publisher ../mcp-publisher
-          cd ..
-          chmod +x mcp-publisher
-
-      - name: Login to MCP Registry
-        run: ./mcp-publisher login github-oidc
-
-      - name: Publish to MCP Registry
-        run: ./mcp-publisher publish
+#      - name: Install MCP Publisher
+#        run: |
+#          # Build publisher from source (requires Go)
+#          git clone https://github.com/modelcontextprotocol/registry publisher-repo
+#          cd publisher-repo
+#          make publisher
+#          cp cmd/publisher/bin/mcp-publisher ../mcp-publisher
+#          cd ..
+#          chmod +x mcp-publisher
+#
+#      - name: Login to MCP Registry
+#        run: ./mcp-publisher login github-oidc
+#
+#      - name: Publish to MCP Registry
+#        run: ./mcp-publisher publish
