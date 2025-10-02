@@ -1,6 +1,6 @@
 {
   "name": "@mfukushim/map-traveler-mcp",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "type": "module",
   "mcpName": "io.github.mfukushim/map-traveler-mcp",
   "bin": {
@@ -33,8 +33,8 @@
     "build": "pnpm build-esm",
     "build:npm": "npm run build-esm",
     "build-esm": "tsc -b tsconfig.build.json",
-    "start2:stdio": "pnpm build-esm && node build/esm/mapTraveler.js",
-    "start2:http": "pnpm build-esm && SET TRANSPORT=http&& SET MT_MAX_SESSIONS=2&& node build/esm/mapTraveler.js",
+    "startLocal:stdio": "pnpm build-esm && node build/esm/mapTraveler.js",
+    "startLocal:http": "pnpm build-esm && SET TRANSPORT=http&& SET MT_MAX_SESSIONS=2&& node build/esm/mapTraveler.js",
     "build-annotate": "babel build/esm --plugins annotate-pure-calls --out-dir build/esm --source-maps",
     "check": "tsc -b tsconfig.json",
     "test": "vitest",

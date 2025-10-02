@@ -108,7 +108,7 @@ async function makeServer(smitheryConfig: Option.Option<any>) {
 
 function setupHttp() {
   // TODO Check for OAuth flag
-  const useOAuth = false
+  const useOAuth = true
   const strictOAuth = false
 
   const app = express();
