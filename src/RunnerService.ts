@@ -211,7 +211,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       return Effect.gen(function* () {
         const status = yield* DbService.getRecentRunStatus().pipe(Effect.orElseFail(() =>
           new AnswerError(`current location not set. Please set the current location address`)))
-        if (status.status === "stop" && !status.to) {
+        if (status.status === "stop" && (!status.to || (status.endLat === 0 && status.endLng === 0))) {
           //  停止している場合は直近の行き先のtoが現在地
           return yield* Effect.fail(new AnswerError(`current location not set. Please set the current location address`))
         }
