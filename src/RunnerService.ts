@@ -207,11 +207,11 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
       return Effect.succeed(out)
     }
 
-    const getRunStatusAndUpdateEnd = (now: dayjs.Dayjs) => {
+    const getRunStatusAndUpdateEnd = (now: dayjs.Dayjs,practice = false) => {
       return Effect.gen(function* () {
         const status = yield* DbService.getRecentRunStatus().pipe(Effect.orElseFail(() =>
           new AnswerError(`current location not set. Please set the current location address`)))
-        if (status.status === "stop" && (!status.to || (status.endLat === 0 && status.endLng === 0))) {
+        if (status.status === "stop" && (!status.to || (status.endLat === 0 && status.endLng === 0) && !practice)) { //
           //  停止している場合は直近の行き先のtoが現在地
           return yield* Effect.fail(new AnswerError(`current location not set. Please set the current location address`))
         }
@@ -289,7 +289,7 @@ export class RunnerService extends Effect.Service<RunnerService>()("traveler/Run
 
     function getCurrentView(now: dayjs.Dayjs, includePhoto: boolean, includeNearbyFacilities: boolean, practice = false) {
       return Effect.gen(function* () {
-        const {runStatus, justArrive, elapseRatio} = yield* getRunStatusAndUpdateEnd(now);
+        const {runStatus, justArrive, elapseRatio} = yield* getRunStatusAndUpdateEnd(now,practice);
         //  ただし前回旅が存在し、それが終了していても、そのendTimeから1時間以内ならその場所にいるものとして表示する
         return yield* makeView(runStatus, elapseRatio, justArrive && dayjs().isBefore(dayjs.unix(runStatus.tilEndEpoch).add(1, "hour")), includePhoto, includeNearbyFacilities, practice)
       })
