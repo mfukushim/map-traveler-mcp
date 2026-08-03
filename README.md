@@ -1,7 +1,6 @@
 # Virtual Traveling bot environment for MCP
 
-[![Verified on MseeP](https://mseep.ai/badge.svg)](https://mseep.ai/app/073d88cc-277d-40b6-8c20-bcabf6c275e9)
-[![smithery badge](https://smithery.ai/badge/@mfukushim/map-traveler-mcp)](https://smithery.ai/server/@mfukushim/map-traveler-mcp)
+> We are currently developing a next-generation traveling bot system. It will take some time to complete, but in the meantime, please enjoy using this MCP server, which operates in MCP v1 mode.
 
 English / [Japanese](./README_jp.md)
 
